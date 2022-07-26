@@ -1,0 +1,30 @@
+{
+  "name": "@ulixee/block-utils",
+  "version": "2.0.0-alpha.8",
+  "description": "Ulixee block closing utilities",
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "tsc -b"
+  },
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/DataLiberationFoundation/ulixee.git"
+  },
+  "author": "The World",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://gitlab.com/DataLiberationFoundation/ulixee/issues"
+  },
+  "homepage": "https://gitlab.com/DataLiberationFoundation/ulixee#README",
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "bignumber.js": "^9.0.2",
+    "@ulixee/commons": "2.0.0-alpha.8",
+    "@ulixee/specification": "2.0.0-alpha.8"
+  },
+  "keywords": []
+}

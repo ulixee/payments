@@ -1,0 +1,6 @@
+{
+  "verbose": false,
+  "ignore": ["output/*", "node-modules/*"],
+  "delay": 2500,
+  "ext": "js,json,yaml"
+}

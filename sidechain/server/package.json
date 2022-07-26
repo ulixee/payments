@@ -1,0 +1,43 @@
+{
+  "name": "@ulixee/sidechain",
+  "version": "2.0.0-alpha.8",
+  "private": true,
+  "description": "The Ulixee batch is a sidechain batched settlement channel",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.ts",
+    "migrate": "node db-migrations-default/migrate.js",
+    "start": "nodemon ../../build/sidechain/server/index.js",
+    "test": "NODE_ENV=test jest"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^24.0.11",
+    "@types/koa": "^2.13.5",
+    "@types/pg": "^8.6.5",
+    "@types/pg-copy-streams": "^1.2.1",
+    "nodemon": "^1.18.9",
+    "postgrator": "^5.0.1"
+  },
+  "dependencies": {
+    "@godaddy/terminus": "^4.1.0",
+    "@ulixee/block-utils": "2.0.0-alpha.8",
+    "@ulixee/commons": "2.0.0-alpha.8",
+    "@ulixee/crypto": "2.0.0-alpha.8",
+    "@ulixee/net": "2.0.0-alpha.8",
+    "@ulixee/wallet": "2.0.0-alpha.8",
+    "@ulixee/specification": "2.0.0-alpha.8",
+    "@ulixee/mainchain-client": "2.0.0-alpha.8",
+    "@ulixee/sidechain-client": "2.0.0-alpha.8",
+    "config": "^3.3.7",
+    "koa": "^2.13.4",
+    "camelcase": "^6.3.0",
+    "decamelize": "^5.0.1",
+    "moment": "^2.29.4",
+    "pg": "^8.7.3",
+    "pg-types": "^4.0.0",
+    "pg-copy-streams": "^6.0.2",
+    "nanoid": "^3.1.30",
+    "zod": "^3.17.3"
+  }
+}
