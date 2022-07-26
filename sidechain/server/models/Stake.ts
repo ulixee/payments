@@ -1,12 +1,13 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import BlockManager from '../lib/BlockManager';
 import { NotFoundError } from '../lib/errors';
 import PgClient from '../lib/PgClient';
 import { DbType } from '../lib/PgPool';
 
 export default class Stake {
-  public get publicKey(): Buffer {
-    return this.data.publicKey;
+  public get identity(): string {
+    return this.data.identity;
   }
 
   public data: IStakeRecord;
@@ -21,7 +22,7 @@ export default class Stake {
   }
 
   public createHash(blockHeight: number): Buffer {
-    return sha3(Buffer.concat([this.publicKey, Buffer.from(`${blockHeight}`)]));
+    return sha3(concatAsBuffer(this.identity, blockHeight));
   }
 
   public async refund(refundNoteHash: Buffer): Promise<{ blockEndHeight: number }> {
@@ -31,26 +32,26 @@ export default class Stake {
       closedDate: new Date(),
       refundNoteHash,
     });
-    await this.client.update('delete from stakes where public_key = $1', [this.publicKey]);
+    await this.client.update('delete from stakes where identity = $1', [this.identity]);
     return {
       blockEndHeight: inserted.blockEndHeight,
     };
   }
 
-  public static async lock(client: PgClient<DbType.Default>, publicKey: Buffer): Promise<Stake> {
+  public static async lock(client: PgClient<DbType.Default>, identity: string): Promise<Stake> {
     const { rows } = await client.query(
-      'select * from stakes where public_key = $1 LIMIT 1 FOR UPDATE',
-      [publicKey],
+      'select * from stakes where identity = $1 LIMIT 1 FOR UPDATE',
+      [identity],
     );
     if (!rows.length) {
-      throw new NotFoundError('Could not lock this stake for update', publicKey.toString('hex'));
+      throw new NotFoundError('Could not lock this stake for update', identity);
     }
     return new Stake(client, rows[0]);
   }
 }
 
 export interface IStakeRecord {
-  publicKey: Buffer;
+  identity: string;
   address: string;
   noteHash: Buffer;
   blockStartHeight: number;
@@ -58,7 +59,7 @@ export interface IStakeRecord {
 }
 
 export interface IStakeHistoryRecord {
-  publicKey: Buffer;
+  identity: string;
   address: string;
   noteHash: Buffer;
   blockStartHeight: number;

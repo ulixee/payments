@@ -1,7 +1,7 @@
 import { ICoinage, LedgerType, TransactionError, TransactionType } from '@ulixee/specification';
 import ITransaction from '@ulixee/specification/types/ITransaction';
 import TypeSerializer from '@ulixee/commons/lib/TypeSerializer';
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import Address from '@ulixee/crypto/lib/Address';
 import buildBondPurchase from './builder/buildBondPurchase';
 import buildSharesCoinageClaim from './builder/buildSharesCoinageClaim';
 import buildTransfer from './builder/buildTransfer';
@@ -9,7 +9,7 @@ import IAddressTransfer from './interfaces/IAddressTransfer';
 import CodedError from './lib/CodedError';
 import TransactionBuilder from './lib/TransactionBuilder';
 import UnspentOutput from './lib/UnspentOutput';
-import KeyringStore from './store/KeyringStore';
+import AddressStore from './store/AddressStore';
 import UnspentOutputStore from './store/UnspentOutputStore';
 import IWalletApiService from './interfaces/IWalletApiService';
 
@@ -23,11 +23,11 @@ function debug(message, data): void {
 
 export default class Wallet {
   public unspentOutputStore: UnspentOutputStore;
-  public keyringStore: KeyringStore;
+  public addressStore: AddressStore;
   private currentBlockHeight: number;
 
-  constructor(readonly apiService: IWalletApiService, readonly keyrings: Keyring[]) {
-    this.keyringStore = new KeyringStore(keyrings);
+  constructor(readonly apiService: IWalletApiService, readonly addresses: Address[]) {
+    this.addressStore = new AddressStore(addresses);
     this.unspentOutputStore = new UnspentOutputStore();
   }
 
@@ -68,7 +68,7 @@ export default class Wallet {
   public async claimSharesCoinage(coinages: ICoinage[]): Promise<ICoinageResult> {
     const { transaction, claims } = buildSharesCoinageClaim(
       this.unspentOutputStore,
-      this.keyringStore,
+      this.addressStore,
       coinages,
     );
     debug('SHARES COINAGE CLAIM %o', transaction);
@@ -126,11 +126,11 @@ export default class Wallet {
       addressOnSidechain,
     });
 
-    const keyring = this.keyringStore.getKeyring(coinage.grantAddress);
+    const address = this.addressStore.getAddress(coinage.grantAddress);
 
-    if (!keyring) {
+    if (!address) {
       throw new CodedError(
-        'Wallet keyring not loaded for this grant coinage',
+        'Wallet address not loaded for this grant coinage',
         TransactionError.SOURCE_NOT_FOUND,
       );
     }
@@ -141,7 +141,7 @@ export default class Wallet {
         coinageHash: coinage.hash,
       },
       coinage.centagons,
-      keyring,
+      address,
     );
 
     const transaction = builder.finalize();
@@ -184,7 +184,7 @@ export default class Wallet {
   ): Promise<ITransactionResult> {
     const { transaction, fromUnspentOutputs } = buildBondPurchase(
       this.unspentOutputStore,
-      this.keyringStore,
+      this.addressStore,
       this.currentBlockHeight,
       stableCentagonsToConvert,
       feeCentagons,
@@ -248,7 +248,7 @@ export default class Wallet {
   ): Promise<ITransfer> {
     const transaction = buildTransfer(
       fromUnspentOutputs,
-      this.keyringStore,
+      this.addressStore,
       transfers,
       feeCentagons,
     );
@@ -269,7 +269,7 @@ export default class Wallet {
       transaction,
       ledgerType,
       fromUnspentOutputs,
-      this.keyringStore.changeAddress,
+      this.addressStore.changeAddress,
       response.preliminaryBlockHeight,
     );
 

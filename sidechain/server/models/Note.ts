@@ -1,8 +1,8 @@
 import { hashObject } from '@ulixee/commons/lib/hashUtils';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
-import KeyringSignature from '@ulixee/crypto/lib/KeyringSignature';
-import { IWalletSignature, NoteType } from '@ulixee/specification';
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import AddressSignature from '@ulixee/crypto/lib/AddressSignature';
+import { IAddressSignature, NoteType } from '@ulixee/specification';
+import Address from '@ulixee/crypto/lib/Address';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import BlockManager from '../lib/BlockManager';
 import {
@@ -59,7 +59,7 @@ export default class Note {
       throw new InvalidNoteHashError();
     }
 
-    const invalidSignatureReason = KeyringSignature.verify(
+    const invalidSignatureReason = AddressSignature.verify(
       this.data.fromAddress,
       this.data.signature,
       this.data.noteHash,
@@ -133,7 +133,7 @@ export default class Note {
     );
   }
 
-  public static addSignature(data: Partial<INoteRecord>, wallet: Keyring): INoteRecord {
+  public static addSignature(data: Partial<INoteRecord>, address: Address): INoteRecord {
     if (!data.timestamp) {
       data.timestamp = new Date();
     }
@@ -141,8 +141,8 @@ export default class Note {
       delete data.effectiveBlockHeight;
     }
     data.noteHash = Note.hash(data);
-    const keyIndices = Keyring.getKeyIndices(wallet.keyringSettings, false);
-    data.signature = wallet.sign(data.noteHash, keyIndices, false);
+    const keyIndices = Address.getIdentityIndices(address.addressSettings, false);
+    data.signature = address.sign(data.noteHash, keyIndices, false);
     return data as INoteRecord;
   }
 
@@ -160,5 +160,5 @@ export interface INoteRecord {
   effectiveBlockHeight?: number;
   guaranteeBlockHeight: number;
   timestamp: Date;
-  signature: IWalletSignature;
+  signature: IAddressSignature;
 }

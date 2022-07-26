@@ -8,14 +8,14 @@ import db from '../lib/defaultDb';
 import ApiHandler from '../lib/ApiHandler';
 
 export default new ApiHandler('Stake.create', {
-  async handler({ note, stakedPublicKey }, options) {
+  async handler({ note, stakedIdentity }, options) {
     const address = note.fromAddress;
     let blockHeight = await BlockManager.currentBlockHeight();
     if (blockHeight < note.effectiveBlockHeight) {
       blockHeight = note.effectiveBlockHeight;
     }
 
-    if (note.toAddress !== config.stakeWallet.address) {
+    if (note.toAddress !== config.stakeAddress.bech32) {
       throw new InvalidStakeTransactionRecipientError();
     }
 
@@ -35,7 +35,7 @@ export default new ApiHandler('Stake.create', {
       await noteRecord.save(wallet);
 
       return await new Stake(client, {
-        publicKey: stakedPublicKey,
+        identity: stakedIdentity,
         address,
         noteHash: noteRecord.data.noteHash,
         blockStartHeight: blockHeight,
@@ -46,8 +46,8 @@ export default new ApiHandler('Stake.create', {
 
     return {
       blockHeight,
-      signature: config.rootKey.sign(signatureMessage),
-      rootPublicKey: config.rootKey.publicKey,
+      signature: config.rootIdentity.sign(signatureMessage),
+      rootIdentity: config.rootIdentity.bech32,
     };
   },
 });

@@ -7,8 +7,8 @@ import MicronoteBatchDb from '../lib/MicronoteBatchDb';
 
 export default new ApiHandler('Micronote.lock', {
   async handler(payload, options) {
-    const { publicKey, batchSlug, signature, id } = payload;
-    this.validatedDigitalSignature(publicKey, payload, signature);
+    const { identity, batchSlug, signature, id } = payload;
+    this.validatedDigitalSignature(identity, payload, signature);
 
     const batch = await MicronoteBatchManager.get(batchSlug);
     if (batch.isClosed) {
@@ -17,7 +17,7 @@ export default new ApiHandler('Micronote.lock', {
 
     const db = await MicronoteBatchDb.get(batchSlug);
     const accepted = await db.transaction(
-      client => new Micronote(client, null, id).lockForPublicKey(publicKey),
+      client => new Micronote(client, null, id).lockForIdentity(identity),
       options,
     );
 

@@ -30,7 +30,7 @@ CREATE TABLE mainchain_blocks (
 );
 
 CREATE TABLE stakes (
-  public_key bytea NOT NULL PRIMARY KEY,
+  identity varchar(64) NOT NULL PRIMARY KEY,
   address varchar(64) NOT NULL,
   note_hash bytea NOT NULL REFERENCES notes(note_hash),
   block_start_height integer NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE stakes (
 );
 
 CREATE TABLE stake_history (
-  public_key bytea NOT NULL,
+  identity varchar(64) NOT NULL,
   address varchar(64) NOT NULL,
   note_hash bytea NOT NULL REFERENCES notes(note_hash),
   block_start_height integer NOT NULL,

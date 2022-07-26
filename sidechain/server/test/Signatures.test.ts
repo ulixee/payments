@@ -1,4 +1,4 @@
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Identity from '@ulixee/crypto/lib/Identity';
 import Client from './_TestClient';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 
@@ -8,14 +8,14 @@ beforeAll(async () => {
 });
 
 test('should not accept an invalid signature', async () => {
-  const keys = await Keypair.create();
-  const keys2 = await Keypair.create();
-  Object.defineProperty(keys, 'publicKey', {
+  const identity = await Identity.create();
+  const identity2 = await Identity.create();
+  Object.defineProperty(identity, 'bech32', {
     get(): any {
-      return keys2.publicKey;
+      return identity2.bech32;
     },
   });
-  const client = new Client(keys);
+  const client = new Client(identity);
   const result = await client.register().catch(err => err);
   expect(result.code).toBe('ERR_PERMISSIONS');
 });

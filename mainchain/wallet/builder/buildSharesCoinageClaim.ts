@@ -11,14 +11,14 @@ import ITransaction from '@ulixee/specification/types/ITransaction';
 import CodedError from '../lib/CodedError';
 import TransactionBuilder from '../lib/TransactionBuilder';
 import UnspentOutput from '../lib/UnspentOutput';
-import KeyringStore from '../store/KeyringStore';
+import AddressStore from '../store/AddressStore';
 import UnspentOutputStore from '../store/UnspentOutputStore';
 
 const miniumCoinageClaimCentagons = 100n;
 
 export default function buildSharesCoinageClaim(
   uxtoStore: UnspentOutputStore,
-  addressStore: KeyringStore,
+  addressStore: AddressStore,
   coinages: ICoinage[],
 ): { transaction: ITransaction; claims: { share: UnspentOutput; coinage: ICoinage }[] } {
   const shares = uxtoStore.shares;
@@ -71,7 +71,7 @@ export default function buildSharesCoinageClaim(
         coinageHash: claim.coinage.hash,
       },
       share.centagons,
-      addressStore.getKeyring(share.address),
+      addressStore.getAddress(share.address),
     );
   }
 

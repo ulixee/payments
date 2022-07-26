@@ -1,7 +1,7 @@
 import * as moment from 'moment';
-import Keyring from '@ulixee/crypto/lib/Keyring';
-import { UniversalKey } from '@ulixee/crypto/interfaces/IKeyringSettings';
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Address from '@ulixee/crypto/lib/Address';
+import { UniversalSigner } from '@ulixee/crypto/interfaces/IAddressSettings';
+import Identity from '@ulixee/crypto/lib/Identity';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
 import * as decamelize from 'decamelize';
@@ -23,6 +23,10 @@ export default class MicronoteBatch {
 
   public get address(): string | null {
     return this.data ? this.data.address : null;
+  }
+
+  public get identity(): string {
+    return this.credentials.identity.bech32;
   }
 
   public get shouldClose(): boolean {
@@ -52,32 +56,37 @@ export default class MicronoteBatch {
   }
 
   public data?: IMicronoteBatchRecord;
-  public keyring: Keyring;
-  public identity: Keypair;
+  public credentials: {
+    address: Address;
+    identity: Identity;
+  };
+
   private sidechainValidationSignature?: Buffer;
-  private sidechainPublicKey?: Buffer;
+  private sidechainIdentity?: string;
 
   constructor(
     private readonly client: PgClient<DbType.Default>,
     data: IMicronoteBatchRecord,
-    keyring: Keyring,
+    address: Address,
   ) {
     this.data = data;
-    this.keyring = keyring;
-    this.identity = keyring.transferKeys[0];
+    this.credentials = {
+      address,
+      identity: address.transferSigners[0],
+    };
   }
 
   public getNoteParams(): IMicronoteBatch {
     if (!this.sidechainValidationSignature) {
-      this.sidechainPublicKey = config.rootKey.publicKey;
-      const identityHash = sha3(this.identity.publicKey);
-      this.sidechainValidationSignature = config.rootKey.sign(identityHash);
+      this.sidechainIdentity = config.rootIdentity.bech32;
+      const identityHash = sha3(this.identity);
+      this.sidechainValidationSignature = config.rootIdentity.sign(identityHash);
     }
     return {
       batchSlug: this.slug,
-      micronoteBatchPublicKey: this.identity.publicKey,
+      micronoteBatchIdentity: this.identity,
       micronoteBatchAddress: this.address,
-      sidechainPublicKey: this.sidechainPublicKey,
+      sidechainIdentity: this.sidechainIdentity,
       sidechainValidationSignature: this.sidechainValidationSignature,
     };
   }
@@ -121,23 +130,23 @@ export default class MicronoteBatch {
   public static async create(client: PgClient<DbType.Default>): Promise<MicronoteBatch> {
     const plannedClose = moment().add(batchOpenMinutes, 'minutes');
     const stopNotes = moment(plannedClose).subtract(stopNotesMinsBeforeClose, 'minutes');
-    const key = await Keypair.create();
-    const keyring = Keyring.createFromKeypairs([key], {
-      keyTypes: [UniversalKey],
+    const identity = await Identity.create();
+    const address = Address.createFromSigningIdentities([identity], {
+      signerTypes: [UniversalSigner],
       transferSignatureSettings: 1,
       claimSignatureSettings: 1,
     });
     const batch = new MicronoteBatch(
       client,
       {
-        slug: key.publicKey.toString('hex').substring(0, 10),
-        address: keyring.address,
-        privateKey: key.export(),
+        slug: identity.publicKey.toString('hex').substring(0, 10),
+        address: address.bech32,
+        privateKey: identity.export(),
         openTime: new Date(),
         plannedClosingTime: plannedClose.toDate(),
         stopNewNotesTime: stopNotes.toDate(),
       },
-      keyring,
+      address,
     );
     await client.insert<IMicronoteBatchRecord>('micronote_batches', batch.data);
     return batch;
@@ -157,13 +166,13 @@ export default class MicronoteBatch {
     client: PgClient<DbType.Default>,
     data: IMicronoteBatchRecord,
   ): MicronoteBatch {
-    const key = Keypair.loadFromPem(data.privateKey);
-    return new MicronoteBatch(client, data, MicronoteBatch.singleKeyring(key));
+    const key = Identity.loadFromPem(data.privateKey);
+    return new MicronoteBatch(client, data, MicronoteBatch.singleAddress(key));
   }
 
-  private static singleKeyring(key: Keypair): Keyring {
-    return Keyring.createFromKeypairs([key], {
-      keyTypes: [UniversalKey],
+  private static singleAddress(identity: Identity): Address {
+    return Address.createFromSigningIdentities([identity], {
+      signerTypes: [UniversalSigner],
       transferSignatureSettings: 1,
       claimSignatureSettings: 1,
     });

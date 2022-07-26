@@ -25,7 +25,7 @@ CREATE TABLE micronotes (
 	client_address varchar(64) NOT NULL,
 	microgons_allocated integer NOT NULL
 	    CHECK (microgons_allocated > 0),
-	locked_by_public_key bytea NULL,
+	locked_by_identity varchar(64) NULL,
 	locked_time timestamp NULL,
 	claimed_time timestamp NULL,
 	canceled_time timestamp NULL,
@@ -49,7 +49,7 @@ CREATE INDEX idx_note_recipients on micronote_recipients (address);
 
 CREATE TABLE note_outputs (
 	note_hash bytea PRIMARY KEY,
-	from_address varchar(64) NOT NULL, -- should always be the micronoteBatch public key
+	from_address varchar(64) NOT NULL, -- should always be the micronoteBatch address
 	to_address varchar(64) NOT NULL,
 	centagons bigint NOT NULL CHECK (centagons > 0), --the amount moved from From to To
 	timestamp timestamp NOT NULL, --the time the transaction funds are available

@@ -1,8 +1,8 @@
 import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Identity from '@ulixee/crypto/lib/Identity';
 import SidechainClient from '@ulixee/sidechain-client/lib/SidechainClient';
-import { INote, IWalletSignature, NoteType } from '@ulixee/specification';
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import { IAddressSignature, INote, NoteType } from '@ulixee/specification';
+import Address from '@ulixee/crypto/lib/Address';
 import { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import config from '../config';
 import MainchainBlock from '../models/MainchainBlock';
@@ -12,15 +12,18 @@ import { serverPort } from './_TestServer';
 import { INoteRecord } from '../models/Note';
 
 export default class TestClient extends SidechainClient {
-  public get keyring() {
-    return this.credentials.keyring;
+  public get internalCredentials(): {
+    address?: Address;
+    identity?: Identity;
+  } {
+    return this.credentials;
   }
 
-  constructor(privateKey?: Keypair) {
-    const keypair = privateKey ?? Keypair.createSync();
+  constructor(privateKey?: Identity) {
+    const identity = privateKey ?? Identity.createSync();
     super(`http://127.0.0.1:${serverPort()}`, {
-      nodeKeypair: keypair,
-      keyring: Keyring.createFromKeypairs([keypair]),
+      identity,
+      address: Address.createFromSigningIdentities([identity]),
     });
   }
 
@@ -65,7 +68,7 @@ export default class TestClient extends SidechainClient {
     return await db.transaction(async client => {
       const transactionParams: Partial<INoteRecord> = {
         centagons: centagons as bigint,
-        fromAddress: config.mainchain.wallets[0].address,
+        fromAddress: config.mainchain.addresses[0].bech32,
         toAddress: this.address,
         timestamp: new Date(),
         guaranteeBlockHeight,
@@ -78,7 +81,7 @@ export default class TestClient extends SidechainClient {
         signature: {
           signers: [],
           signatureSettings: { countRequired: 1, settingsMerkleProofs: [] },
-        } as IWalletSignature,
+        } as IAddressSignature,
         timestamp: transactionParams.timestamp,
       });
       if ((await MainchainBlock.getBlockHeight(sha3('block1'))) === null) {
@@ -99,8 +102,8 @@ export default class TestClient extends SidechainClient {
         transactionTime: new Date(),
         fromAddress: this.address,
         confirmedBlockHeight: 0,
-        toAddress: config.mainchain.wallets[0].address,
-        transactionOutputAddress: config.mainchain.wallets[0].address,
+        toAddress: config.mainchain.addresses[0].bech32,
+        transactionOutputAddress: config.mainchain.addresses[0].bech32,
         transactionOutputIndex: 0,
         noteHash: transactionParams.noteHash,
         isBurn: false,

@@ -10,7 +10,8 @@ import db from '../lib/defaultDb';
 import * as TestServer from './_TestServer';
 import MicronoteBatchDb from '../lib/MicronoteBatchDb';
 
-const sidechainWallet = config.mainchain.wallets[0];
+const sidechainAddressCredentials = config.mainchain.addresses[0];
+const sidechainAddress = sidechainAddressCredentials.bech32;
 const nullAddress = config.nullAddress;
 const { log: logger } = Log(module);
 
@@ -35,7 +36,7 @@ export async function setupDb() {
     await migrationClient.end();
 
     await db.transaction(async client => {
-      await client.insert('wallets', { address: sidechainWallet.address });
+      await client.insert('wallets', { address: sidechainAddress });
     });
 
     await TestServer.start();
@@ -56,7 +57,7 @@ export async function cleanDb() {
       await client.query(
         'TRUNCATE wallets, notes, micronote_batch_outputs, micronote_batches, mainchain_blocks, securities, stakes, stake_history, security_mainchain_blocks, funding_transfers_out, mainchain_transactions CASCADE',
       );
-      await client.insert('wallets', { address: sidechainWallet.address });
+      await client.insert('wallets', { address: sidechainAddress });
     });
     return TestServer.serverPort();
   } catch (err) {
@@ -70,12 +71,12 @@ export async function mockGenesisTransfer() {
     const note = Note.addSignature(
       {
         fromAddress: nullAddress,
-        toAddress: sidechainWallet.address,
+        toAddress: sidechainAddress,
         centagons: BigInt(10e6),
         timestamp: new Date(),
         type: NoteType.transferIn,
       },
-      sidechainWallet,
+      sidechainAddressCredentials,
     );
     note.signature = {} as any;
     await new Note(client, note).saveUnchecked(0);
@@ -87,12 +88,12 @@ export async function grantCentagons(centagons: number | bigint, toAddress: stri
     const data = Note.addSignature(
       {
         toAddress,
-        fromAddress: sidechainWallet.address,
+        fromAddress: sidechainAddress,
         centagons: BigInt(centagons),
         timestamp: new Date(),
         type: NoteType.transfer,
       },
-      sidechainWallet,
+      sidechainAddressCredentials,
     );
     await new Note(client, data).saveUnchecked();
   });

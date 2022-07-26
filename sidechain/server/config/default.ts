@@ -18,9 +18,9 @@ module.exports = <ISettings>{
   mainchain: {
     host: '127.0.0.1:3005',
     fundingHoldBlocks: 6,
-    wallets: ['../test/assets/keyrings/SidechainWallet1.json'], // must be injected
+    addresses: ['../test/assets/addresses/SidechainWallet1.json'], // must be injected
   },
-  rootPrivateKey:
+  rootIdentitySecretKey:
     '-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFJjsJ9eD1H/rnpxkC+54iQV75WB1OrxFK9crVDVHPPN\n-----END PRIVATE KEY-----',
-  stakeWallet: '../test/assets/keyrings/SidechainStake.json',
+  stakeAddress: '../test/assets/addresses/SidechainStake.json',
 };

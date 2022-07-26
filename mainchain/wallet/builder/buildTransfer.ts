@@ -2,11 +2,11 @@ import { ITransaction, TransactionType } from '@ulixee/specification';
 import IAddressTransfer from '../interfaces/IAddressTransfer';
 import TransactionBuilder from '../lib/TransactionBuilder';
 import UnspentOutput from '../lib/UnspentOutput';
-import KeyringStore from '../store/KeyringStore';
+import AddressStore from '../store/AddressStore';
 
 export default function buildTransfer(
   fromUnspentOutputs: UnspentOutput[],
-  keyringStore: KeyringStore,
+  addressStore: AddressStore,
   transfers: IAddressTransfer[],
   feeCentagons: number | bigint,
 ): ITransaction {
@@ -27,12 +27,12 @@ export default function buildTransfer(
   const changeNeeded = totalUnspentCentagons - outputCentagons - BigInt(feeCentagons);
 
   if (changeNeeded) {
-    transfer.addOutput({ address: keyringStore.changeAddress, centagons: changeNeeded });
+    transfer.addOutput({ address: addressStore.changeAddress, centagons: changeNeeded });
   }
 
   // now add all signed sources
   for (const uxto of fromUnspentOutputs) {
-    transfer.addSource(uxto, uxto.centagons, keyringStore.getKeyring(uxto.address));
+    transfer.addSource(uxto, uxto.centagons, addressStore.getAddress(uxto.address));
   }
 
   return transfer.finalize();

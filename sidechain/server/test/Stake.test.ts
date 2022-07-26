@@ -1,6 +1,7 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Identity from '@ulixee/crypto/lib/Identity';
+import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import config from '../config';
 import BlockManager from '../lib/BlockManager';
 import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
@@ -47,7 +48,7 @@ beforeAll(async () => {
 
 test('should be able to get the current stake settings', async () => {
   const settings = await client.stakeSettings();
-  expect(settings.rootPublicKey).toBeTruthy();
+  expect(settings.rootIdentity).toBeTruthy();
   expect(settings.stakeAddress).toBeTruthy();
   expect(settings.stableBlockHeight).toBe((await BlockManager.getStableBlock()).height);
 });
@@ -55,18 +56,18 @@ test('should be able to get the current stake settings', async () => {
 test('should be able to create a stake', async () => {
   const settings = await client.stakeSettings();
   await client.grantCentagons(settings.centagons + 10001n);
-  expect(settings.rootPublicKey).toBeTruthy();
+  expect(settings.rootIdentity).toBeTruthy();
   expect(settings.stakeAddress).toBeTruthy();
   expect(settings.stableBlockHeight).toBeGreaterThan(0);
 
-  const stake = await client.createStake(client.publicKey);
+  const stake = await client.createStake(client.identity);
   expect(stake.blockHeight).toBe((await BlockManager.getStableBlock()).height);
   expect(stake.signature).toBeTruthy();
-  expect(stake.rootPublicKey).toEqual(config.rootKey.publicKey);
+  expect(stake.rootIdentity).toEqual(config.rootIdentity.bech32);
   expect(
-    Keypair.verify(
-      stake.rootPublicKey,
-      sha3(Buffer.concat([client.publicKey, Buffer.from(`${stake.blockHeight}`)])),
+    Identity.verify(
+      stake.rootIdentity,
+      sha3(concatAsBuffer(client.identity, stake.blockHeight)),
       stake.signature,
     ),
   ).toBeTruthy();
@@ -79,11 +80,11 @@ test('should be able to get stake signatures', async () => {
   const signature = await client.getStakeSignature();
   expect(signature.blockHeight).toBe((await BlockManager.getStableBlock()).height);
   expect(signature.signature).toBeTruthy();
-  expect(signature.rootPublicKey).toEqual(config.rootKey.publicKey);
+  expect(signature.rootIdentity).toEqual(config.rootIdentity.bech32);
   expect(
-    Keypair.verify(
-      signature.rootPublicKey,
-      sha3(Buffer.concat([client.publicKey, Buffer.from(`${signature.blockHeight}`)])),
+    Identity.verify(
+      signature.rootIdentity,
+      sha3(concatAsBuffer(client.identity, signature.blockHeight)),
       signature.signature,
     ),
   ).toBe(true);
@@ -93,7 +94,7 @@ test('should be able to refund a stake', async () => {
   const balance = await client.getBalance();
   expect(balance.toString()).toBe('10001');
 
-  const res = await client.refundStake(client.publicKey);
+  const res = await client.refundStake(client.identity);
   expect(res.refundNoteHash).toBeTruthy();
   expect(res.blockEndHeight).toBe((await BlockManager.getStableBlock()).height);
   expect(res.refundEffectiveHeight).toBeGreaterThan((await BlockManager.getStableBlock()).height);
@@ -116,7 +117,7 @@ test('should be able to refund a stake', async () => {
 
 test('should not be able to stake more funds than are available', async () => {
   try {
-    const newStake = await client.createStake(client.publicKey);
+    const newStake = await client.createStake(client.identity);
     expect(newStake).not.toBeTruthy();
   } catch (err) {
     expect(err).toBeTruthy();

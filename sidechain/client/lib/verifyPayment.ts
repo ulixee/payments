@@ -1,12 +1,12 @@
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import { IPayment } from '@ulixee/specification';
 import { UnapprovedSidechainError } from '@ulixee/commons/lib/errors';
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Identity from '@ulixee/crypto/lib/Identity';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { InvalidPaymentBlockHeightError } from './errors';
 
 export default function verifyPayment(
-  approvedSidechains: IPublicKeyed[],
+  approvedSidechains: IIdentityed[],
   payment: IPayment,
   currentBlockHeight: number,
 ): void {
@@ -15,8 +15,8 @@ export default function verifyPayment(
     microgons,
     blockHeight,
     micronoteSignature,
-    micronoteBatchPublicKey,
-    sidechainPublicKey,
+    micronoteBatchIdentity,
+    sidechainIdentity,
     sidechainValidationSignature,
   } = payment;
 
@@ -24,13 +24,13 @@ export default function verifyPayment(
     throw new InvalidPaymentBlockHeightError(currentBlockHeight, blockHeight);
   }
 
-  if (!approvedSidechains.find(x => x.rootPublicKey.equals(sidechainPublicKey))) {
+  if (!approvedSidechains.find(x => x.rootIdentity === sidechainIdentity)) {
     throw new UnapprovedSidechainError();
   }
 
-  const isBatchValid = Keypair.verify(
-    sidechainPublicKey,
-    sha3(micronoteBatchPublicKey),
+  const isBatchValid = Identity.verify(
+    sidechainIdentity,
+    sha3(micronoteBatchIdentity),
     sidechainValidationSignature,
   );
   if (isBatchValid === false) {
@@ -40,8 +40,8 @@ export default function verifyPayment(
   }
 
   const signatureMessage = sha3(`${micronoteId}${microgons}`);
-  const isMicronoteValid = Keypair.verify(
-    micronoteBatchPublicKey,
+  const isMicronoteValid = Identity.verify(
+    micronoteBatchIdentity,
     signatureMessage,
     micronoteSignature,
   );
@@ -52,6 +52,6 @@ export default function verifyPayment(
   }
 }
 
-interface IPublicKeyed {
-  rootPublicKey: Buffer;
+interface IIdentityed {
+  rootIdentity: string;
 }

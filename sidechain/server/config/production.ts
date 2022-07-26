@@ -8,8 +8,8 @@ module.exports = <ISettings>{
   },
   mainchain: {
     host: null,
-    wallets: [],
+    addresses: [],
   },
-  stakeWallet: null, // must be injected
+  stakeAddress: null, // must be injected
   rootPrivateKey: null,
 };

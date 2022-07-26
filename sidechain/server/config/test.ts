@@ -11,8 +11,8 @@ module.exports = <ISettings>{
     database: `ulx_sidechain_test${nanoid(5).toLowerCase().replace(/[-]/g, '_')}`,
   },
   mainchain: {
-    wallets: ['../test/assets/keyrings/SidechainWallet1.json'],
+    addresses: ['../test/assets/addresses/SidechainWallet1.json'],
   },
-  rootKeyPath: '../test/assets/keys/SidechainRootKey.pem',
-  stakeWallet: '../test/assets/keyrings/SidechainStake.json',
+  rootIdentityPath: '../test/assets/identities/SidechainRootKey.pem',
+  stakeAddress: '../test/assets/addresses/SidechainStake.json',
 };

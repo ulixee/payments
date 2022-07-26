@@ -6,10 +6,6 @@ import MicronoteBatchDb from '../lib/MicronoteBatchDb';
 
 export default new ApiHandler('MicronoteBatch.findFund', {
   async handler({ batchSlug, address, microgons }, options) {
-    if (typeof microgons === 'string') {
-      microgons = parseInt(microgons, 10);
-    }
-
     const batch = await MicronoteBatchManager.get(batchSlug);
     if (batch.isClosed) {
       throw new MicronoteBatchClosedError();

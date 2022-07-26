@@ -2,17 +2,18 @@ import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
 import { APIError } from '@ulixee/commons/lib/errors';
 import { createPromise } from '@ulixee/commons/lib/utils';
 import Logger from '@ulixee/commons/lib/Logger';
-import { INote, IStakeSignature, IWalletSignature, NoteType } from '@ulixee/specification';
+import { IAddressSignature, INote, IStakeSignature, NoteType } from '@ulixee/specification';
 import * as assert from 'assert';
 import * as Url from 'url';
 import Queue from '@ulixee/commons/lib/Queue';
-import Keypair from '@ulixee/crypto/lib/Keypair';
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import Identity from '@ulixee/crypto/lib/Identity';
+import Address from '@ulixee/crypto/lib/Address';
 import IResolvablePromise from '@ulixee/commons/interfaces/IResolvablePromise';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
 import { ICreateMicronoteResponse } from '@ulixee/specification/sidechain/MicronoteApis';
 import SidechainApiSchema, { ISidechainApiTypes } from '@ulixee/specification/sidechain';
+import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import IPaymentProvider from '../interfaces/IPaymentProvider';
 import { ClientValidationError, NeedsSidechainBatchFunding } from './errors';
 import IMicronote from '../interfaces/IMicronote';
@@ -41,11 +42,11 @@ export default class SidechainClient implements IPaymentProvider {
   }
 
   get address(): string | null {
-    return this.credentials.keyring ? this.credentials.keyring.address : null;
+    return this.credentials.address ? this.credentials.address.bech32 : null;
   }
 
-  get publicKey(): Buffer | null {
-    return this.credentials.nodeKeypair ? this.credentials.nodeKeypair.publicKey : null;
+  get identity(): string | null {
+    return this.credentials.identity ? this.credentials.identity.bech32 : null;
   }
 
   public batchFundingQueriesToPreload = 100;
@@ -72,8 +73,8 @@ export default class SidechainClient implements IPaymentProvider {
   constructor(
     readonly host: string,
     readonly credentials: {
-      keyring?: Keyring;
-      nodeKeypair?: Keypair;
+      address?: Address;
+      identity?: Identity;
     },
     micronoteBatch?: IMicronoteBatch,
     keepAliveRemoteConnections = false,
@@ -214,7 +215,7 @@ export default class SidechainClient implements IPaymentProvider {
         isAuditable,
         microgons,
       });
-      await this.verifyMicronoteSignature(batch.micronoteBatchPublicKey, microgons, response);
+      await this.verifyMicronoteSignature(batch.micronoteBatchIdentity, microgons, response);
       return response;
     } catch (error) {
       if (error.code === 'ERR_NEEDS_BATCH_FUNDING') {
@@ -281,19 +282,19 @@ export default class SidechainClient implements IPaymentProvider {
     return await this.runSignedAsNode('Micronote.lock', {
       batchSlug: this.batchSlug,
       id: micronoteId,
-      publicKey: this.credentials.nodeKeypair.publicKey,
+      identity: this.identity,
     });
   }
 
   public async claimMicronote(
     micronoteId: Buffer,
-    tokenAllocation: { [publicKey: string]: number },
+    tokenAllocation: { [identity: string]: number },
   ): Promise<ISidechainApiTypes['Micronote.claim']['result']> {
     return await this.runSignedAsNode('Micronote.claim', {
       batchSlug: this.batchSlug,
       id: micronoteId,
       tokenAllocation,
-      publicKey: this.credentials.nodeKeypair.publicKey,
+      identity: this.identity,
     });
   }
 
@@ -331,12 +332,12 @@ export default class SidechainClient implements IPaymentProvider {
 
   /////// STAKE APIS       /////////////////////////////////////////////////////////////////////////
 
-  public async createStake(stakedPublicKey: Buffer): Promise<IStakeSignature> {
+  public async createStake(stakedIdentity: string): Promise<IStakeSignature> {
     const settings = await this.stakeSettings();
     const note = this.buildNote(settings.centagons, settings.stakeAddress, NoteType.stakeCreate);
     const response = await this.runRemote('Stake.create', {
       note,
-      stakedPublicKey,
+      stakedIdentity,
     });
     return {
       ...response,
@@ -345,17 +346,17 @@ export default class SidechainClient implements IPaymentProvider {
   }
 
   public async refundStake(
-    stakedPublicKey: Buffer,
+    stakedIdentity: string,
   ): Promise<ISidechainApiTypes['Stake.refund']['result']> {
     return await this.runSignedByWallet('Stake.refund', {
       address: this.address,
-      stakedPublicKey,
+      stakedIdentity,
     });
   }
 
   public async getStakeSignature(): Promise<ISidechainApiTypes['Stake.signature']['result']> {
     return await this.runSignedAsNode('Stake.signature', {
-      stakedPublicKey: this.credentials.nodeKeypair.publicKey,
+      stakedIdentity: this.identity,
     });
   }
 
@@ -397,7 +398,7 @@ export default class SidechainClient implements IPaymentProvider {
     args: Omit<ISidechainApiTypes[T]['args'], 'signature'>,
     retries = 5,
   ): Promise<ISidechainApiTypes[T]['result']> {
-    assert(!!this.credentials.keyring, `${command} api call requires an wallet keyring`);
+    assert(!!this.credentials.address, `${command} api call requires an wallet address`);
     const messageHash = hashObject(args, {
       prefix: Buffer.from(command),
     });
@@ -423,14 +424,14 @@ export default class SidechainClient implements IPaymentProvider {
     args: Omit<ISidechainApiTypes[T]['args'], 'signature'>,
     retries = 5,
   ): Promise<ISidechainApiTypes[T]['result']> {
-    assert(!!this.credentials.nodeKeypair, `${command} api call requires a node keypair`);
+    assert(!!this.credentials.identity, `${command} api call requires a node keypair`);
     const messageHash = hashObject(args, {
-      prefix: Buffer.concat([Buffer.from(command), this.credentials.nodeKeypair.publicKey]),
+      prefix: concatAsBuffer(command, this.identity),
     });
-    const signature = this.credentials.nodeKeypair.sign(messageHash);
+    const signature = this.credentials.identity.sign(messageHash);
     debugLog(command, {
       ...args,
-      publicKey: this.credentials.nodeKeypair.publicKey,
+      identity: this.identity,
       signature,
     });
 
@@ -541,21 +542,21 @@ export default class SidechainClient implements IPaymentProvider {
     return note;
   }
 
-  private buildSignature(hash: Buffer, isClaim = false): IWalletSignature {
-    const indices = Keyring.getKeyIndices(this.credentials.keyring.keyringSettings, isClaim);
-    return this.credentials.keyring.sign(hash, indices, isClaim);
+  private buildSignature(hash: Buffer, isClaim = false): IAddressSignature {
+    const indices = Address.getIdentityIndices(this.credentials.address.addressSettings, isClaim);
+    return this.credentials.address.sign(hash, indices, isClaim);
   }
 
   /**
    * Validate any "new" micronoteBatch to ensure it is signed by the root sidechain key
    */
   private verifyBatch(batch: IMicronoteBatch): void {
-    const { batchSlug, sidechainPublicKey, sidechainValidationSignature, micronoteBatchPublicKey } =
+    const { batchSlug, sidechainIdentity, sidechainValidationSignature, micronoteBatchIdentity } =
       batch;
     if (this.batchSlug !== batchSlug) {
-      const isValid = Keypair.verify(
-        sidechainPublicKey,
-        sha3(micronoteBatchPublicKey),
+      const isValid = Identity.verify(
+        sidechainIdentity,
+        sha3(micronoteBatchIdentity),
         sidechainValidationSignature,
       );
       if (isValid === false) {
@@ -568,14 +569,14 @@ export default class SidechainClient implements IPaymentProvider {
   }
 
   private verifyMicronoteSignature(
-    publicKey: Buffer,
+    identity: string,
     microgons: number,
     micronote: ICreateMicronoteResponse,
   ): void {
     try {
-      const isValid = Keypair.verify(
-        publicKey,
-        sha3(Buffer.concat([micronote.id, Buffer.from(`${microgons}`)])),
+      const isValid = Identity.verify(
+        identity,
+        sha3(concatAsBuffer(micronote.id, microgons)),
         micronote.micronoteSignature,
       );
       if (isValid === false) {

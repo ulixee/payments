@@ -18,8 +18,8 @@ export default new ApiHandler('Note.create', {
     }
 
     if (
-      note.toAddress === config.rootKey.publicKey.toString('hex') ||
-      note.toAddress === config.stakeWallet.address ||
+      note.toAddress === config.rootIdentity.bech32 ||
+      note.toAddress === config.stakeAddress.bech32 ||
       note.toAddress === config.nullAddress
     ) {
       throw new InvalidParameterError(

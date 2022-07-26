@@ -14,7 +14,7 @@ import TestClient from './_TestClient';
 import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
 
 let client1: TestClient;
-const sidechainAddress = config.mainchain.wallets[0].address;
+const sidechainAddress = config.mainchain.addresses[0].bech32;
 let clientAddress: string;
 
 beforeAll(async () => {
@@ -197,7 +197,7 @@ test('should create proper unspent outputs when some money is returned to users'
           sourceTransactionHash: output.transactionHash,
         },
         output.centagons,
-        config.mainchain.wallets[0],
+        config.mainchain.addresses[0],
       );
     }
     const microdata = await Note.addSignature(
@@ -208,7 +208,7 @@ test('should create proper unspent outputs when some money is returned to users'
         timestamp: new Date(),
         type: NoteType.transfer,
       },
-      client1.keyring,
+      client1.credentials.address,
     );
     const micro = new Note(client, microdata);
     await micro.saveUnchecked(0);

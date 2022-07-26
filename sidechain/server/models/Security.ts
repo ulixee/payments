@@ -242,7 +242,7 @@ export default class Security {
             timestamp: security.transactionTime,
             type: NoteType.transferIn,
           },
-          config.mainchain.wallets.find(x => x.address === security.toAddress),
+          config.mainchain.addressesByBech32[security.toAddress],
         );
         const note = await new Note(client, noteData).saveUnchecked(longestChainBlock.height);
 

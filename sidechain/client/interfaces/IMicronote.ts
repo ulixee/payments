@@ -2,7 +2,7 @@ import { ICreateMicronoteResponse } from '@ulixee/specification/sidechain/Micron
 
 export default interface IMicronote extends ICreateMicronoteResponse {
   micronoteBatchUrl: string;
-  micronoteBatchPublicKey: Buffer;
-  sidechainPublicKey: Buffer;
+  micronoteBatchIdentity: string;
+  sidechainIdentity: string;
   sidechainValidationSignature: Buffer;
 }

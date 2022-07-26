@@ -1,17 +1,12 @@
 import { LedgerType, TransactionType, ITransaction } from '@ulixee/specification';
 import TransactionBuilder from '@ulixee/wallet/lib/TransactionBuilder';
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import Address from '@ulixee/crypto/lib/Address';
 import config from '../config';
 import MainchainTransaction from '../models/MainchainTransaction';
 import Security, { IPayout } from '../models/Security';
-import PgClient from "./PgClient";
-import { DbType } from "./PgPool";
+import PgClient from './PgClient';
+import { DbType } from './PgPool';
 import { NotFoundError } from './errors';
-
-const mainchainWalletsByAddress: { [address: string]: Keyring } = {};
-for (const wallet of config.mainchain.wallets) {
-  mainchainWalletsByAddress[wallet.address] = wallet;
-}
 
 export default async function buildTransactionTransferOut(
   client: PgClient<DbType.Default>,
@@ -19,11 +14,11 @@ export default async function buildTransactionTransferOut(
   isBurn?: boolean,
 ): Promise<{
   unspentOutputs;
-  sidechainWallet: Keyring;
+  sidechainAddress: Address;
   centagons: bigint;
   transaction: ITransaction;
 }> {
-  const sidechainWallet = config.mainchain.wallets[0];
+  const sidechainAddress = config.mainchain.addresses[0];
   const centagons = payouts.reduce((total, entry) => total + entry.centagons, 0n);
   const unspentOutputs = await Security.lockUnspentFunds(client, centagons);
   const outputs: (IPayout & {
@@ -40,16 +35,16 @@ export default async function buildTransactionTransferOut(
   }
   if (unspentOutputs.change) {
     builder.addOutput({
-      address: sidechainWallet.address,
+      address: sidechainAddress.bech32,
       centagons: unspentOutputs.change,
       isSidechained: true,
     });
   }
   for (const output of unspentOutputs.outputs) {
-    const wallet = mainchainWalletsByAddress[output.transactionOutputAddress];
-    if (!wallet) {
+    const address = config.mainchain.addressesByBech32[output.transactionOutputAddress];
+    if (!address) {
       throw new NotFoundError(
-        'Mainchain wallet details not found',
+        'Mainchain Address details not found',
         output.transactionOutputAddress,
       );
     }
@@ -60,7 +55,7 @@ export default async function buildTransactionTransferOut(
         sourceTransactionHash: output.transactionHash,
       },
       output.centagons,
-      wallet,
+      address,
     );
   }
 
@@ -71,7 +66,7 @@ export default async function buildTransactionTransferOut(
     outputs,
     unspentOutputs.outputs,
     transaction,
-    sidechainWallet.address,
+    sidechainAddress.bech32,
     unspentOutputs.change > 0,
     isBurn,
   );
@@ -80,7 +75,7 @@ export default async function buildTransactionTransferOut(
 
   return {
     unspentOutputs,
-    sidechainWallet,
+    sidechainAddress,
     centagons,
     transaction,
   };

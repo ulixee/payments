@@ -68,7 +68,7 @@ test('should handle an end to end note', async () => {
     await coordinator.runSignedAsNode('Micronote.lock', {
       id,
       batchSlug: micronoteBatch.slug,
-      publicKey: coordinator.publicKey,
+      identity: coordinator.identity,
     });
     // should not allow a router to exceed the available microgons allocated for the note during
     // completion
@@ -76,7 +76,7 @@ test('should handle an end to end note', async () => {
       const res = await coordinator.runSignedAsNode('Micronote.claim', {
         id,
         batchSlug: micronoteBatch.slug,
-        publicKey: coordinator.publicKey,
+        identity: coordinator.identity,
         tokenAllocation: {
           [coordinator.address]: 200000,
           [miningBit1.address]: 10000,
@@ -92,7 +92,7 @@ test('should handle an end to end note', async () => {
     const noteClaimeRes = await coordinator.runSignedAsNode('Micronote.claim', {
       id,
       batchSlug: micronoteBatch.slug,
-      publicKey: coordinator.publicKey,
+      identity: coordinator.identity,
       tokenAllocation: {
         [coordinator.address]: 10000,
         [miningBit1.address]: 20000,

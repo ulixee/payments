@@ -1,0 +1,58 @@
+{
+  "settings": {
+    "signerTypes": ["T", "C", "T", "T", "T", "T"],
+    "transferSignatureSettings": 1,
+    "transferSignatureSalt": {
+      "__type": "Buffer64",
+      "value": "ZWlVbmRFZXFDT042bHRLTGNqTEJ2Sk41ZGZhVGNUNDZhSldWL0FnQkYwOD0="
+    },
+    "claimSignatureSettings": 1,
+    "claimSignatureSalt": {
+      "__type": "Buffer64",
+      "value": "MklEMHZTOW1PcW10Mzd1OW8xMGh4VVkrTkQ1RlhPK25udDBPR2RrUkVDZz0="
+    }
+  },
+  "bech32": "ar1tlju6l6wvm6h20r2yp06vl49r5tpak32ag076jx8lswsas3dkzxsq8ltzv",
+  "merkleLeaves": [
+    {
+      "__type": "Buffer64",
+      "value": "LlyefO9tanTj87nd2dEQM4Rb81X8S8Q4mLaXyX0tIhw="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "y7nivam6ZXT9EQTzt0Fc4qdsebTfgS8QzkKDwJu/H6E="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "NbMrZ9e0EHkZUcagyQDfgnZRYmiT7G5+PEMbZhhWX/k="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "2wK3JdFrYbsTy8O2N373BIiQ1jSfcH54kivyxhABRLY="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "x7OQXYbIq5UmwkTNWh8UfTKCHR3fsv3fIEIEcGtxhW8="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "tHOQPb7XRMv+R884QUhLqnMhJ9N53/5spewQidS4Ctw="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "dX2/ykmRBF0Dh2remLiGpqQ6snM7jvxnoSwugLd2d9I="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "vUVE1hk/wGxU9sgyLzH6UT/qRVC5qpMjoGsOjtJl0fg="
+    }
+  ],
+  "loadedKeysAtIndexes": [
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIOMyVX1EDCmG/tS2nBtfWHP/BIIO08Yy1T3oLONOBt18\n-----END PRIVATE KEY-----\n",
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEICjV+URxvcUXnqkdtYEH1WESefekEWxrALSuwBUy+IrK\n-----END PRIVATE KEY-----\n",
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIEkEB3WfBRP2DdTnHAg0onSASCKSIrQXn3Ba1aiAPQTw\n-----END PRIVATE KEY-----\n",
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEINNn3GgZ8zGaidnH8DoTJ6eoTEcn5SUI7OMSUqMukivy\n-----END PRIVATE KEY-----\n",
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEINxZpl+hrxWF8sAYfxo9Vkd0tCOkfAKAVtXxaRh54G0z\n-----END PRIVATE KEY-----\n",
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFRgem6AraIdHjwaZQW0TfI3BUPZihutNOMAElqx0tiT\n-----END PRIVATE KEY-----\n"
+  ]
+}

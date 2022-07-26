@@ -1,8 +1,9 @@
-import Keypair from '@ulixee/crypto/lib/Keypair';
-import Keyring from '@ulixee/crypto/lib/Keyring';
-import { encodeHash, sha3 } from '@ulixee/commons/lib/hashUtils';
+import Identity from '@ulixee/crypto/lib/Identity';
+import Address from '@ulixee/crypto/lib/Address';
+import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import RemoteError from '@ulixee/net/errors/RemoteError';
 import { ConnectionToCore } from '@ulixee/net';
+import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import SidechainClient from '../lib/SidechainClient';
 
 const mock = {
@@ -13,15 +14,15 @@ const mock = {
     verifyBatch: jest.spyOn<any, any>(SidechainClient.prototype, 'verifyBatch'),
     fundMicronoteBatch: jest.spyOn(SidechainClient.prototype, 'fundMicronoteBatch'),
   },
-  Keypair: {
-    verify: jest.spyOn(Keypair, 'verify'),
+  Identity: {
+    verify: jest.spyOn(Identity, 'verify'),
   },
 };
 
 let batchSlug = '1234512345';
 let counter = 0;
 beforeAll(() => {
-  mock.Keypair.verify.mockImplementation(() => true);
+  mock.Identity.verify.mockImplementation(() => true);
 
   mock.SidechainClient.fundMicronoteBatch.mockImplementation(async function (centagons) {
     await this.recordBatchFunding({ fundsId: 1, microgonsRemaining: centagons * 10e3 }, {
@@ -41,9 +42,9 @@ beforeAll(() => {
     if (command === 'MicronoteBatch.get') {
       return {
         batchSlug,
-        micronoteBatchPublicKey:
+        micronoteBatchIdentity:
           '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-        sidechainPublicKey: sha3('ledgerPublicKey'),
+        sidechainIdentity: sha3('ledgerIdentity'),
         sidechainValidationSignature: 'batchPubKeySig',
       };
     }
@@ -74,10 +75,10 @@ beforeEach(() => {
 });
 
 test('should fund a micronote batch if needed', async () => {
-  const clientKeypair = await Keypair.create();
-  const keyring = Keyring.createFromKeypairs([clientKeypair]);
+  const clientIdentity = await Identity.create();
+  const address = Address.createFromSigningIdentities([clientIdentity]);
 
-  const sidechain = new SidechainClient('https://nobody.nil/', { keyring });
+  const sidechain = new SidechainClient('https://nobody.nil/', { address });
   counter = 0;
 
   const note = await sidechain.createMicronote(10);
@@ -85,16 +86,16 @@ test('should fund a micronote batch if needed', async () => {
   expect(mock.SidechainClient.fundMicronoteBatch).toHaveBeenCalledTimes(1);
   expect(note.id).toEqual(Buffer.from('micronoteId'));
   expect(note.micronoteBatchUrl).toBe('https://nobody.nil/1234512345');
-  expect(note.sidechainPublicKey).toEqual(sha3('ledgerPublicKey'));
+  expect(note.sidechainIdentity).toEqual(sha3('ledgerIdentity'));
 
   expect(sidechain.batchSlug).toBe('1234512345');
 });
 
 test('should reuse a current micronote batch fund if one is set', async () => {
-  const clientKeypair = await Keypair.create();
-  const keyring = Keyring.createFromKeypairs([clientKeypair]);
+  const clientIdentity = await Identity.create();
+  const address = Address.createFromSigningIdentities([clientIdentity]);
 
-  const sidechain = new SidechainClient('https://nobody.nil/', { keyring });
+  const sidechain = new SidechainClient('https://nobody.nil/', { address });
   counter = 0;
   const note = await sidechain.createMicronote(10);
   expect(note.micronoteBatchUrl).toBe('https://nobody.nil/1234512345');
@@ -108,10 +109,10 @@ test('should reuse a current micronote batch fund if one is set', async () => {
 });
 
 test('should handle a failing/shutting down micronoteBatch', async () => {
-  const clientKeypair = await Keypair.create();
-  const keyring = Keyring.createFromKeypairs([clientKeypair]);
+  const clientIdentity = await Identity.create();
+  const address = Address.createFromSigningIdentities([clientIdentity]);
 
-  const sidechain = new SidechainClient('https://nobody.nil/', { keyring });
+  const sidechain = new SidechainClient('https://nobody.nil/', { address });
   counter = 0;
   const note = await sidechain.createMicronote(10);
   expect(note.micronoteBatchUrl).toBe('https://nobody.nil/1234512345');
@@ -125,11 +126,11 @@ test('should handle a failing/shutting down micronoteBatch', async () => {
 });
 
 test('should only create a new micronote fund if funds are exhausted', async () => {
-  const clientKeypair = await Keypair.create();
-  const keyring = Keyring.createFromKeypairs([clientKeypair]);
+  const clientIdentity = await Identity.create();
+  const address = Address.createFromSigningIdentities([clientIdentity]);
 
   // setup by funding a micronote
-  const sidechain = new SidechainClient('https://nobody.nil/', { keyring });
+  const sidechain = new SidechainClient('https://nobody.nil/', { address });
   counter = 0;
   await sidechain.createMicronote(10);
   expect(mock.SidechainClient.fundMicronoteBatch).toHaveBeenCalledTimes(1);
@@ -199,10 +200,10 @@ test('should only create a new micronote fund if funds are exhausted', async () 
 });
 
 test('should only get funds one at a time', async () => {
-  const clientKeypair = await Keypair.create();
-  const keyring = Keyring.createFromKeypairs([clientKeypair]);
+  const clientIdentity = await Identity.create();
+  const address = Address.createFromSigningIdentities([clientIdentity]);
 
-  const sidechain = new SidechainClient('https://nobody.nil/', { keyring });
+  const sidechain = new SidechainClient('https://nobody.nil/', { address });
   sidechain.batchFundingQueriesToPreload = 1;
   let fundCounter = 0;
   mock.connectionToCore.sendRequest.mockClear();
@@ -219,10 +220,10 @@ test('should only get funds one at a time', async () => {
     if (command === 'MicronoteBatch.get') {
       return {
         batchSlug,
-        micronoteBatchPublicKey:
+        micronoteBatchIdentity:
           '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-        micronoteBatchAddress: encodeHash(Buffer.from(sha3('12234')), 'ar'),
-        sidechainPublicKey: sha3('ledgerPublicKey'),
+        micronoteBatchAddress: encodeBuffer(Buffer.from(sha3('12234')), 'ar'),
+        sidechainIdentity: sha3('ledgerIdentity'),
         sidechainValidationSignature: 'batchPubKeySig',
       };
     }

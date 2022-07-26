@@ -1,9 +1,9 @@
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import Address from '@ulixee/crypto/lib/Address';
 import SidechainClient from '../lib/SidechainClient';
 
 export default interface IClientOptions {
-  keyring?: Keyring;
-  keyringPath?: string;
+  address?: Address;
+  addressPath?: string;
   sidechain?: SidechainClient;
   sidechainUrl?: string;
   paymentsOnramp?: string;

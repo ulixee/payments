@@ -7,8 +7,8 @@ export default new ApiHandler('Stake.settings', {
     const stableBlock = await BlockManager.getStableBlock();
     return {
       centagons: config.stakeSettings.currentCentagons,
-      rootPublicKey: config.rootKey.publicKey,
-      stakeAddress: config.stakeWallet.address,
+      rootIdentity: config.rootIdentity.bech32,
+      stakeAddress: config.stakeAddress.bech32,
       stableBlockHeight: stableBlock.height,
       stableBlockHash: stableBlock.blockHash,
       currentBlockHeight: await BlockManager.currentBlockHeight(),

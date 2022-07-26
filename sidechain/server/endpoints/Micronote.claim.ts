@@ -12,12 +12,12 @@ import MicronoteBatchDb from '../lib/MicronoteBatchDb';
  * Each worker payout is now specified
  *
  * Parameters:
- * - publicKey - the public key of this worker
+ * - identity - the public key of this worker
  * - tokenAllocation - map of worker public key to microgons (including self)
  */
 
 export default new ApiHandler('Micronote.claim', {
-  async handler({ publicKey, tokenAllocation, id, batchSlug }, options) {
+  async handler({ identity, tokenAllocation, id, batchSlug }, options) {
     const batch = await MicronoteBatchManager.get(batchSlug);
     if (batch.isClosed) {
       throw new MicronoteBatchClosedError();
@@ -28,7 +28,7 @@ export default new ApiHandler('Micronote.claim', {
     let finalCost = 0;
     await db.transaction(async client => {
       const note = new Micronote(client, null, id);
-      await note.claim(publicKey);
+      await note.claim(identity);
       await note.recordMicrogonsEarned(tokenAllocation);
       finalCost = await note.returnChange(batch);
     }, options);

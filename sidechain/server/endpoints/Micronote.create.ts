@@ -1,4 +1,5 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { NewNotesNotBeingAcceptedError } from '../lib/errors';
 import MicronoteBatchManager from '../lib/MicronoteBatchManager';
 import Micronote from '../models/Micronote';
@@ -14,14 +15,14 @@ import MicronoteBatchDb from '../lib/MicronoteBatchDb';
  *  4) returns the note money bucket public key
  *
  *  Parameters:
- *  - publicKey: public key of requesting client
+ *  - identity: public key of requesting client
  *  - microgons: amount this note is authorized to use of the given token
  *  - fundsId: optional preferred micronoteBatch id to use.  Server will locate one if not provided
  */
 export default new ApiHandler('Micronote.create', {
   async handler(payload, options) {
     const { address, fundsId, batchSlug, signature, isAuditable, microgons } = payload;
-    this.validateWalletSignature(address, payload, signature);
+    this.validateAddressSignature(address, payload, signature);
 
     const batch = await MicronoteBatchManager.get(batchSlug);
     if (batch.isAllowingNewNotes === false) {
@@ -45,12 +46,12 @@ export default new ApiHandler('Micronote.create', {
         blockHeight: noteDb.blockHeight,
         fundsId,
         guaranteeBlockHeight,
-        microgonsRemaining,
+        fundMicrogonsRemaining: microgonsRemaining,
       };
     }, options);
 
-    const micronoteSignature = batch.identity.sign(
-      sha3(Buffer.concat([noteDetails.id, Buffer.from(`${microgons}`)])),
+    const micronoteSignature = batch.credentials.identity.sign(
+      sha3(concatAsBuffer(noteDetails.id, microgons)),
     );
 
     return {

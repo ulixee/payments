@@ -1,20 +1,20 @@
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Identity from '@ulixee/crypto/lib/Identity';
 import * as Helpers from './_helpers'
 import verifyStakeSignature from '../lib/verifyStakeSignature';
 
 test('should verify a stake signature', async () => {
-  const keypair = Keypair.createSync();
-  const sig = Helpers.getStakeSignature(keypair.publicKey);
-  const isValid = await verifyStakeSignature(1, keypair.publicKey, sig, {
+  const identity = Identity.createSync();
+  const sig = Helpers.getStakeSignature(identity.bech32);
+  const isValid = await verifyStakeSignature(1, identity.bech32, sig, {
     isSidechainApproved: async () => true,
   });
   expect(isValid).toBe(true);
 });
 
 test('should reject a stake signature that is too old', async () => {
-  const keypair = Keypair.createSync();
-  const sig = Helpers.getStakeSignature(keypair.publicKey, 5);
-  const isValid = await verifyStakeSignature(10, keypair.publicKey, sig, {
+  const identity = Identity.createSync();
+  const sig = Helpers.getStakeSignature(identity.bech32, 5);
+  const isValid = await verifyStakeSignature(10, identity.bech32, sig, {
     isSidechainApproved: async () => true,
   });
   expect(isValid).toBe(false);

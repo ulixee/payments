@@ -28,11 +28,11 @@ export default new ApiHandler('MicronoteBatch.getFundSettlement', {
         );
         return {
           isBatchSettled: batch.isSettled,
-          settleTime: batch.data.settledTime ? new Date() : null,
+          settledTime: batch.data.settledTime ? new Date() : null,
           settlements: funds.map(x => ({
-            fundId: x.id,
-            fundedCentagons: Math.ceil(x.microgons / 10e3),
-            settledCentagons: Math.ceil(x.microgonsAllocated / 10e3),
+            fundsId: x.id,
+            fundedCentagons: BigInt(Math.ceil(x.microgons / 10e3)),
+            settledCentagons: BigInt(Math.ceil(x.microgonsAllocated / 10e3)),
           })),
         };
       } finally {

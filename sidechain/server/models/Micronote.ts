@@ -26,7 +26,7 @@ export default class Micronote {
         id,
         client_address,
         funds_id,
-        locked_by_public_key,
+        locked_by_identity,
         microgons_allocated,
         locked_time,
         claimed_time,
@@ -50,17 +50,17 @@ export default class Micronote {
     return returnValue;
   }
 
-  public async lockForPublicKey(publicKey: Buffer): Promise<boolean> {
-    const { lockedByPublicKey } = await this.client.queryOne(
-      'SELECT locked_by_public_key FROM micronotes where id=$1 FOR UPDATE LIMIT 1',
+  public async lockForIdentity(identity: string): Promise<boolean> {
+    const { lockedByIdentity } = await this.client.queryOne(
+      'SELECT locked_by_identity FROM micronotes where id=$1 FOR UPDATE LIMIT 1',
       [this.id],
     );
-    if (lockedByPublicKey && !publicKey.equals(lockedByPublicKey)) {
+    if (lockedByIdentity && identity !== lockedByIdentity) {
       throw new ConflictError('Note has already been locked by another wallet');
     }
     return await this.client.update(
-      'update micronotes set locked_by_public_key = $1, locked_time = NOW() where id = $2',
-      [publicKey, this.id],
+      'update micronotes set locked_by_identity = $1, locked_time = NOW() where id = $2',
+      [identity, this.id],
     );
   }
 
@@ -187,16 +187,16 @@ export default class Micronote {
   /**
    * Mark this note complete
    */
-  public async claim(publicKey: Buffer): Promise<void> {
+  public async claim(identity: string): Promise<void> {
     await this.client.update(
       `UPDATE micronotes
       SET claimed_time = now(),
           last_updated_time = now()
       WHERE id = $1
-        AND locked_by_public_key = $2
+        AND locked_by_identity = $2
         AND claimed_time is null
         AND canceled_time is null`,
-      [this.id, publicKey],
+      [this.id, identity],
     );
   }
 }
@@ -210,7 +210,7 @@ export interface IMicronoteRecord {
   microgonsAllocated: number;
   guaranteeBlockHeight: number;
   isAuditable: boolean;
-  lockedByPublicKey?: Buffer;
+  lockedByIdentity?: Buffer;
   lockedTime?: Date;
   claimedTime?: Date;
   canceledTime?: Date;

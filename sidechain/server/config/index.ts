@@ -1,9 +1,9 @@
 import './setup';
-import Keypair from '@ulixee/crypto/lib/Keypair';
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import Identity from '@ulixee/crypto/lib/Identity';
+import Address from '@ulixee/crypto/lib/Address';
 import * as Path from 'path';
 import { PoolConfig } from 'pg';
-import { encodeHash } from '@ulixee/commons/lib/hashUtils';
+import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import config = require('config');
 import { InvalidParameterError } from '../lib/errors';
 import * as vars from './custom-environment-variables';
@@ -16,16 +16,16 @@ function toList(list): any[] {
   return list;
 }
 
-function readKeyring(keyring: string | any): Keyring {
-  if (typeof keyring === 'string') {
-    return Keyring.readFromPath(keyring, __dirname);
+function readAddress(address: string | any): Address {
+  if (typeof address === 'string') {
+    return Address.readFromPath(address, __dirname);
   }
-  return Keyring.fromStored(keyring);
+  return Address.fromStored(address);
 }
 
-const rootKey = config.has('rootKeyPath')
-  ? Keypair.loadFromFile(Path.resolve(__dirname, config.get('rootKeyPath')))
-  : Keypair.loadFromPem(config.get('rootPrivateKey'));
+const rootIdentity = config.has('rootIdentityPath')
+  ? Identity.loadFromFile(Path.resolve(__dirname, config.get('rootIdentityPath')))
+  : Identity.loadFromPem(config.get('rootIdentitySecretKey'));
 
 const settings = {
   port: config.get('port') as number,
@@ -45,45 +45,53 @@ const settings = {
     host: config.get('mainchain.host'),
     fundingHoldBlocks: config.get('mainchain.fundingHoldBlocks'),
     stableHeight: 10,
-    wallets: toList(config.get('mainchain.wallets') as any[]).map(readKeyring),
+    addresses: toList(config.get('mainchain.addresses') as any[]).map(readAddress),
+    addressesByBech32: {} as { [bech32: string]: Address },
   },
-  rootKey,
-  stakeWallet: readKeyring(config.get('stakeWallet')),
+  rootIdentity,
+  stakeAddress: readAddress(config.get('stakeAddress')),
   stakeSettings: {
     refundBlockWindow: 8 * 6, // 8 hours worth of blocks
     currentCentagons: 600600n, // phase 1 stake
   },
-  nullAddress: encodeHash(Buffer.from(Array(32).fill(0)), 'ar'),
+  nullAddress: encodeBuffer(Buffer.from(Array(32).fill(0)), 'ar'),
 };
 
-if (!settings.mainchain.wallets.length) {
+if (!settings.mainchain.addresses.length) {
   throw new InvalidParameterError('No mainchain wallets found to monitor', 'MAINCHAIN_WALLETS');
 }
 
-if (!settings.stakeWallet.address) {
+for (const address of settings.mainchain.addresses) {
+  settings.mainchain.addressesByBech32[address.bech32] = address;
+}
+
+if (!settings.stakeAddress.bech32) {
   throw new InvalidParameterError('No stake address provided', 'STAKE_WALLET');
 }
 
-if (!settings.rootKey) {
-  throw new InvalidParameterError('No mainchain approved root key configured', 'ROOT_PRIVATE_KEY');
+if (!settings.rootIdentity) {
+  throw new InvalidParameterError(
+    'No mainchain approved root identity configured',
+    'ROOT_IDENTITY',
+  );
 }
 
 // payout the default address if we didn't specify another
 if (!settings.micronoteBatch.payoutAddress) {
-  settings.micronoteBatch.payoutAddress = settings.mainchain.wallets[0].address;
+  settings.micronoteBatch.payoutAddress = settings.mainchain.addresses[0].bech32;
 }
 
 if (
-  settings.mainchain.wallets.find(
+  settings.mainchain.addresses.find(
     x =>
-      x.address === settings.stakeWallet.address ||
-      x.transferKeys.some(y => y.publicKey.equals(settings.rootKey.publicKey)) ||
-      x.claimKeys.some(y => y.publicKey.equals(settings.rootKey.publicKey)),
+      x.bech32 === settings.stakeAddress.bech32 ||
+      x.transferSigners.some(y => y.bech32 === settings.rootIdentity.bech32) ||
+      x.claimSigners.some(y => y.bech32 === settings.rootIdentity.bech32),
   )
 ) {
   throw new InvalidParameterError(
-    'The root public key cannot be used in a transfer-in or stake keyring',
-    'rootPublicKey',
+    'The root public key cannot be used in a transfer-in or stake address',
+    'rootIdentity',
   );
 }
 

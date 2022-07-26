@@ -40,7 +40,7 @@ export default function buildTransactionSourceHash(
     coinageHash: source.coinageHash,
     // original output details
     address: usedOutput.address,
-    walletSignatureSettings: source.sourceWalletSignatureSettings,
+    addressSignatureSettings: source.sourceAddressSignatureSettings,
     centagons: usedOutput.centagons,
   };
   TransactionSourceSignatureDataSchema.parse(sigData);

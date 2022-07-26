@@ -232,20 +232,20 @@
 //                   {
 //                     owners: [
 //                       {
-//                         publicKey: Buffer.from('1234'),
+//                         identity: '1234',
 //                       },
 //                       {
-//                         publicKey: Buffer.from('4321'),
+//                         identity: '4321',
 //                       },
 //                     ],
 //                   },
 //                   {
 //                     owners: [
 //                       {
-//                         publicKey: Buffer.from('22'),
+//                         identity: '22',
 //                       },
 //                       {
-//                         publicKey: Buffer.from('223'),
+//                         identity: '223',
 //                       },
 //                     ],
 //                   },
@@ -265,7 +265,7 @@
 //                 time: new Date(),
 //                 sources: [
 //                   {
-//                     owners: [{ publicKey: mainchainWallet.transferKeys[0].publicKey }],
+//                     owners: [{ identity: mainchainWallet.transferKeys[0].identity }],
 //                   },
 //                 ],
 //                 outputs: [
@@ -288,7 +288,7 @@
 //                   {
 //                     owners: [
 //                       {
-//                         publicKey: Buffer.from('12345'),
+//                         identity: '12345',
 //                       },
 //                     ],
 //                     signatureSettings: {

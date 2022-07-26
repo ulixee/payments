@@ -98,12 +98,12 @@ beforeAll(async () => {
     await client.runSignedAsNode('Micronote.lock', {
       id: note.id,
       batchSlug: batch.slug,
-      publicKey: client.publicKey,
+      identity: client.identity,
     });
     const noteClaim = await client.runSignedAsNode('Micronote.claim', {
       id: note.id,
       batchSlug: batch.slug,
-      publicKey: client.publicKey,
+      identity: client.identity,
       tokenAllocation: {
         [coordinator.address]: note.microgonsAllocated / 8,
         ...parts,
@@ -135,7 +135,7 @@ test('should make sure balances match the ledger', async () => {
         timestamp: new Date(),
         type: NoteType.micronoteFunds,
       },
-      client2.keyring,
+      client2.credentials.address,
     );
     return new Note(client, data).saveUnchecked();
   });

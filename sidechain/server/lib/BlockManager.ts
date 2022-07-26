@@ -4,7 +4,6 @@ import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import Logger from '@ulixee/commons/lib/Logger';
 import MainchainClient from '@ulixee/mainchain-client';
 import { IBlock, IBlockHeader, ITransaction, TransactionType } from '@ulixee/specification';
-import Keyring from '@ulixee/crypto/lib/Keyring';
 import config from '../config';
 import Wallet from '../models/Wallet';
 import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
@@ -16,12 +15,10 @@ import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
 
 const { log } = Logger(module);
 
-const mainchainWalletsByAddress: { [address: string]: Keyring } = {};
-const mainchainPublicKeys = new Set<string>();
-for (const wallet of config.mainchain.wallets) {
-  mainchainWalletsByAddress[wallet.address] = wallet;
-  for (const key of [...wallet.transferKeys, ...wallet.claimKeys]) {
-    mainchainPublicKeys.add(key.publicKey.toString('hex'));
+const mainchainIdentities = new Set<string>();
+for (const wallet of config.mainchain.addresses) {
+  for (const identity of [...wallet.transferSigners, ...wallet.claimSigners]) {
+    mainchainIdentities.add(identity.bech32);
   }
 }
 
@@ -114,7 +111,7 @@ export default class BlockManager {
       }
 
       const isFromSidechain = transaction.sources.find(x =>
-        mainchainPublicKeys.has(x.sourceWalletSigners[0].publicKey.toString('hex')),
+        mainchainIdentities.has(x.sourceWalletSigners[0].identity),
       );
 
       if (isFromSidechain) {
@@ -127,7 +124,7 @@ export default class BlockManager {
           return;
         }
 
-        const sidechainWallet = mainchainWalletsByAddress[output.address];
+        const sidechainWallet = config.mainchain.addressesByBech32[output.address];
         if (!sidechainWallet) {
           return;
         }
@@ -138,7 +135,7 @@ export default class BlockManager {
           blockStableLedgerIndex: i,
           centagons: output.centagons,
           fromAddress: output.addressOnSidechain,
-          toAddress: sidechainWallet.address,
+          toAddress: sidechainWallet.bech32,
           transactionOutputAddress: output.address,
           transactionOutputIndex: outputIndex,
         });
@@ -292,8 +289,8 @@ export default class BlockManager {
       .then(settings => {
         return BlockManager.settingsLoader.resolve({
           ...settings,
-          isSidechainApproved: publicKey =>
-            Promise.resolve(settings.sidechains.some(x => x.rootPublicKey.equals(publicKey))),
+          isSidechainApproved: identity =>
+            Promise.resolve(settings.sidechains.some(x => x.rootIdentity === identity)),
         } as IBlockSettings);
       })
       .catch(async error => {

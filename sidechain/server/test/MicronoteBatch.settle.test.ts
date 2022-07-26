@@ -48,7 +48,7 @@ beforeEach(async () => {
 
 test('should not allow a micronote batch to submit a close request that would result in a negative balance', async () => {
   try {
-    const apiClient = new Client(batch.identity);
+    const apiClient = new Client(batch.credentials.identity);
     await apiClient.grantCentagons(250);
 
     {
@@ -86,7 +86,7 @@ test('should allow a micronote batch to close', async () => {
   const startBalance = await db.transaction(c => Wallet.getBalance(c, batch.data.address));
   expect(startBalance.toString()).toBe('0');
 
-  const batchClient = new Client(batch.identity);
+  const batchClient = new Client(batch.credentials.identity);
 
   await batchClient.grantCentagons(51e2);
   const [wallet1, wallet2, wallet3, wallet4] = [

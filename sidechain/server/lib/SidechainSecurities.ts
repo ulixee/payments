@@ -1,8 +1,7 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import Log from '@ulixee/commons/lib/Logger';
-import { ITransaction, IWalletSignature } from '@ulixee/specification';
-import KeyringSignature from '@ulixee/crypto/lib/KeyringSignature';
-import Keyring from '@ulixee/crypto/lib/Keyring';
+import { IAddressSignature, ITransaction } from '@ulixee/specification';
+import AddressSignature from '@ulixee/crypto/lib/AddressSignature';
 import config from '../config';
 import FundingTransferOut from '../models/FundingTransferOut';
 import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
@@ -16,11 +15,6 @@ import { OutOfBalanceError } from './errors';
 import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
 
 const { log } = Log(module);
-
-const mainchainWalletsByAddress: { [sidechainKeysHash: string]: Keyring } = {};
-for (const wallet of config.mainchain.wallets) {
-  mainchainWalletsByAddress[wallet.address] = wallet;
-}
 
 export default class SidechainSecurities {
   constructor(
@@ -49,7 +43,7 @@ export default class SidechainSecurities {
     let totalTransfersOut = transfers.transferCentagons;
     for (const transfer of securitiesNotOnChain.transfersOut) {
       for (const output of transfer.outputs) {
-        if (!mainchainWalletsByAddress[output.address]) {
+        if (!config.mainchain.addressesByBech32[output.address]) {
           totalTransfersOut += output.centagons;
         }
       }
@@ -83,12 +77,12 @@ export default class SidechainSecurities {
 
     const addressProofs: IAddressOwnershipProof[] = [];
     for (const address of addresses.values()) {
-      const wallet = mainchainWalletsByAddress[address];
-      const signatures = KeyringSignature.create(
+      const wallet = config.mainchain.addressesByBech32[address];
+      const signatures = AddressSignature.create(
         hashable,
-        wallet.claimKeys,
-        wallet.keyringMerkleTree,
-        wallet.keyringSettings,
+        wallet.claimSigners,
+        wallet.ownersMerkleTree,
+        wallet.addressSettings,
         true,
       );
       addressProofs.push({
@@ -257,7 +251,7 @@ interface ISidechainOwnedSecurity {
   transactionHash: Buffer;
 }
 
-interface IAddressOwnershipProof extends IWalletSignature {
+interface IAddressOwnershipProof extends IAddressSignature {
   address: string;
 }
 

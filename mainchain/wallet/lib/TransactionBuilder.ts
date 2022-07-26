@@ -7,8 +7,8 @@ import {
   TransactionError,
   TransactionType,
 } from '@ulixee/specification';
-import Keyring from '@ulixee/crypto/lib/Keyring';
-import KeyringSignature from '@ulixee/crypto/lib/KeyringSignature';
+import AddressSignature from '@ulixee/crypto/lib/AddressSignature';
+import Address from '@ulixee/crypto/lib/Address';
 import buildTransactionSourceHash from './buildTransactionSourceHash';
 import CodedError from './CodedError';
 
@@ -46,12 +46,12 @@ export default class TransactionBuilder {
   public addSource(
     source: Partial<ITransactionSource>,
     centagons: bigint,
-    wallet: Keyring,
+    wallet: Address,
   ): TransactionBuilder {
     if (!wallet) {
       throw new CodedError('No wallet specified for source', TransactionError.INVALID_SOURCES);
     }
-    this.sources.push({ wallet, source, centagons });
+    this.sources.push({ address: wallet, source, centagons });
     return this;
   }
 
@@ -59,11 +59,11 @@ export default class TransactionBuilder {
     const isClaim = this.type === TransactionType.COINAGE_CLAIM;
 
     for (const uxto of this.sources) {
-      const { source, wallet, centagons } = uxto;
-      const settings = wallet.keyringSettings;
-      const merkle = wallet.keyringMerkleTree;
-      const keypairs = isClaim ? wallet.claimKeys : wallet.transferKeys;
-      source.sourceWalletSignatureSettings = KeyringSignature.buildSignatureSettings(
+      const { source, address, centagons } = uxto;
+      const settings = address.addressSettings;
+      const merkle = address.ownersMerkleTree;
+      const signers = isClaim ? address.claimSigners : address.transferSigners;
+      source.sourceAddressSignatureSettings = AddressSignature.buildSignatureSettings(
         merkle,
         settings,
         isClaim,
@@ -75,21 +75,21 @@ export default class TransactionBuilder {
         this.ledger,
         {
           centagons,
-          address: wallet.address,
+          address: address.bech32,
         },
       );
 
-      const walletSignature = KeyringSignature.create(
+      const addressSignature = AddressSignature.create(
         uxtoSourceHash,
-        keypairs,
+        signers,
         merkle,
         settings,
         isClaim,
       );
 
       this.transaction.sources.push({
-        sourceWalletSignatureSettings: source.sourceWalletSignatureSettings,
-        sourceWalletSigners: walletSignature.signers,
+        sourceAddressSignatureSettings: source.sourceAddressSignatureSettings,
+        sourceWalletSigners: addressSignature.signers,
         sourceOutputIndex: source.sourceOutputIndex,
         sourceTransactionHash: source.sourceTransactionHash,
         sourceLedger: source.sourceLedger,
@@ -107,5 +107,5 @@ export default class TransactionBuilder {
 interface ISource {
   source: Partial<ITransactionSource>;
   centagons: bigint;
-  wallet: Keyring;
+  address: Address;
 }

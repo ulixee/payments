@@ -6,19 +6,19 @@ import ApiHandler from '../lib/ApiHandler';
 
 export default new ApiHandler('Stake.signature', {
   async handler(payload, options) {
-    const { signature, stakedPublicKey } = payload;
+    const { signature, stakedIdentity } = payload;
 
-    this.validatedDigitalSignature(stakedPublicKey, payload, signature);
+    this.validatedDigitalSignature(stakedIdentity, payload, signature);
 
     const blockHeight = await BlockManager.currentBlockHeight();
 
-    const stake = await db.transaction(client => Stake.lock(client, stakedPublicKey), options);
-    const stakeSignedByRootKey = config.rootKey.sign(stake.createHash(blockHeight));
+    const stake = await db.transaction(client => Stake.lock(client, stakedIdentity), options);
+    const stakeSignedByRootIdentity = config.rootIdentity.sign(stake.createHash(blockHeight));
 
     return {
       blockHeight,
-      signature: stakeSignedByRootKey,
-      rootPublicKey: config.rootKey.publicKey,
+      signature: stakeSignedByRootIdentity,
+      rootIdentity: config.rootIdentity.bech32,
     };
   },
 });

@@ -1,6 +1,6 @@
 import * as moment from 'moment';
-import Keyring from '@ulixee/crypto/lib/Keyring';
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Address from '@ulixee/crypto/lib/Address';
+import Identity from '@ulixee/crypto/lib/Identity';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import MicronoteBatchManager from '../lib/MicronoteBatchManager';
 import MicronoteBatch from '../models/MicronoteBatch';
@@ -31,7 +31,7 @@ test('should return the micronoteBatch with the most time left', async () => {
   MicronoteBatchManager.openBatches.clear();
   // @ts-ignore
   MicronoteBatchManager.batchesPendingSettlement.clear();
-  const keypair = Keypair.createSync();
+  const identity = Identity.createSync();
   await defaultDb.transaction(async client => {
     // @ts-ignore
     MicronoteBatchManager.updateCached(
@@ -45,7 +45,7 @@ test('should return the micronoteBatch with the most time left', async () => {
           plannedClosingTime: moment().add(4, 'hours').toDate(),
           stopNewNotesTime: moment().add(3, 'hours').toDate(),
         },
-        Keyring.createFromKeypairs([keypair]),
+        Address.createFromSigningIdentities([identity]),
       ),
     );
   });
@@ -83,7 +83,7 @@ test('should return the micronoteBatch with the most time left', async () => {
           plannedClosingTime: moment().add(4, 'hours').toDate(),
           stopNewNotesTime: moment().add(1, 'hours').toDate(),
         },
-        Keyring.createFromKeypairs([keypair]),
+        Address.createFromSigningIdentities([identity]),
       ),
     );
   });
@@ -103,7 +103,7 @@ test('should return the micronoteBatch with the most time left', async () => {
           plannedClosingTime: moment().add(4, 'hours').toDate(),
           stopNewNotesTime: moment().add(2, 'hours').toDate(),
         },
-        Keyring.createFromKeypairs([keypair]),
+        Address.createFromSigningIdentities([identity]),
       ),
     );
   });

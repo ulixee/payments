@@ -22,7 +22,7 @@ import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
 let client1: TestClient;
 let client2: TestClient;
 let foundingMiner: TestClient;
-const sidechainAddress = config.mainchain.wallets[0].address;
+const sidechainAddress = config.mainchain.addresses[0].bech32;
 config.mainchain.fundingHoldBlocks = 2;
 
 async function createBlock(
@@ -69,7 +69,7 @@ beforeAll(async () => {
     await new Security(client, {
       transactionHash: sha3('gentx'),
       transactionOutputIndex: 0,
-      transactionOutputAddress: config.mainchain.wallets[0].address,
+      transactionOutputAddress: config.mainchain.addresses[0].bech32,
       transactionTime: new Date(),
       centagons: BigInt(150e5),
       fromAddress: foundingMiner.address,
@@ -94,7 +94,7 @@ test('should create balanced funds for each chain', async () => {
     await new Security(client, {
       transactionHash: sha3('tx1'),
       transactionOutputIndex: 0,
-      transactionOutputAddress: config.mainchain.wallets[0].address,
+      transactionOutputAddress: config.mainchain.addresses[0].bech32,
       transactionTime: new Date(),
       centagons: 150n,
       fromAddress: client1.address,
@@ -110,7 +110,7 @@ test('should create balanced funds for each chain', async () => {
     await new Security(client, {
       transactionHash: sha3('tx2'),
       transactionOutputIndex: 0,
-      transactionOutputAddress: config.mainchain.wallets[0].address,
+      transactionOutputAddress: config.mainchain.addresses[0].bech32,
       transactionTime: new Date(),
       centagons: 200n,
       fromAddress: client2.address,
@@ -126,7 +126,7 @@ test('should create balanced funds for each chain', async () => {
     block3a = await getBlock(client, '3a');
     block3 = await getBlock(client, '3');
     {
-      const walletBalances = await Wallet.getAllBalances(client, 3, [], config.stakeWallet.address);
+      const walletBalances = await Wallet.getAllBalances(client, 3, [], config.stakeAddress.bech32);
       {
         const sidechainSecurities = new SidechainSecurities(client, block3a);
         const result = await sidechainSecurities.createBlockOutput();
@@ -162,7 +162,7 @@ test('should create balanced funds for each chain', async () => {
     {
       // now process funds
       await Security.recordConfirmedSecurities(client, 3);
-      const walletBalances = await Wallet.getAllBalances(client, 3, [], config.stakeWallet.address);
+      const walletBalances = await Wallet.getAllBalances(client, 3, [], config.stakeAddress.bech32);
       expect(walletBalances.wallets.find(x => x.address === client1.address).centagons).toBe(150n);
       // client 2 is not on longest chain yet
       expect(walletBalances.wallets.find(x => x.address === client2.address)).not.toBeTruthy();
@@ -216,7 +216,7 @@ test('should handle burn transactions across forks', async () => {
         fromAddress: foundingMiner.address,
         type: NoteType.micronoteFunds,
       },
-      foundingMiner.keyring,
+      foundingMiner.internalCredentials.address,
     );
     await new Note(client, noteData).saveUnchecked(1);
 
@@ -228,7 +228,7 @@ test('should handle burn transactions across forks', async () => {
         timestamp: new Date(),
         type: NoteType.burn,
       },
-      batch.keyring,
+      batch.credentials.address,
     );
     await new Note(client, burnNote).saveUnchecked(3);
 
@@ -264,7 +264,7 @@ test('should handle burn transactions across forks', async () => {
       result.burnTransactions[0].transactionHash,
     );
 
-    const walletBalances = await Wallet.getAllBalances(client, 4, [], config.stakeWallet.address);
+    const walletBalances = await Wallet.getAllBalances(client, 4, [], config.stakeAddress.bech32);
     expect(() =>
       SidechainSecurities.ensureZeroBalance(
         walletBalances.wallets,
@@ -301,7 +301,7 @@ test('should handle burn transactions across forks', async () => {
       result.burnTransactions[0].transactionHash,
     );
 
-    const walletBalances = await Wallet.getAllBalances(client, 4, [], config.stakeWallet.address);
+    const walletBalances = await Wallet.getAllBalances(client, 4, [], config.stakeAddress.bech32);
     expect(() =>
       SidechainSecurities.ensureZeroBalance(
         walletBalances.wallets,
@@ -357,9 +357,9 @@ test('should handle transfers "out" across forks', async () => {
       fromAddress: client2.address,
       type: NoteType.transferOut,
     },
-    client2.keyring,
+    client2.credentials.address,
   );
-  jest.spyOn(FundingTransferOutApi, 'validateWalletSignature').mockImplementationOnce(() => true);
+  jest.spyOn(FundingTransferOutApi, 'validateAddressSignature').mockImplementationOnce(() => true);
   await FundingTransferOutApi.handler({
     note: noteData,
     signature: Buffer.from('test'),
@@ -382,7 +382,7 @@ test('should handle transfers "out" across forks', async () => {
       client,
       block5a.data.height,
       [],
-      config.stakeWallet.address,
+      config.stakeAddress.bech32,
     );
 
     expect(() =>
@@ -422,7 +422,7 @@ test('should handle transfers "out" across forks', async () => {
     expect(result.transfersOut).toHaveLength(1);
     expect(result.unburnedBatchOutputs).toHaveLength(0);
 
-    const walletBalances = await Wallet.getAllBalances(client, 5, [], config.stakeWallet.address);
+    const walletBalances = await Wallet.getAllBalances(client, 5, [], config.stakeAddress.bech32);
     expect(() =>
       SidechainSecurities.ensureZeroBalance(
         walletBalances.wallets,

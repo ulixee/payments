@@ -1,21 +1,22 @@
-import Keypair from '@ulixee/crypto/lib/Keypair';
+import Identity from '@ulixee/crypto/lib/Identity';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 
-const micronoteBatchKeypair = Keypair.createSync();
-const sidechainKeypair = Keypair.createSync();
+const micronoteBatchIdentity = Identity.createSync();
+const sidechainIdentity = Identity.createSync();
 const blockHeight = 1;
 
 export function getStakeSignature(
-  publicKey: Buffer,
+  identity: string,
   requestedBlockHeight?: number,
-  sidechainKeys?: Keypair,
+  sidechainKeys?: Identity,
 ) {
-  const sideKeypair = sidechainKeys ?? sidechainKeypair;
+  const sideIdentity = sidechainKeys ?? sidechainIdentity;
   const height = requestedBlockHeight ?? blockHeight;
 
   return {
-    rootPublicKey: sideKeypair.publicKey,
+    rootIdentity: sideIdentity.bech32,
     blockHeight: height,
-    signature: sideKeypair.sign(sha3(Buffer.concat([publicKey, Buffer.from(`${blockHeight}`)]))),
+    signature: sideIdentity.sign(sha3(concatAsBuffer(identity, blockHeight))),
   };
 }

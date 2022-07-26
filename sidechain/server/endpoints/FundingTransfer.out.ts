@@ -10,12 +10,12 @@ import Note from '../models/Note';
 
 export default new ApiHandler('FundingTransfer.out', {
   async handler({ note }, options) {
-    const publicKey = note.fromAddress;
+    const identity = note.fromAddress;
     if (note.effectiveBlockHeight) {
       throw new InvalidParameterError('Transfers out cannot contain an effective block height');
     }
 
-    if (!config.mainchain.wallets.some(x => x.address === note.toAddress)) {
+    if (!config.mainchain.addressesByBech32[note.toAddress]) {
       throw new InvalidRecipientError(
         'The output recipient is not a valid wallet owned by this sidechain',
       );
@@ -26,7 +26,7 @@ export default new ApiHandler('FundingTransfer.out', {
     }
 
     return await db.transaction(async client => {
-      const wallet = new Wallet(client, publicKey);
+      const wallet = new Wallet(client, identity);
       await wallet.lock();
       await wallet.load();
 

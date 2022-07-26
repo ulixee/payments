@@ -212,7 +212,7 @@ export default class MicronoteBatchClose {
         guaranteeBlockHeight,
         type,
       },
-      this.batch.keyring,
+      this.batch.credentials.address,
     );
   }
 

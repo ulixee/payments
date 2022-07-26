@@ -8,11 +8,11 @@ import ApiHandler from '../lib/ApiHandler';
 
 export default new ApiHandler('Stake.refund', {
   async handler(payload, options) {
-    const { address, signature, stakedPublicKey } = payload;
-    await this.validateWalletSignature(address, payload, signature);
+    const { address, signature, stakedIdentity } = payload;
+    await this.validateAddressSignature(address, payload, signature);
 
     return await db.transaction(async client => {
-      const stake = await Stake.lock(client, stakedPublicKey);
+      const stake = await Stake.lock(client, stakedIdentity);
       if (!stake) {
         throw new NotFoundError('No open stake found to refund');
       }
@@ -22,13 +22,13 @@ export default new ApiHandler('Stake.refund', {
       // create refund note
       const noteData = Note.addSignature(
         {
-          fromAddress: config.stakeWallet.address,
+          fromAddress: config.stakeAddress.bech32,
           toAddress: stake.data.address,
           centagons: originalTx.data.centagons,
           effectiveBlockHeight: config.stakeSettings.refundBlockWindow, // money isn't good until eat stake window closes
           type: NoteType.stakeRefund,
         },
-        config.stakeWallet,
+        config.stakeAddress,
       );
       const refund = new Note(client, noteData);
       await refund.saveUnchecked();

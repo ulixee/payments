@@ -1,12 +1,12 @@
 import { ITransaction, LedgerType, TransactionType } from '@ulixee/specification';
 import TransactionBuilder from '../lib/TransactionBuilder';
-import KeyringStore from '../store/KeyringStore';
+import AddressStore from '../store/AddressStore';
 import UnspentOutputStore from '../store/UnspentOutputStore';
 import UnspentOutput from '../lib/UnspentOutput';
 
 export default function buildBondPurchase(
   uxtoStore: UnspentOutputStore,
-  keyringStore: KeyringStore,
+  addressStore: AddressStore,
   currentBlockHeight: number,
   stableCentagonsToConvert: number | bigint,
   feeCentagons = 0n,
@@ -26,18 +26,18 @@ export default function buildBondPurchase(
     expirationHeight,
   );
   purchase.addOutput({
-    address: keyringStore.bondsAddress,
+    address: addressStore.bondsAddress,
     centagons: BigInt(stableCentagonsToConvert),
     isBond: true,
   });
 
   if (changeNeeded) {
-    purchase.addOutput({ address: keyringStore.changeAddress, centagons: changeNeeded });
+    purchase.addOutput({ address: addressStore.changeAddress, centagons: changeNeeded });
   }
 
   // now add all signed sources
   for (const source of fromUnspentOutputs) {
-    purchase.addSource(source, source.centagons, keyringStore.getKeyring(source.address));
+    purchase.addSource(source, source.centagons, addressStore.getAddress(source.address));
   }
 
   return { transaction: purchase.finalize(), fromUnspentOutputs, changeNeeded };

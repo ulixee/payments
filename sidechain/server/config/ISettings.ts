@@ -17,9 +17,9 @@ export default interface ISettings {
   mainchain?: {
     host?: string;
     fundingHoldBlocks?: number;
-    wallets?: string[];
+    addresses?: string[];
   };
-  rootPrivateKey?: string;
-  rootKeyPath?: string;
-  stakeWallet?: string;
+  rootIdentitySecretKey?: string;
+  rootIdentityPath?: string;
+  stakeAddress?: string;
 }

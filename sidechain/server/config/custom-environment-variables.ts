@@ -15,10 +15,10 @@ module.exports = <{ [K in keyof ISettings]: string | { [X in keyof ISettings[K]]
     payoutAddress: 'MICRONOTE_BATCH_PAYOUT_ADDRESS',
   },
   mainchain: {
-    wallets: 'MAINCHAIN_WALLETS',
+    addresses: 'MAINCHAIN_WALLETS',
     host: 'MAINCHAIN_HOST',
   },
-  rootPrivateKey: 'ROOT_PRIVATE_KEY',
-  rootKeyPath: 'ROOT_KEY_PATH',
-  stakeWallet: 'STAKE_Wallet',
+  rootIdentitySecretKey: 'ROOT_IDENTITY_SECRET_KEY',
+  rootIdentityPath: 'ROOT_IDENTITY_PATH',
+  stakeAddress: 'STAKE_Wallet',
 };

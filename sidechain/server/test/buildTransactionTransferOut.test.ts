@@ -9,15 +9,16 @@ import db from '../lib/defaultDb';
 import { setupDb, stop } from './_setup';
 import TestClient from './_TestClient';
 
-const mainchainWallet = config.mainchain.wallets[0];
-let userKeys2: TestClient;
-let userKeys: TestClient;
+const mainchainAddressSigner = config.mainchain.addresses[0];
+const mainchainAddress = mainchainAddressSigner.bech32;
+let userAddress2: TestClient;
+let userAddress: TestClient;
 let sidechainFunds: Security;
 
 beforeAll(async () => {
   await setupDb();
-  userKeys2 = new TestClient();
-  userKeys = new TestClient();
+  userAddress2 = new TestClient();
+  userAddress = new TestClient();
 });
 
 test('should spend outputs on "transfer out"', async () => {
@@ -36,11 +37,11 @@ test('should spend outputs on "transfer out"', async () => {
       centagons: 1234n,
       transactionHash: existingTxHash,
       transactionOutputIndex: 0,
-      toAddress: userKeys.address,
-      fromAddress: mainchainWallet.address,
+      toAddress: userAddress.address,
+      fromAddress: mainchainAddress,
       transactionTime: new Date(),
       confirmedBlockHeight: 6,
-      transactionOutputAddress: userKeys.address,
+      transactionOutputAddress: userAddress.address,
       isToSidechain: false,
       isBurn: false,
     }).save();
@@ -49,11 +50,11 @@ test('should spend outputs on "transfer out"', async () => {
       centagons: 10000n,
       transactionHash: existingTxHash,
       transactionOutputIndex: 1,
-      toAddress: mainchainWallet.address,
-      fromAddress: mainchainWallet.address,
+      toAddress: mainchainAddress,
+      fromAddress: mainchainAddress,
       transactionTime: new Date(),
       confirmedBlockHeight: 6,
-      transactionOutputAddress: mainchainWallet.address,
+      transactionOutputAddress: mainchainAddress,
       isToSidechain: true,
       isBurn: false,
     }).save();
@@ -62,11 +63,11 @@ test('should spend outputs on "transfer out"', async () => {
       centagons: 250n,
       transactionHash: existingTxHash,
       transactionOutputIndex: 2,
-      toAddress: userKeys2.address,
-      fromAddress: mainchainWallet.address,
+      toAddress: userAddress2.address,
+      fromAddress: mainchainAddress,
       transactionTime: new Date(),
       confirmedBlockHeight: 6,
-      transactionOutputAddress: userKeys2.address,
+      transactionOutputAddress: userAddress2.address,
       isToSidechain: false,
       isBurn: false,
     }).save();
@@ -76,37 +77,37 @@ test('should spend outputs on "transfer out"', async () => {
   await db.transaction(async client => {
     const data1 = Note.addSignature(
       {
-        fromAddress: mainchainWallet.address,
-        toAddress: userKeys.address,
+        fromAddress: mainchainAddress,
+        toAddress: userAddress.address,
         centagons: 100n,
         timestamp: new Date(),
         type: NoteType.transferOut,
       },
-      mainchainWallet,
+      mainchainAddressSigner,
     );
     const microTx = await new Note(client, data1).saveUnchecked(0);
 
     const microTx2data = Note.addSignature(
       {
-        fromAddress: mainchainWallet.address,
-        toAddress: userKeys2.address,
+        fromAddress: mainchainAddress,
+        toAddress: userAddress2.address,
         centagons: 20n,
         timestamp: new Date(),
         type: NoteType.transferOut,
       },
-      mainchainWallet,
+      mainchainAddressSigner,
     );
     const microTx2 = await new Note(client, microTx2data).saveUnchecked(0);
 
     const out = await buildTransactionTransferOut(client, [
       {
         centagons: 100n,
-        address: userKeys.address,
+        address: userAddress.address,
         noteHash: microTx.data.noteHash,
       },
       {
         centagons: 20n,
-        address: userKeys2.address,
+        address: userAddress2.address,
         noteHash: microTx2.data.noteHash,
       },
     ]);

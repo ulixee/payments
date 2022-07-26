@@ -1,5 +1,6 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import BlockManager from '../lib/BlockManager';
 import MicronoteBatchManager from '../lib/MicronoteBatchManager';
 import MicronoteBatch from '../models/MicronoteBatch';
@@ -40,8 +41,7 @@ test('should require a valid address for a request', async () => {
       signature: {
         signers: [
           {
-
-            publicKey: sha3('1234'),
+            identity: encodeBuffer(sha3('1234'), 'id'),
             ownershipMerkleProofs: [],
             signature: Buffer.from(
               '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
