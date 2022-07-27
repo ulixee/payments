@@ -7,14 +7,14 @@ import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 const { log } = Log(module);
 
 export default async function verifyStakeSignature(
-  jobBlockHeight: number,
+  blockHeight: number,
   identity: string,
   signature: IStakeSignature,
   sidechainApprover: ISidechainApprovalLookup,
 ): Promise<boolean> {
   const isSidechainApproved = await sidechainApprover.isSidechainApproved(
     signature.rootIdentity,
-    jobBlockHeight,
+    blockHeight,
   );
   if (isSidechainApproved === false) {
     log.info('UnapprovedSidechainUsed', {
@@ -25,7 +25,7 @@ export default async function verifyStakeSignature(
     return false;
   }
 
-  if (!signature || Math.abs(signature.blockHeight - jobBlockHeight) > 2) {
+  if (!signature || Math.abs(signature.blockHeight - blockHeight) > 2) {
     log.info('InvalidStakeSignatureHeight', {
       signature,
       identity,

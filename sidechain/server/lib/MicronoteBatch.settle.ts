@@ -1,92 +1,74 @@
 import { from, to } from 'pg-copy-streams';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import Wallet from '../models/Wallet';
-import MicronoteBatch from '../models/MicronoteBatch';
+import MicronoteBatch, { IMicronoteBatchRecord } from '../models/MicronoteBatch';
 import MicronoteBatchOutput from '../models/MicronoteBatchOutput';
-import defaultDb from "./defaultDb";
-import PgClient from "./PgClient";
-import { DbType } from "./PgPool";
+import defaultDb from './defaultDb';
+import PgClient from './PgClient';
+import { DbType } from './PgPool';
 import { InsufficientFundsError } from './errors';
-import MicronoteBatchDb from "./MicronoteBatchDb";
+import MicronoteBatchDb from './MicronoteBatchDb';
 
 export default class MicronoteBatchSettle {
-  public static async run(batch: MicronoteBatch, logger: IBoundLog): Promise<void> {
-    const micronoteBatchDb = await MicronoteBatchDb.get(batch.slug);
+  public static async run(batchAddress: string, logger: IBoundLog): Promise<IMicronoteBatchRecord> {
+    const transactionOptions = { logger };
 
     // NOTE: funky transaction/loading matters here. Need to keep streams open and rollback appropriately
-    await defaultDb.transaction(
-      async defaultClient => {
-        // lock first
-        const lockedBatch = await MicronoteBatch.lock(defaultClient, batch.address);
-        if (lockedBatch.isSettled) {
-          batch.data.settledTime = lockedBatch.data.settledTime;
-          defaultClient.logger.warn('Not settling micronoteBatch.  Already settled');
-          return;
-        }
-        await micronoteBatchDb.transaction(async batchClient => {
-          const batchOutput = await MicronoteBatchOutput.createFromMicronoteBatchDb(
-            batchClient,
-            defaultClient,
-            batch.address,
-          );
+    return await defaultDb.transaction(async defaultClient => {
+      // lock first
+      const batch = await MicronoteBatch.lock(defaultClient, batchAddress);
+      if (batch.isSettled) {
+        defaultClient.logger.warn('Not settling micronoteBatch.  Already settled');
+        return batch.data;
+      }
 
-          // NOTE: stream while inner transaction is still open
-          await MicronoteBatchSettle.saveToLedger(batchClient, defaultClient, batch);
-          // save output details
-          await batchOutput.save();
+      // lock wallet on ledger
+      const wallet = new Wallet(defaultClient, batch.address);
+      await wallet.lock();
+
+      const micronoteBatchDb = await MicronoteBatchDb.get(batch.slug);
+      await micronoteBatchDb.transaction(async batchClient => {
+        const batchOutput = await MicronoteBatchOutput.createFromMicronoteBatchDb(
+          batchClient,
+          defaultClient,
+          batch.address,
+        );
+
+        logger.info('IMPORTING: Reading input stream into note logs', {
+          micronoteBatch: batch.slug,
         });
-        // now update state
-        await batch.recordStateTime('settledTime');
-      },
-      { logger },
-    );
-  }
 
-  private static async saveToLedger(
-    batchClient: PgClient<DbType.Batch>,
-    defaultClient: PgClient<DbType.Default>,
-    batch: MicronoteBatch,
-  ): Promise<void> {
-    // lock wallet on ledger
-    const batchWallet = new Wallet(defaultClient, batch.address);
-    await batchWallet.lock();
+        // NOTE: stream while inner transaction is still open
+        await this.pipeNoteOutputToLedger(batchClient, defaultClient);
 
-    batchClient.logger.info('IMPORTING: Reading input stream into note logs', {
-      micronoteBatch: batch.slug,
-      sessionId: null,
-    });
+        await wallet.load();
 
-    await MicronoteBatchSettle.copyLedgerTransactions(batchClient, defaultClient);
-
-    await batchWallet.load();
-
-    if (batchWallet.balance < 0n) {
-      throw new InsufficientFundsError(
-        'The given changes would create a negative balance',
-        batchWallet.balance.toString(),
-      );
-    }
-  }
-
-  private static async copyLedgerTransactions(
-    batchClient: PgClient<DbType.Batch>,
-    defaultClient: PgClient<DbType.Default>,
-  ): Promise<void> {
-    const outputStream = await batchClient.queryStream(to('COPY note_outputs TO STDOUT'));
-    const inputStream = await defaultClient.queryStream(from('COPY notes FROM STDIN'));
-    const donePromise = new Promise<void>((resolve, reject) => {
-      const done = (err, success): void => {
-        if (err) {
-          defaultClient.logger.error('ERROR streaming records', err);
-          return reject(err);
+        if (wallet.balance < 0n) {
+          throw new InsufficientFundsError(
+            'The given changes would create a negative balance',
+            wallet.balance.toString(),
+          );
         }
-        return resolve(success);
-      };
-      outputStream.once('error', done);
-      inputStream.once('finish', done);
-      inputStream.once('error', done);
+        // save output details
+        await batchOutput.save();
+      });
+      // now update state
+      await batch.recordStateTime('settledTime');
+      return batch.data;
+    }, transactionOptions);
+  }
+
+  private static async pipeNoteOutputToLedger(
+    batchClient: PgClient<DbType.Batch>,
+    defaultClient: PgClient<DbType.Default>,
+  ): Promise<void> {
+    const outputStream = batchClient.queryStream(to('COPY note_outputs TO STDOUT'));
+    const inputStream = defaultClient.queryStream(from('COPY notes FROM STDIN'));
+    await new Promise<void>((resolve, reject) => {
+      outputStream
+        .pipe(inputStream.once('error', reject))
+        .once('finished', resolve)
+        .on('error', reject);
     });
-    outputStream.pipe(inputStream);
-    await donePromise;
   }
 }

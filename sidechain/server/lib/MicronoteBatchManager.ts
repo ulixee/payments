@@ -129,10 +129,10 @@ export default class MicronoteBatchManager {
 
     for (const batch of MicronoteBatchManager.batchesPendingSettlement.values()) {
       if (batch.shouldClose) {
-        await MicronoteBatchClose.run(batch, this.logger);
+        await MicronoteBatchClose.run(batch.address, this.logger);
       }
       if (batch.shouldSettle) {
-        await MicronoteBatchSettle.run(batch, this.logger);
+        await MicronoteBatchSettle.run(batch.address, this.logger);
       }
     }
   }

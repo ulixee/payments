@@ -32,6 +32,25 @@ export default class MicronoteBatchClose {
     this.logger = client.logger.createChild(module, { action: 'MicronoteBatch.close' });
   }
 
+  public async run(defaultClient: PgClient<DbType.Default>): Promise<void> {
+    const hasRun = await this.hasAlreadyRun();
+
+    if (hasRun === true) {
+      return;
+    }
+
+    await this.findOrphanedFunding(defaultClient);
+    await this.refundUnclaimedNotes();
+    await this.verifyMicronoteFundAllocation();
+    await this.loadMicronotePayments();
+    await this.loadFundingRefunds();
+
+    await this.createSettlementFeeNote();
+    await this.createBurnNote();
+
+    await this.saveLedgerOutputs();
+  }
+
   public async hasAlreadyRun(): Promise<boolean> {
     const results = await this.client.list('SELECT * from note_outputs LIMIT 1');
     if (results.length) {
@@ -50,11 +69,11 @@ export default class MicronoteBatchClose {
     settlementFees: number;
     totalRevenue: bigint;
   }> {
-    const { funds, allocated } = await this.client.queryOne(`
+    const { funds, allocated } = await this.client.queryOne<{ funds: bigint; allocated: bigint }>(`
     SELECT SUM(microgons) as funds, SUM(microgons_allocated) as allocated 
        FROM micronote_funds`);
 
-    const { revenue } = await this.client.queryOne(`
+    const { revenue } = await this.client.queryOne<{ revenue: bigint }>(`
     SELECT SUM(microgons_earned) as revenue
        FROM micronote_recipients 
        WHERE microgons_earned > 0`);
@@ -85,7 +104,7 @@ export default class MicronoteBatchClose {
   }
 
   private async createSettlementFeeNote(): Promise<INote> {
-    const { claims } = await this.client.queryOne(`
+    const { claims } = await this.client.queryOne<{ claims: bigint }>(`
     SELECT count(1) as claims FROM micronotes 
        WHERE claimed_time is not null`);
 
@@ -109,7 +128,7 @@ export default class MicronoteBatchClose {
 
   private async loadMicronotePayments(): Promise<void> {
     const payments = await this.client.list<{
-      microgons: number;
+      microgons: bigint;
       toAddress: string;
       guaranteeBlockHeight: number;
     }>(`
@@ -147,12 +166,12 @@ export default class MicronoteBatchClose {
 
   private async loadFundingRefunds(): Promise<void> {
     const refunds = await this.client.list<{
-      microgons: number;
+      microgons: bigint;
       toAddress: string;
       guaranteeBlockHeight: number;
     }>(`
      SELECT 
-        coalesce(sum(microgons - microgons_allocated), 0) as microgons, 
+        coalesce(sum(microgons - microgons_allocated), 0)::bigint as microgons, 
         address as to_address, 
         max(guarantee_block_height) as guarantee_block_height
      FROM micronote_funds 
@@ -174,8 +193,8 @@ export default class MicronoteBatchClose {
   }
 
   private async createBurnNote(): Promise<void> {
-    const { totalFunding } = await this.client.queryOne(`
-    SELECT coalesce(sum(microgons), 0) as total_funding from micronote_funds
+    const { totalFunding } = await this.client.queryOne<{ totalFunding: bigint }>(`
+    SELECT coalesce(sum(microgons), 0)::bigint as total_funding from micronote_funds
     `);
 
     let payouts = 0n;
@@ -219,8 +238,8 @@ export default class MicronoteBatchClose {
   private async findOrphanedFunding(defaultClient: PgClient<DbType.Default>): Promise<void> {
     this.batchBalance = await Wallet.getBalance(defaultClient, this.batch.address);
 
-    const { fundingMicrogons } = await this.client.queryOne(`
-      SELECT coalesce(SUM(microgons), 0) as funding_microgons 
+    const { fundingMicrogons } = await this.client.queryOne<{ fundingMicrogons: bigint }>(`
+      SELECT coalesce(SUM(microgons), 0)::bigint as funding_microgons 
       FROM micronote_funds`);
 
     // see if we have the same balance as the ledger
@@ -231,15 +250,14 @@ export default class MicronoteBatchClose {
       return;
     }
     // if not, need to record and refund the transfers
-    const walletTransactionHashes =
-      (await Wallet.getNoteHashes(defaultClient, this.batch.address)) || [];
+    const batchNoteHashes = (await Wallet.getNoteHashes(defaultClient, this.batch.address)) || [];
 
     this.logger.info(
       'Orphaned transactions exist.  Searching through all hashes associated with this public key',
-      { hashes: walletTransactionHashes.length, sessionId: null },
+      { hashes: batchNoteHashes.length, sessionId: null },
     );
 
-    const params = walletTransactionHashes.map((entry, i) => `($${i + 1}::bytea)`).join(',');
+    const params = batchNoteHashes.map((entry, i) => `($${i + 1}::bytea)`).join(',');
 
     const missingHashes = await this.client.list<{ hash: Buffer }>(
       `
@@ -249,7 +267,7 @@ export default class MicronoteBatchClose {
       ) as t(hash)
         LEFT JOIN micronote_funds e on e.note_hash = t.hash
       WHERE e.note_hash is null`,
-      walletTransactionHashes,
+      batchNoteHashes,
     );
 
     this.missingHashes = (missingHashes || []).map(x => x.hash);
@@ -275,7 +293,7 @@ export default class MicronoteBatchClose {
       WHERE claimed_time is null 
        AND canceled_time is null`);
 
-    await this.client.query(`UPDATE micronotes set canceled_time = now() 
+    await this.client.update(`UPDATE micronotes set canceled_time = now() 
        WHERE claimed_time is null 
         AND canceled_time is null`);
 
@@ -290,35 +308,20 @@ export default class MicronoteBatchClose {
     return await this.client.batchInsert('note_outputs', this.noteOutputs, 100);
   }
 
-  public static async run(batch: MicronoteBatch, logger: IBoundLog): Promise<void> {
+  public static async run(batchAddress: string, logger: IBoundLog): Promise<void> {
     await defaultDb.transaction(
       async defaultClient => {
-        const retrievedBatch = await MicronoteBatch.lock(defaultClient, batch.address);
+        const batch = await MicronoteBatch.lock(defaultClient, batchAddress);
         // make sure not closed
-        if (retrievedBatch.isClosed) {
+        if (batch.isClosed) {
           defaultClient.logger.info('Not closing micronote batch.  Already closed.');
           return;
         }
 
         const micronoteBatchDb = await MicronoteBatchDb.get(batch.slug);
-        await micronoteBatchDb.transaction(async client => {
-          const batchClose = new MicronoteBatchClose(client, batch);
-          const hasRun = await batchClose.hasAlreadyRun();
-
-          if (hasRun === true) {
-            return;
-          }
-
-          await batchClose.findOrphanedFunding(defaultClient);
-          await batchClose.refundUnclaimedNotes();
-          await batchClose.verifyMicronoteFundAllocation();
-          await batchClose.loadMicronotePayments();
-          await batchClose.loadFundingRefunds();
-
-          await batchClose.createSettlementFeeNote();
-          await batchClose.createBurnNote();
-
-          await batchClose.saveLedgerOutputs();
+        await micronoteBatchDb.transaction(async batchClient => {
+          const batchCloser = new MicronoteBatchClose(batchClient, batch);
+          await batchCloser.run(defaultClient);
         });
 
         await batch.recordStateTime('closedTime');

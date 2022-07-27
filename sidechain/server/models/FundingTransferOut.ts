@@ -35,13 +35,12 @@ export default class FundingTransferOut {
     transactionHash: Buffer,
     transfersOut: INoteRecord[],
   ): Promise<void> {
-    const params = transfersOut.map((entry, i) => `$${i + 2}`).join(',');
     await client.update(
       `
       update funding_transfers_out set transaction_hash = $1
-      where note_hash in (${params})
+      where note_hash = ANY ($2)
     `,
-      [transactionHash, ...transfersOut.map(x => x.noteHash)],
+      [transactionHash, transfersOut.map(x => x.noteHash)],
     );
   }
 

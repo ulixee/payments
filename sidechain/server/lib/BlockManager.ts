@@ -111,7 +111,7 @@ export default class BlockManager {
       }
 
       const isFromSidechain = transaction.sources.find(x =>
-        mainchainIdentities.has(x.sourceWalletSigners[0].identity),
+        mainchainIdentities.has(x.sourceAddressSigners[0].identity),
       );
 
       if (isFromSidechain) {

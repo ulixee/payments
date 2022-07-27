@@ -30,7 +30,7 @@ export default new ApiHandler('Micronote.create', {
     }
 
     const batchDb = await MicronoteBatchDb.get(batchSlug);
-    const noteDetails = await batchDb.transaction(async client => {
+    const micronote = await batchDb.transaction(async client => {
       const funds = new MicronoteFunds(client, batch, address);
       await funds.lockClient();
       const { guaranteeBlockHeight, microgonsRemaining } = await funds.holdTokens(
@@ -39,11 +39,11 @@ export default new ApiHandler('Micronote.create', {
       );
 
       const microNote = new Micronote(client, address);
-      const noteDb = await microNote.create(batch, fundsId, microgons, isAuditable);
+      const micronoteRecord = await microNote.create(batch, fundsId, microgons, isAuditable);
 
       return {
-        id: noteDb.id,
-        blockHeight: noteDb.blockHeight,
+        id: micronoteRecord.id,
+        blockHeight: micronoteRecord.blockHeight,
         fundsId,
         guaranteeBlockHeight,
         fundMicrogonsRemaining: microgonsRemaining,
@@ -51,11 +51,11 @@ export default new ApiHandler('Micronote.create', {
     }, options);
 
     const micronoteSignature = batch.credentials.identity.sign(
-      sha3(concatAsBuffer(noteDetails.id, microgons)),
+      sha3(concatAsBuffer(micronote.id, microgons)),
     );
 
     return {
-      ...noteDetails,
+      ...micronote,
       micronoteSignature,
     };
   },

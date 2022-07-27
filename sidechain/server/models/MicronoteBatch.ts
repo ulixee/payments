@@ -156,9 +156,10 @@ export default class MicronoteBatch {
     client: PgClient<DbType.Default>,
     address: string,
   ): Promise<MicronoteBatch> {
-    const record = await client.queryOne('SELECT * from micronote_batches WHERE address = $1', [
-      address,
-    ]);
+    const record = await client.queryOne<IMicronoteBatchRecord>(
+      'SELECT * from micronote_batches WHERE address = $1',
+      [address],
+    );
     return MicronoteBatch.fromData(client, record);
   }
 

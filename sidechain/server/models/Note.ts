@@ -98,7 +98,7 @@ export default class Note {
     client: PgClient<DbType.Default>,
     address: string,
   ): Promise<number> {
-    const record = await client.queryOne(
+    const record = await client.queryOne<Pick<INoteRecord, 'guaranteeBlockHeight'>>(
       `
     select guarantee_block_height from notes
     where to_address = $1

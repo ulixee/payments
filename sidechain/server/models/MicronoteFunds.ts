@@ -179,8 +179,7 @@ export default class MicronoteFunds {
     ids: number[],
   ): Promise<IMicronoteFundsRecord[]> {
     if (!ids.length) return [];
-    const params = ids.map((_, i) => `$${i + 1}`).join(',');
-    return await client.list(`select * from micronote_funds where id in (${params})`, ids);
+    return await client.list(`select * from micronote_funds where id = ANY ($1)`, ids);
   }
 }
 

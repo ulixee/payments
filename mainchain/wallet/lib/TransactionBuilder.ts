@@ -89,7 +89,7 @@ export default class TransactionBuilder {
 
       this.transaction.sources.push({
         sourceAddressSignatureSettings: source.sourceAddressSignatureSettings,
-        sourceWalletSigners: addressSignature.signers,
+        sourceAddressSigners: addressSignature.signers,
         sourceOutputIndex: source.sourceOutputIndex,
         sourceTransactionHash: source.sourceTransactionHash,
         sourceLedger: source.sourceLedger,

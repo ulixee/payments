@@ -18,7 +18,7 @@ CREATE TABLE micronote_funds (
 CREATE INDEX idx_micronote_funds_address on micronote_funds (address);
 
 CREATE TABLE micronotes (
-	id bytea PRIMARY KEY,
+	id varchar(64) PRIMARY KEY,
 	funds_id integer NOT NULL REFERENCES micronote_funds (id),
 	nonce bytea NOT NULL,
 	block_height integer NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE micronotes (
 CREATE INDEX idx_notes_client_address on micronotes (client_address);
 
 CREATE TABLE micronote_recipients (
-	micronote_id bytea NOT NULL REFERENCES micronotes (id),
+	micronote_id varchar(64) NOT NULL REFERENCES micronotes (id),
 	address varchar(64) NOT NULL,
 	microgons_earned integer NULL
 	    CHECK (microgons_earned > 0),

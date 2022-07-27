@@ -166,11 +166,9 @@ export default class MainchainBlock {
 
     const newLongChainBlocks = blockchain.filter(x => x.height > lastBlockInChainOnLongestPath);
 
-    const params = newLongChainBlocks.map((_, i) => `$${i + 1}`).join(',');
-
-    if (params.length) {
+    if (newLongChainBlocks.length) {
       await client.update(
-        `update mainchain_blocks set is_longest_chain = true where block_hash in (${params})`,
+        `update mainchain_blocks set is_longest_chain = true where block_hash = ANY ($1)`,
         newLongChainBlocks.map(x => x.blockHash),
       );
     }

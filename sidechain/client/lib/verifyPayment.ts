@@ -3,10 +3,12 @@ import { IPayment } from '@ulixee/specification';
 import { UnapprovedSidechainError } from '@ulixee/commons/lib/errors';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
+import IAuthorizedSidechain from '@ulixee/specification/types/IAuthorizedSidechain';
 import { InvalidPaymentBlockHeightError } from './errors';
 
 export default function verifyPayment(
-  approvedSidechains: IIdentityed[],
+  approvedSidechains: IAuthorizedSidechain[],
   payment: IPayment,
   currentBlockHeight: number,
 ): void {
@@ -35,11 +37,11 @@ export default function verifyPayment(
   );
   if (isBatchValid === false) {
     throw new InvalidSignatureError(
-      'The micronoteBatch server does not have a valid ledger public key validator. DO NOT TRUST!',
+      'The MicronoteBatch server does not have an Identity signed by an authorized Sidechain. DO NOT TRUST!',
     );
   }
 
-  const signatureMessage = sha3(`${micronoteId}${microgons}`);
+  const signatureMessage = sha3(concatAsBuffer(micronoteId, microgons));
   const isMicronoteValid = Identity.verify(
     micronoteBatchIdentity,
     signatureMessage,
@@ -47,11 +49,7 @@ export default function verifyPayment(
   );
   if (isMicronoteValid === false) {
     throw new InvalidSignatureError(
-      'The Payment micronoteId was not signed by this micronoteBatch with the preferred microgons',
+      'The Payment micronoteId was not signed by this MicronoteBatch.',
     );
   }
-}
-
-interface IIdentityed {
-  rootIdentity: string;
 }

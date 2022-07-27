@@ -2,6 +2,7 @@ import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { INote, NoteType } from '@ulixee/specification';
 import PgClient from '../lib/PgClient';
 import { DbType } from '../lib/PgPool';
+import { INoteRecord } from './Note';
 
 export default class MicronoteBatchOutput {
   public data?: IMicronoteBatchOutputRecord;
@@ -86,16 +87,20 @@ export default class MicronoteBatchOutput {
        FROM note_outputs
        ORDER BY note_hash`);
 
-    const { settledCentagons } = await batchClient.queryOne(
+    const { settledCentagons } = await batchClient.queryOne<{
+      settledCentagons: bigint;
+    }>(
       `
        SELECT SUM(centagons)::bigint as settled_centagons
        FROM note_outputs
-       WHERE type not in ($1,$2)
+       WHERE type != ANY ($1)
     `,
-      [NoteType.settlementFees, NoteType.burn],
+      [[NoteType.settlementFees, NoteType.burn]],
     );
 
-    const { settlementFeeCentagons } = await batchClient.queryOne(
+    const { settlementFeeCentagons } = await batchClient.queryOne<{
+      settlementFeeCentagons: bigint;
+    }>(
       `
        SELECT SUM(centagons)::bigint as settlement_fee_centagons
        FROM note_outputs
@@ -104,7 +109,7 @@ export default class MicronoteBatchOutput {
       [NoteType.settlementFees],
     );
 
-    const { rows: burnRows } = await batchClient.query(
+    const { rows: burnRows } = await batchClient.query<INoteRecord>(
       `
        SELECT *
        FROM note_outputs
@@ -117,18 +122,26 @@ export default class MicronoteBatchOutput {
 
     const notesHash = sha3(Buffer.concat(noteHashes.map(x => x.noteHash)));
 
-    const { funds, allocated, maxGuaranteeBlockHeight } = await batchClient.queryOne(`
+    const { funds, allocated, maxGuaranteeBlockHeight } = await batchClient.queryOne<{
+      funds: bigint;
+      allocated: bigint;
+      maxGuaranteeBlockHeight: number;
+    }>(`
        SELECT SUM(microgons_allocated) as allocated,
           SUM(microgons) as funds, 
           MAX(guarantee_block_height) as max_guarantee_block_height
        FROM micronote_funds`);
 
-    const { revenue } = await batchClient.queryOne(`
+    const { revenue } = await batchClient.queryOne<{ revenue: bigint }>(`
        SELECT SUM(microgons_earned) as revenue
        FROM micronote_recipients 
        WHERE microgons_earned > 0`);
 
-    const { micronotes, maxBlockHeight, minBlockHeight } = await batchClient.queryOne(`
+    const { micronotes, maxBlockHeight, minBlockHeight } = await batchClient.queryOne<{
+      micronotes: bigint;
+      maxBlockHeight: number;
+      minBlockHeight: number;
+    }>(`
        SELECT COUNT(1) as micronotes, 
          MAX(block_height) as max_block_height, 
          MIN(block_height) as min_block_height

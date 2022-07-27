@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { concatAsBuffer, encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import config from '../config';
 import BlockManager from '../lib/BlockManager';
 import { ConflictError, InvalidParameterError } from '../lib/errors';
@@ -9,13 +10,19 @@ import MicronoteBatch from './MicronoteBatch';
 import MicronoteFunds from './MicronoteFunds';
 
 export default class Micronote {
+  public static encodingPrefix = 'mcr';
   public recipients: IMicronoteRecipientsRecord[] = [];
+
+  public get microgonsAllowed(): number {
+    return this.data.microgonsAllocated - config.micronoteBatch.settlementFeeMicrogons;
+  }
+
   private data: IMicronoteRecord;
 
   constructor(
     readonly client: PgClient<DbType.Batch>,
     readonly address: string,
-    readonly id?: Buffer,
+    readonly id?: string,
   ) {}
 
   public async load(
@@ -56,7 +63,7 @@ export default class Micronote {
       [this.id],
     );
     if (lockedByIdentity && identity !== lockedByIdentity) {
-      throw new ConflictError('Note has already been locked by another wallet');
+      throw new ConflictError('Micronote has already been locked by another Identity');
     }
     return await this.client.update(
       'update micronotes set locked_by_identity = $1, locked_time = NOW() where id = $2',
@@ -64,9 +71,6 @@ export default class Micronote {
     );
   }
 
-  get microgonsAllowed(): number {
-    return this.data.microgonsAllocated - config.micronoteBatch.settlementFeeMicrogons;
-  }
 
   public async create(
     batch: MicronoteBatch,
@@ -77,9 +81,12 @@ export default class Micronote {
     const nonce = randomBytes(16);
     const blockHeight = await BlockManager.currentBlockHeight();
     const time = new Date();
+    const hash = sha3(concatAsBuffer(blockHeight, nonce, batch.address, time.toISOString()));
+
+    const id = encodeBuffer(hash, Micronote.encodingPrefix);
 
     return this.client.insert<IMicronoteRecord>('micronotes', {
-      id: sha3([blockHeight, nonce.toString('base64'), batch.address, time.toISOString()].join('')),
+      id,
       clientAddress: this.address,
       blockHeight,
       nonce,
@@ -202,7 +209,7 @@ export default class Micronote {
 }
 
 export interface IMicronoteRecord {
-  id: Buffer;
+  id: string;
   fundsId: number;
   blockHeight: number;
   nonce?: Buffer;

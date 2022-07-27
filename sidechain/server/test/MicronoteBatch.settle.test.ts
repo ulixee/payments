@@ -74,7 +74,7 @@ test('should not allow a micronote batch to submit a close request that would re
       await createLedgerOutput(wallet, 2);
     }
 
-    await MicronoteBatchSettle.run(batch, log);
+    await MicronoteBatchSettle.run(batch.address, log);
   } catch (err) {
     expect(err.code).toBe('ERR_NSF');
   }
@@ -106,7 +106,7 @@ test('should allow a micronote batch to close', async () => {
   await createLedgerOutput(wallet3, Math.floor(10e2 * 0.8));
   await createLedgerOutput(wallet4, Math.floor(9e2 * 0.8), 4);
 
-  await MicronoteBatchSettle.run(batch, log);
+  await MicronoteBatchSettle.run(batch.address, log);
 
   // check for output to the micronote batch output key
   await db.transaction(async client => {

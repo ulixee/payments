@@ -25,8 +25,8 @@ export default class PgClient<K extends keyof typeof DbType = DbType.Default> {
     this.logger = opts?.logger ?? defaultLogger;
   }
 
-  public async queryStream(query: CopyToStreamQuery): Promise<CopyToStreamQuery> {
-    return await this.client.query(query);
+  public queryStream(query: CopyToStreamQuery): CopyToStreamQuery {
+    return this.client.query(query);
   }
 
   public async preparedQuery<T>(query: QueryConfig): Promise<QueryResult<T>> {
@@ -81,7 +81,7 @@ export default class PgClient<K extends keyof typeof DbType = DbType.Default> {
     }
   }
 
-  public async queryOne<T = any>(query: string, params: any[] = []): Promise<T | null> {
+  public async queryOne<T>(query: string, params: any[] = []): Promise<T | null> {
     let finalQuery = query;
     if (!query.includes('LIMIT 1') && !query.includes('limit 1')) {
       finalQuery += ' LIMIT 1';

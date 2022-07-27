@@ -1,8 +1,9 @@
-import { ICreateMicronoteResponse } from '@ulixee/specification/sidechain/MicronoteApis';
+import IMicronoteApis from '@ulixee/specification/sidechain/MicronoteApis';
 
-export default interface IMicronote extends ICreateMicronoteResponse {
+type IMicronote = IMicronoteApis['Micronote.create']['result'] & {
   micronoteBatchUrl: string;
   micronoteBatchIdentity: string;
   sidechainIdentity: string;
   sidechainValidationSignature: Buffer;
-}
+};
+export default IMicronote;

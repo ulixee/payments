@@ -11,7 +11,6 @@ import Address from '@ulixee/crypto/lib/Address';
 import IResolvablePromise from '@ulixee/commons/interfaces/IResolvablePromise';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
-import { ICreateMicronoteResponse } from '@ulixee/specification/sidechain/MicronoteApis';
 import SidechainApiSchema, { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import IPaymentProvider from '../interfaces/IPaymentProvider';
@@ -237,7 +236,6 @@ export default class SidechainClient implements IPaymentProvider {
   public async createMicronote(
     microgons: number,
     isAuditable = true,
-    schemaUri?: string,
     tries = 0,
   ): Promise<IMicronote> {
     if (tries >= 5) {
@@ -272,12 +270,12 @@ export default class SidechainClient implements IPaymentProvider {
         throw error;
       }
 
-      return this.createMicronote(microgons, isAuditable, schemaUri, tries + 1);
+      return this.createMicronote(microgons, isAuditable, tries + 1);
     }
   }
 
   public async lockMicronote(
-    micronoteId: Buffer,
+    micronoteId: string,
   ): Promise<ISidechainApiTypes['Micronote.lock']['result']> {
     return await this.runSignedAsNode('Micronote.lock', {
       batchSlug: this.batchSlug,
@@ -287,7 +285,7 @@ export default class SidechainClient implements IPaymentProvider {
   }
 
   public async claimMicronote(
-    micronoteId: Buffer,
+    micronoteId: string,
     tokenAllocation: { [identity: string]: number },
   ): Promise<ISidechainApiTypes['Micronote.claim']['result']> {
     return await this.runSignedAsNode('Micronote.claim', {
@@ -571,13 +569,13 @@ export default class SidechainClient implements IPaymentProvider {
   private verifyMicronoteSignature(
     identity: string,
     microgons: number,
-    micronote: ICreateMicronoteResponse,
+    micronoteResponse: ISidechainApiTypes['Micronote.create']['result'],
   ): void {
     try {
       const isValid = Identity.verify(
         identity,
-        sha3(concatAsBuffer(micronote.id, microgons)),
-        micronote.micronoteSignature,
+        sha3(concatAsBuffer(micronoteResponse.id, microgons)),
+        micronoteResponse.micronoteSignature,
       );
       if (isValid === false) {
         throw new InvalidSignatureError('Invalid Micronote signature');
