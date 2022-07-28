@@ -1,9 +1,9 @@
-import MicronoteBatch, { IMicronoteBatchRecord } from '../models/MicronoteBatch';
-import db from '../lib/defaultDb';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
+import MicronoteBatch, { IMicronoteBatchRecord } from '../main/models/MicronoteBatch';
+import MainDb from '../main/db';
+import MicronoteBatchDb from '../batch/db';
 
 void (async function cleanShellBatch() {
-  const batches = await db.transaction(async client => {
+  const batches = await MainDb.transaction(async client => {
     const realBatches = await client.list<IMicronoteBatchRecord>('select * from micronote_batches');
     const dbs = realBatches.map(x =>
       MicronoteBatchDb.getName(MicronoteBatch.fromData(client, x).slug),
@@ -16,6 +16,6 @@ WHERE datistemplate = false and datname like '${MicronoteBatchDb.batchNamePrefix
   });
 
   for (const { dbName } of batches) {
-    await db.query(`DROP database ${dbName}`);
+    await MainDb.query(`DROP database ${dbName}`);
   }
 })();

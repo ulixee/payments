@@ -1,12 +1,12 @@
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
-import BlockManager from '../lib/BlockManager';
-import MicronoteBatchManager from '../lib/MicronoteBatchManager';
+import BlockManager from '../main/lib/BlockManager';
+import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
-import defaultDb from '../lib/defaultDb';
-import { INoteRecord } from '../models/Note';
-import { IMicronoteFundsRecord } from '../models/MicronoteFunds';
+import MicronoteBatchDb from '../batch/db';
+import mainDb from '../main/db';
+import { INoteRecord } from '../main/models/Note';
+import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
 
 beforeAll(async () => {
   await setupDb();
@@ -55,7 +55,7 @@ test('should be able to fund a micronote batch', async () => {
   expect(fundsId).toBeGreaterThan(0);
 
   const micronoteBatchDb = await MicronoteBatchDb.get(client.batchSlug);
-  await defaultDb.transaction(async dbClient => {
+  await mainDb.transaction(async dbClient => {
     const note = await dbClient.queryOne<INoteRecord>(
       'select * from notes where from_address = $1 and to_address = $2',
       // @ts-ignore

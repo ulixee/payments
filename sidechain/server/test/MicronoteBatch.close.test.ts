@@ -2,20 +2,20 @@ import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import Log from '@ulixee/commons/lib/Logger';
 import { NoteType } from '@ulixee/specification';
 import config from '../config';
-import BlockManager from '../lib/BlockManager';
-import MicronoteBatchClose from '../lib/MicronoteBatch.close';
-import MicronoteBatchManager from '../lib/MicronoteBatchManager';
-import Wallet from '../models/Wallet';
-import MicronoteBatch from '../models/MicronoteBatch';
-import MicronoteBatchOutput from '../models/MicronoteBatchOutput';
-import Note, { INoteRecord } from '../models/Note';
-import defaultDb from '../lib/defaultDb';
-import PgPool, { DbType } from '../lib/PgPool';
+import BlockManager from '../main/lib/BlockManager';
+import MicronoteBatchClose from '../batch/models/MicronoteBatch.close';
+import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
+import Wallet from '../main/models/Wallet';
+import MicronoteBatch from '../main/models/MicronoteBatch';
+import Note, { INoteRecord } from '../main/models/Note';
+import mainDb from '../main/db';
+import PgPool, { DbType } from '../utils/PgPool';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
-import { IMicronoteRecord } from '../models/Micronote';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
-import { IMicronoteFundsRecord } from '../models/MicronoteFunds';
+import { IMicronoteRecord } from '../batch/models/Micronote';
+import MicronoteBatchDb from '../batch/db';
+import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
+import MicronoteBatchSettle from '../batch/models/MicronoteBatch.settle';
 
 const { log: logger } = Log(module);
 
@@ -114,9 +114,16 @@ beforeAll(async () => {
   }
 }, 15000);
 
+const defaultNoteHashes = [];
+
 test('should not run again if there is any data in the ledger outputs', async () => {
   await batchDb.transaction(async client => {
-    const batchClose = new MicronoteBatchClose(client, batch);
+    const batchClose = new MicronoteBatchClose(
+      client,
+      batch.credentials.address,
+      1n,
+      defaultNoteHashes,
+    );
     const hasRun = await batchClose.hasAlreadyRun();
 
     expect(hasRun).toBe(false);
@@ -126,7 +133,7 @@ test('should not run again if there is any data in the ledger outputs', async ()
 test('should make sure balances match the ledger', async () => {
   const [, client2] = clients;
 
-  await defaultDb.transaction(client => {
+  await mainDb.transaction(client => {
     const data = Note.addSignature(
       {
         fromAddress: client2.address,
@@ -139,10 +146,17 @@ test('should make sure balances match the ledger', async () => {
     );
     return new Note(client, data).saveUnchecked();
   });
-  await defaultDb.transaction(async defaultClient => {
+  await mainDb.transaction(async defaultClient => {
+    const balance = await Wallet.getBalance(defaultClient, batch.address);
+    const hashes = await Wallet.getNoteHashes(defaultClient, batch.address);
     await batchDb.transaction(
       async client => {
-        const batchClose = new MicronoteBatchClose(client, batch);
+        const batchClose = new MicronoteBatchClose(
+          client,
+          batch.credentials.address,
+          balance,
+          hashes,
+        );
         logger.info('Finding orphaned transactions');
         // @ts-ignore
         await batchClose.findOrphanedFunding(defaultClient);
@@ -177,7 +191,12 @@ test('should close unfinished notes', async () => {
 
   await batchDb.transaction(
     async client => {
-      const batchClose = new MicronoteBatchClose(client, batch);
+      const batchClose = new MicronoteBatchClose(
+        client,
+        batch.credentials.address,
+        1n,
+        defaultNoteHashes,
+      );
       logger.info('Finished creating notes');
       // @ts-ignore
       await batchClose.refundUnclaimedNotes();
@@ -201,7 +220,12 @@ test('should close unfinished notes', async () => {
 test('should summarize the microgons allocated', async () => {
   await batchDb.transaction(
     async client => {
-      const batchClose = new MicronoteBatchClose(client, batch);
+      const batchClose = new MicronoteBatchClose(
+        client,
+        batch.credentials.address,
+        1n,
+        defaultNoteHashes,
+      );
       // @ts-ignore
       const microgons = await batchClose.verifyMicronoteFundAllocation();
       logger.info('Token summary', { microgons, sessionId: null });
@@ -220,7 +244,12 @@ test('should summarize the microgons allocated', async () => {
 test('should properly create payouts', async () => {
   await batchDb.transaction(
     async client => {
-      const batchClose = new MicronoteBatchClose(client, batch);
+      const batchClose = new MicronoteBatchClose(
+        client,
+        batch.credentials.address,
+        1n,
+        defaultNoteHashes,
+      );
       // @ts-ignore
       await batchClose.loadMicronotePayments();
       // @ts-ignore
@@ -234,15 +263,12 @@ test('should properly create payouts', async () => {
     },
     { logger },
   );
-  await defaultDb.transaction(async defaultClient => {
+  await mainDb.transaction(async defaultClient => {
     const wallet = await new Wallet(defaultClient, batch.address).load();
     await batchDb.transaction(
       async client => {
-        const outputSummary = await MicronoteBatchOutput.createFromMicronoteBatchDb(
-          client,
-          defaultClient,
-          batch.address,
-        );
+        const batchSettle = new MicronoteBatchSettle(client, batch.address);
+        await batchSettle.run();
         const outputs = await client.list<INoteRecord>('select * from note_outputs');
 
         // not enough for settle fees
@@ -265,12 +291,12 @@ test('should properly create payouts', async () => {
         await note.save(wallet);
 
         // payout should all go back out minus fees
-        const fundsMinusSettled = Number(outputSummary.data.fundingMicrogons) - Number(settled);
+        const fundsMinusSettled = Number(batchSettle.batchOutput.fundingMicrogons - settled);
         expect(fundsMinusSettled).toBeLessThan(
           [coordinator, ...miningBits, ...clients].length * 10e3,
         );
         const burn = outputs.find(x => x.type === NoteType.burn);
-        expect(burn.centagons).toEqual(outputSummary.data.burnedCentagons);
+        expect(burn.centagons).toEqual(batchSettle.batchOutput.burnedCentagons);
       },
       { logger },
     );
@@ -281,7 +307,12 @@ test('should calculate settlement fees correctly', async () => {
   await batchDb.transaction(
     async client => {
       const queryOneMock = jest.spyOn(client, 'queryOne');
-      const batchClose = new MicronoteBatchClose(client, batch);
+      const batchClose = new MicronoteBatchClose(
+        client,
+        batch.credentials.address,
+        1n,
+        defaultNoteHashes,
+      );
       {
         queryOneMock.mockImplementationOnce(async () => {
           return { claims: 1000 };
@@ -322,7 +353,12 @@ test('should burn 20% plus change', async () => {
   await batchDb.transaction(
     async client => {
       const listMock = jest.spyOn(client, 'list');
-      const batchClose = new MicronoteBatchClose(client, batch);
+      const batchClose = new MicronoteBatchClose(
+        client,
+        batch.credentials.address,
+        1n,
+        defaultNoteHashes,
+      );
       const payments = [
         { toAddress: '1', guaranteeBlockHeight: 1, microgons: 10000005 },
         { toAddress: '2', guaranteeBlockHeight: 1, microgons: 12000005 },
@@ -379,7 +415,12 @@ test('should burn all money if no one exceeds 1 centagon', async () => {
   await batchDb.transaction(
     async client => {
       const listMock = jest.spyOn(client, 'list');
-      const batchClose = new MicronoteBatchClose(client, batch);
+      const batchClose = new MicronoteBatchClose(
+        client,
+        batch.credentials.address,
+        1n,
+        defaultNoteHashes,
+      );
       const payments = [
         { toAddress: '1', guaranteeBlockHeight: 1, microgons: 100 },
         { toAddress: '2', guaranteeBlockHeight: 1, microgons: 100 },

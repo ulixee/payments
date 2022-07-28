@@ -3,9 +3,9 @@ import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import config from '../config';
-import BlockManager from '../lib/BlockManager';
-import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
-import db from '../lib/defaultDb';
+import BlockManager from '../main/lib/BlockManager';
+import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
+import MainDb from '../main/db';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
 
@@ -38,7 +38,7 @@ beforeAll(async () => {
       },
     });
   }
-  await db.transaction(dbc => {
+  await MainDb.transaction(dbc => {
     return dbc.batchInsert<IMainchainBlockRecord>('mainchain_blocks', blocks);
   });
   // @ts-ignore

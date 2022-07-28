@@ -1,8 +1,8 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
-import db from '../lib/defaultDb';
-import PgClient from '../lib/PgClient';
-import { DbType } from '../lib/PgPool';
+import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
+import MainDb from '../main/db';
+import PgClient from '../utils/PgClient';
+import { DbType } from '../utils/PgPool';
 import { setupDb, stop } from './_setup';
 
 beforeAll(async () => {
@@ -10,7 +10,7 @@ beforeAll(async () => {
 });
 
 async function createBlock(
-  client: PgClient<DbType.Default>,
+  client: PgClient<DbType.Main>,
   hash: string,
   height: number,
   isLongestChain: boolean,
@@ -26,7 +26,7 @@ async function createBlock(
 }
 
 test('should track longest block', async () => {
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await createBlock(client, 'gen', 0, true);
     await createBlock(client, '1', 1, true, 'gen');
     await createBlock(client, '2', 2, true, '1');
@@ -48,7 +48,7 @@ test('should track longest block', async () => {
     expect(last4[3].blockHash).toEqual(sha3('3'));
   }
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await MainchainBlock.setLongestChain(client, sha3('3a'));
     await createBlock(client, '4a', 4, true, '3a');
   });
@@ -60,7 +60,7 @@ test('should track longest block', async () => {
     expect(last4[2].blockHash).toEqual(sha3('3a'));
     expect(last4[3].blockHash).toEqual(sha3('4a'));
   }
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const longest = await client.list<IMainchainBlockRecord>(
       'select * from mainchain_blocks where is_longest_chain = true',
     );
@@ -69,14 +69,14 @@ test('should track longest block', async () => {
 });
 
 test('should find gaps in the chain', async () => {
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await client.query('truncate mainchain_blocks cascade');
   });
   {
     const missing = await MainchainBlock.getMissingHeights(5, sha3('prev'));
     expect(missing).toEqual([0, 1, 2, 3, 4]);
   }
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await createBlock(client, 'gen', 0, true);
     await createBlock(client, '1', 1, true, 'gen');
   });

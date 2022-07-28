@@ -2,25 +2,21 @@ import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import { NoteType } from '@ulixee/specification';
 import { nanoid } from 'nanoid';
-import Logger from '@ulixee/commons/lib/Logger';
-import BlockManager from '../lib/BlockManager';
-import MicronoteBatchSettle from '../lib/MicronoteBatch.settle';
-import MicronoteBatchManager from '../lib/MicronoteBatchManager';
-import Wallet from '../models/Wallet';
-import MicronoteBatch from '../models/MicronoteBatch';
-import MicronoteBatchOutput from '../models/MicronoteBatchOutput';
-import Note, { INoteRecord } from '../models/Note';
-import db from '../lib/defaultDb';
-import PgPool, { DbType } from '../lib/PgPool';
+import BlockManager from '../main/lib/BlockManager';
+import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
+import Wallet from '../main/models/Wallet';
+import MicronoteBatch from '../main/models/MicronoteBatch';
+import MicronoteBatchOutput from '../main/models/MicronoteBatchOutput';
+import Note, { INoteRecord } from '../main/models/Note';
+import MainDb from '../main/db';
+import PgPool, { DbType } from '../utils/PgPool';
 import { cleanDb, mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
-import { IMicronoteFundsRecord } from '../models/MicronoteFunds';
-import { IMicronoteRecipientsRecord, IMicronoteRecord } from '../models/Micronote';
+import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
+import { IMicronoteRecipientsRecord, IMicronoteRecord } from '../batch/models/Micronote';
+import BatchDb from '../batch/db';
 
-const { log } = Logger(module);
-
-let micronoteBatchDb: PgPool<DbType.Batch>;
+let batchDb: PgPool<DbType.Batch>;
 let batch: MicronoteBatch;
 
 beforeAll(async () => {
@@ -41,9 +37,9 @@ beforeEach(async () => {
   // eslint-disable-next-line jest/no-standalone-expect
   expect(batch).toBeTruthy();
 
-  micronoteBatchDb = await MicronoteBatchDb.get(batch.slug);
+  batchDb = await BatchDb.get(batch.slug);
   // eslint-disable-next-line jest/no-standalone-expect
-  expect(micronoteBatchDb).toBeTruthy();
+  expect(batchDb).toBeTruthy();
 }, 10000);
 
 test('should not allow a micronote batch to submit a close request that would result in a negative balance', async () => {
@@ -74,16 +70,17 @@ test('should not allow a micronote batch to submit a close request that would re
       await createLedgerOutput(wallet, 2);
     }
 
-    await MicronoteBatchSettle.run(batch.address, log);
+    // @ts-expect-error
+    await MicronoteBatchManager.settleBatch(batch.address);
   } catch (err) {
     expect(err.code).toBe('ERR_NSF');
   }
-  await micronoteBatchDb.shutdown();
-  await db.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)}`);
+  await batchDb.shutdown();
+  await MainDb.query(`DROP DATABASE ${BatchDb.getName(batch.slug)}`);
 }, 10000);
 
 test('should allow a micronote batch to close', async () => {
-  const startBalance = await db.transaction(c => Wallet.getBalance(c, batch.data.address));
+  const startBalance = await MainDb.transaction(c => Wallet.getBalance(c, batch.data.address));
   expect(startBalance.toString()).toBe('0');
 
   const batchClient = new Client(batch.credentials.identity);
@@ -106,10 +103,11 @@ test('should allow a micronote batch to close', async () => {
   await createLedgerOutput(wallet3, Math.floor(10e2 * 0.8));
   await createLedgerOutput(wallet4, Math.floor(9e2 * 0.8), 4);
 
-  await MicronoteBatchSettle.run(batch.address, log);
+  // @ts-expect-error
+  await MicronoteBatchManager.settleBatch(batch.address);
 
   // check for output to the micronote batch output key
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const output = await MicronoteBatchOutput.load(client, batch.address);
     expect(output).toBeTruthy();
     expect(output.data.newNotesHash).toBeTruthy();
@@ -141,7 +139,7 @@ const createLedgerOutput = (wallet: Client, centagons, guaranteeBlockHeight = 0)
   record.signature = {} as any;
   record.guaranteeBlockHeight = guaranteeBlockHeight;
 
-  return micronoteBatchDb.transaction(async x => {
+  return batchDb.transaction(async x => {
     // tslint:disable-next-line:no-increment-decrement
     const id = `note${counter++}`;
     await x.insert<IMicronoteRecord>('micronotes', {
@@ -173,5 +171,5 @@ const createWalletMicronoteFunds = (wallet, microgons, allocated) => {
     guaranteeBlockHeight: 0,
   };
 
-  return micronoteBatchDb.transaction(x => x.insert('micronote_funds', record));
+  return batchDb.transaction(x => x.insert('micronote_funds', record));
 };

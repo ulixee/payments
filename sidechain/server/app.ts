@@ -1,28 +1,12 @@
 import Log from '@ulixee/commons/lib/Logger';
 import * as Koa from 'koa';
 import TypeSerializer from '@ulixee/commons/lib/TypeSerializer';
-import WalletGetBalance from './endpoints/Wallet.getBalance';
-import WalletRegister from './endpoints/Wallet.register';
-import FundingTransferKeys from './endpoints/FundingTransfer.keys';
-import FundingTransferOut from './endpoints/FundingTransfer.out';
-import FundingTransferStatus from './endpoints/FundingTransfer.status';
-import MicronoteClaim from './endpoints/Micronote.claim';
-import MicronoteCreate from './endpoints/Micronote.create';
-import MicronoteLock from './endpoints/Micronote.lock';
-import MicronoteBatchFund from './endpoints/MicronoteBatch.fund';
-import MicronoteBatchFindFund from './endpoints/MicronoteBatch.findFund';
-import MicronoteBatchGet from './endpoints/MicronoteBatch.get';
-import MicronoteBatchGetFundSettlement from './endpoints/MicronoteBatch.getFundSettlement';
-import MicroTransactionCreate from './endpoints/Note.create';
-import MicroTransactionGet from './endpoints/Note.get';
-import StakeCreate from './endpoints/Stake.create';
-import StakeRefund from './endpoints/Stake.refund';
-import StakeSettings from './endpoints/Stake.settings';
-import StakeSignature from './endpoints/Stake.signature';
-import ApiRouter from './lib/ApiRouter';
-import db from './lib/defaultDb';
-import MicronoteBatchManager from './lib/MicronoteBatchManager';
-import BlockManager from './lib/BlockManager';
+import ApiRouter from './utils/ApiRouter';
+import MainDb from './main/db';
+import batchEndpoints from './batch/endpoints';
+import mainEndpoints from './main/endpoints';
+import MicronoteBatchManager from './main/lib/MicronoteBatchManager';
+import BlockManager from './main/lib/BlockManager';
 
 const packageJson = require('./package.json');
 
@@ -30,27 +14,8 @@ const { log } = Log(module);
 
 const koa = new Koa();
 
-ApiRouter.registerEndpoints(
-  WalletGetBalance,
-  WalletRegister,
-  MicroTransactionCreate,
-  MicroTransactionGet,
-  StakeCreate,
-  StakeRefund,
-  StakeSettings,
-  StakeSignature,
-  FundingTransferOut,
-  FundingTransferKeys,
-  FundingTransferStatus,
-  MicronoteBatchFund,
-  MicronoteBatchFindFund,
-  MicronoteBatchGet,
-  MicronoteBatchGetFundSettlement,
-  MicronoteClaim,
-  MicronoteLock,
-  MicronoteCreate,
-  // SidechainSnapshotGet,
-);
+ApiRouter.registerEndpoints(...mainEndpoints);
+ApiRouter.registerEndpoints(...batchEndpoints);
 
 /// /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -92,7 +57,7 @@ koa.use(async ctx => {
 /// //   HELPERS           /////////////////////////////////////////////////////////////////////////
 
 async function healthCheck(ctx): Promise<void> {
-  await db.healthCheck();
+  await MainDb.healthCheck();
   ctx.body = 'OK';
   ctx.status = 200;
 }

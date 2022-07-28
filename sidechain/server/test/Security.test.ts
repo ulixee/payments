@@ -3,15 +3,15 @@ import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import TransactionBuilder from '@ulixee/wallet/lib/TransactionBuilder';
 import { LedgerType, NoteType, TransactionType } from '@ulixee/specification';
 import config from '../config';
-import BlockManager from '../lib/BlockManager';
-import Wallet from '../models/Wallet';
-import MainchainBlock from '../models/MainchainBlock';
-import Note from '../models/Note';
-import Security, { ISecurityRecord } from '../models/Security';
-import db from '../lib/defaultDb';
+import BlockManager from '../main/lib/BlockManager';
+import Wallet from '../main/models/Wallet';
+import MainchainBlock from '../main/models/MainchainBlock';
+import Note from '../main/models/Note';
+import Security, { ISecurityRecord } from '../main/models/Security';
+import MainDb from '../main/db';
 import { cleanDb, grantCentagons, mockGenesisTransfer, setupDb, stop } from './_setup';
 import TestClient from './_TestClient';
-import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
+import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 
 let client1: TestClient;
 const sidechainAddress = config.mainchain.addresses[0].bech32;
@@ -31,7 +31,7 @@ beforeAll(async () => {
   };
 
   const address = client1.address;
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const blockHash = sha3('block1');
     await new MainchainBlock(client, {
       height: 0,
@@ -139,7 +139,7 @@ beforeAll(async () => {
 });
 
 test('should error if too many funds are locked up', async () => {
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     try {
       const try1 = await Security.lockUnspentFunds(client, 6n);
       expect(try1).not.toBeTruthy();
@@ -150,7 +150,7 @@ test('should error if too many funds are locked up', async () => {
 });
 
 test('should be able to lock up a complete amount of funding', async () => {
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const unspent = await Security.lockUnspentFunds(client, 4n);
     expect(unspent.outputs).toHaveLength(4);
     expect(unspent.change).toBe(0n);
@@ -158,9 +158,9 @@ test('should be able to lock up a complete amount of funding', async () => {
 });
 
 test('should be able to grab unspent funds concurrently', async () => {
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const unspent = await Security.lockUnspentFunds(client, 4n);
-    await db.transaction(async client2 => {
+    await MainDb.transaction(async client2 => {
       const lockedFunds = await Security.lockUnspentFunds(client2, 1n);
       expect(lockedFunds.outputs).toHaveLength(1);
       expect(
@@ -182,7 +182,7 @@ test('should create proper unspent outputs when some money is returned to users'
 
   let startMainchainFundRecords = 0;
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const { count } = await client.queryOne('select count(*) as count from securities');
     startMainchainFundRecords = Number(count);
     const unspent = await Security.lockUnspentFunds(client, 4);
@@ -230,12 +230,12 @@ test('should create proper unspent outputs when some money is returned to users'
     );
   });
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const balance = await Wallet.getBalance(client, clientAddress);
     expect(balance).toBe(1n);
   });
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const mainchainSecurities = await client.list<ISecurityRecord>('select * from securities');
     expect(mainchainSecurities).toHaveLength(startMainchainFundRecords + 1);
 
@@ -250,7 +250,7 @@ test('should record blocks where securities are found', async () => {
   await mockGenesisTransfer();
 
   const transactionHash = sha3('tx1');
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     function createBlock(
       hash: string,
       height: number,
@@ -303,7 +303,7 @@ test('should record blocks where securities are found', async () => {
     }).save();
   });
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const securities = await client.list<ISecurityRecord>('select * from securities');
     expect(securities).toHaveLength(1);
 

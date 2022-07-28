@@ -3,14 +3,14 @@ import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import MainchainClient from '@ulixee/mainchain-client';
 import { IBlock, TransactionType } from '@ulixee/specification';
 import config from '../config';
-import BlockManager from '../lib/BlockManager';
-import Security, { ISecurityRecord } from '../models/Security';
-import db from '../lib/defaultDb';
+import BlockManager from '../main/lib/BlockManager';
+import Security, { ISecurityRecord } from '../main/models/Security';
+import MainDb from '../main/db';
 import { setupDb, stop } from './_setup';
 import TestClient from './_TestClient';
-import { INoteRecord } from '../models/Note';
-import { IMainchainBlockRecord } from '../models/MainchainBlock';
-import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
+import { INoteRecord } from '../main/models/Note';
+import { IMainchainBlockRecord } from '../main/models/MainchainBlock';
+import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 
 const mainchainAddress = config.mainchain.addresses[0].bech32;
 let userClient: TestClient;
@@ -39,7 +39,7 @@ test.skip('should synchronize with the mainchain on bootup', async () => {
   expect(genesis.height).toBe(0);
   expect(genesis.isLongestChain).toBe(true);
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const transactions = await client.list<INoteRecord>('select * from notes');
     expect(transactions).toHaveLength(10);
     expect(
@@ -62,7 +62,7 @@ test('should keep the last 4 blocks in memory', async () => {
   await BlockManager.stop();
   const settingsSpy = jest.spyOn(MainchainClient.prototype, 'getBlockSettings');
   const blocksSpy = jest.spyOn(MainchainClient.prototype, 'getBlocks');
-  await db.transaction(client => {
+  await MainDb.transaction(client => {
     return client.batchInsert<IMainchainBlockRecord>('mainchain_blocks', [
       {
         height: 0,
@@ -167,7 +167,7 @@ describe('block sync', () => {
     const transferHash = sha3('should store a transfer hash');
 
     // 1. establish securities
-    await db.transaction(async client => {
+    await MainDb.transaction(async client => {
       // await client.update('TRUNCATE securities, notes CASCADE');
 
       await new Security(client, {
@@ -317,7 +317,7 @@ describe('block sync', () => {
       } as unknown as { blocks: IBlock[] };
     });
 
-    await db.transaction(async client => {
+    await MainDb.transaction(async client => {
       await BlockManager.start();
       const transfersIn = await client.list<ISecurityRecord>(
         'select * from securities where from_address = $1',
@@ -412,7 +412,7 @@ describe('block sync', () => {
       } as Required<{ blocks: IBlock[] }>;
     });
 
-    await db.transaction(async client => {
+    await MainDb.transaction(async client => {
       await BlockManager.start();
       expect(settingsSpy).toBeCalled();
       const blocks = await client.list(

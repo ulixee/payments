@@ -1,11 +1,11 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { ITransaction, NoteType } from '@ulixee/specification';
 import config from '../config';
-import buildTransactionTransferOut from '../lib/buildTransactionTransferOut';
-import MainchainBlock from '../models/MainchainBlock';
-import Note from '../models/Note';
-import Security from '../models/Security';
-import db from '../lib/defaultDb';
+import buildTransactionTransferOut from '../main/lib/buildTransactionTransferOut';
+import MainchainBlock from '../main/models/MainchainBlock';
+import Note from '../main/models/Note';
+import Security from '../main/models/Security';
+import MainDb from '../main/db';
 import { setupDb, stop } from './_setup';
 import TestClient from './_TestClient';
 
@@ -23,7 +23,7 @@ beforeAll(async () => {
 
 test('should spend outputs on "transfer out"', async () => {
   const existingTxHash = sha3('should store an outbound hash');
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await new MainchainBlock(client, {
       blockHash: sha3('6'),
       isLongestChain: true,
@@ -74,7 +74,7 @@ test('should spend outputs on "transfer out"', async () => {
   });
 
   let transaction: ITransaction;
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const data1 = Note.addSignature(
       {
         fromAddress: mainchainAddress,
@@ -117,7 +117,7 @@ test('should spend outputs on "transfer out"', async () => {
   });
 
   // 3. check that old transactions were "spent"
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const mainchainSecurities = await Security.find(
       client,
       transaction.transactionHash,

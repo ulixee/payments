@@ -5,11 +5,11 @@ import { IAddressSignature, INote, NoteType } from '@ulixee/specification';
 import Address from '@ulixee/crypto/lib/Address';
 import { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import config from '../config';
-import MainchainBlock from '../models/MainchainBlock';
-import Security from '../models/Security';
-import db from '../lib/defaultDb';
+import MainchainBlock from '../main/models/MainchainBlock';
+import Security from '../main/models/Security';
+import MainDb from '../main/db';
 import { serverPort } from './_TestServer';
-import { INoteRecord } from '../models/Note';
+import { INoteRecord } from '../main/models/Note';
 
 export default class TestClient extends SidechainClient {
   public get internalCredentials(): {
@@ -28,7 +28,7 @@ export default class TestClient extends SidechainClient {
   }
 
   public async isRegistered() {
-    return db.transaction(async client => {
+    return MainDb.transaction(async client => {
       const { rows } = await client.query('SELECT 1 from wallets WHERE address = $1 LIMIT 1', [
         this.address,
       ]);
@@ -65,7 +65,7 @@ export default class TestClient extends SidechainClient {
 
   public async grantCentagons(centagons: bigint | number, guaranteeBlockHeight = 0) {
     centagons = BigInt(centagons);
-    return await db.transaction(async client => {
+    return await MainDb.transaction(async client => {
       const transactionParams: Partial<INoteRecord> = {
         centagons: centagons as bigint,
         fromAddress: config.mainchain.addresses[0].bech32,

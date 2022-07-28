@@ -3,12 +3,12 @@ import { NoteType } from '@ulixee/specification';
 import * as Postgrator from 'postgrator';
 import * as pg from 'pg';
 import config from '../config';
-import { NotFoundError } from '../lib/errors';
-import MicronoteBatchManager from '../lib/MicronoteBatchManager';
-import Note from '../models/Note';
-import db from '../lib/defaultDb';
+import { NotFoundError } from '../utils/errors';
+import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
+import Note from '../main/models/Note';
+import MainDb from '../main/db';
 import * as TestServer from './_TestServer';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
+import MicronoteBatchDb from '../batch/db';
 
 const sidechainAddressCredentials = config.mainchain.addresses[0];
 const sidechainAddress = sidechainAddressCredentials.bech32;
@@ -25,7 +25,7 @@ export async function setupDb() {
     const migrator = new Postgrator({
       ...config.db,
       // or a glob pattern to files
-      migrationPattern: `${__dirname}/../db-migrations-default/*.sql`,
+      migrationPattern: `${__dirname}/../main/migrations/*.sql`,
       // Driver: must be pg, mysql, or mssql
       driver: 'pg',
       schemaTable: 'migrations',
@@ -35,7 +35,7 @@ export async function setupDb() {
     await migrator.migrate();
     await migrationClient.end();
 
-    await db.transaction(async client => {
+    await MainDb.transaction(async client => {
       await client.insert('wallets', { address: sidechainAddress });
     });
 
@@ -49,11 +49,11 @@ export async function setupDb() {
 
 export async function cleanDb() {
   try {
+    // @ts-expect-error
+    await MicronoteBatchManager.openBatchesBySlug.clear();
     // @ts-ignore
-    await MicronoteBatchManager.openBatches.clear();
-    // @ts-ignore
-    await MicronoteBatchManager.batchesPendingSettlement.clear();
-    await db.transaction(async client => {
+    await MicronoteBatchManager.pendingSettlementBatchesBySlug.clear();
+    await MainDb.transaction(async client => {
       await client.query(
         'TRUNCATE wallets, notes, micronote_batch_outputs, micronote_batches, mainchain_blocks, securities, stakes, stake_history, security_mainchain_blocks, funding_transfers_out, mainchain_transactions CASCADE',
       );
@@ -67,7 +67,7 @@ export async function cleanDb() {
 }
 
 export async function mockGenesisTransfer() {
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const note = Note.addSignature(
       {
         fromAddress: nullAddress,
@@ -84,7 +84,7 @@ export async function mockGenesisTransfer() {
 }
 
 export async function grantCentagons(centagons: number | bigint, toAddress: string) {
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const data = Note.addSignature(
       {
         toAddress,
@@ -105,13 +105,13 @@ export async function stop() {
     await MicronoteBatchManager.stop();
     const pool = await MicronoteBatchDb.get(batch.slug);
     await pool.shutdown();
-    await db.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
+    await MainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
   } catch (err) {
     if (!(err instanceof NotFoundError)) {
       logger.info('ERROR stopping service', err);
     }
   }
-  await db.shutdown();
+  await MainDb.shutdown();
   await queryWithRootDb(`DROP DATABASE ${config.db.database} WITH (FORCE);`);
   await TestServer.close();
 }

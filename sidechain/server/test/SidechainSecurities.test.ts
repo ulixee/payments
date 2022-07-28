@@ -2,22 +2,22 @@ import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import { NoteType } from '@ulixee/specification';
 import config from '../config';
-import FundingTransferOutApi from '../endpoints/FundingTransfer.out';
-import BlockManager from '../lib/BlockManager';
-import SidechainSecurities from '../lib/SidechainSecurities';
-import Wallet from '../models/Wallet';
-import FundingTransferOut from '../models/FundingTransferOut';
-import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
-import MicronoteBatch from '../models/MicronoteBatch';
-import MicronoteBatchOutput from '../models/MicronoteBatchOutput';
-import Note from '../models/Note';
-import Security, { ISecurityRecord } from '../models/Security';
-import db from '../lib/defaultDb';
-import PgClient from '../lib/PgClient';
-import { DbType } from '../lib/PgPool';
+import FundingTransferOutApi from '../main/endpoints/FundingTransfer.out';
+import BlockManager from '../main/lib/BlockManager';
+import SidechainSecurities from '../main/lib/SidechainSecurities';
+import Wallet from '../main/models/Wallet';
+import FundingTransferOut from '../main/models/FundingTransferOut';
+import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
+import MicronoteBatch from '../main/models/MicronoteBatch';
+import MicronoteBatchOutput from '../main/models/MicronoteBatchOutput';
+import Note from '../main/models/Note';
+import Security, { ISecurityRecord } from '../main/models/Security';
+import MainDb from '../main/db';
+import PgClient from '../utils/PgClient';
+import { DbType } from '../utils/PgPool';
 import { setupDb, stop } from './_setup';
 import TestClient from './_TestClient';
-import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
+import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 
 let client1: TestClient;
 let client2: TestClient;
@@ -26,7 +26,7 @@ const sidechainAddress = config.mainchain.addresses[0].bech32;
 config.mainchain.fundingHoldBlocks = 2;
 
 async function createBlock(
-  client: PgClient<DbType.Default>,
+  client: PgClient<DbType.Main>,
   hash: string,
   height: number,
   isLongestChain: boolean,
@@ -41,7 +41,7 @@ async function createBlock(
   }).save();
 }
 
-async function getBlock(client: PgClient<DbType.Default>, hash: string) {
+async function getBlock(client: PgClient<DbType.Main>, hash: string) {
   return await client.queryOne<IMainchainBlockRecord>(
     'select * from mainchain_blocks where block_hash=$1',
     [sha3(hash)],
@@ -53,7 +53,7 @@ beforeAll(async () => {
   client1 = new TestClient();
   client2 = new TestClient();
   foundingMiner = new TestClient();
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await createBlock(client, 'gen', 0, true);
     await createBlock(client, '1', 1, true, 'gen');
     await createBlock(client, '2', 2, true, '1');
@@ -90,7 +90,7 @@ test('should create balanced funds for each chain', async () => {
   let block3a;
   let block3;
   // create funds
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await new Security(client, {
       transactionHash: sha3('tx1'),
       transactionOutputIndex: 0,
@@ -203,7 +203,7 @@ test('should create balanced funds for each chain', async () => {
 
 test('should handle burn transactions across forks', async () => {
   let micronoteBatch: MicronoteBatchOutput;
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     // now burn a batch on one chain
 
     const block4 = await createBlock(client, '4', 4, false, '3');
@@ -289,7 +289,7 @@ test('should handle burn transactions across forks', async () => {
     });
   });
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const block4a = await createBlock(client, '4a', 4, false, '3a');
     const sidechainSecurities = new SidechainSecurities(client, block4a.data);
     const result = await sidechainSecurities.createBlockOutput();
@@ -324,7 +324,7 @@ test('should handle transfers "out" across forks', async () => {
     } as unknown as IBlockSettings),
   };
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     await createBlock(client, '5', 5, true, '4');
     const wallet2Balance = await Wallet.getBalance(client, client2.address);
     expect(wallet2Balance).toBe(0n);
@@ -345,7 +345,7 @@ test('should handle transfers "out" across forks', async () => {
     await Security.recordConfirmedSecurities(client, 5);
   });
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     expect(await Wallet.getBalance(client, client2.address)).toBe(200n);
   });
 
@@ -366,7 +366,7 @@ test('should handle transfers "out" across forks', async () => {
     address: 'mrrobot',
   } as any);
 
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const block5a = await createBlock(client, '5a', 5, false, '4a');
     const sidechainSecurities = new SidechainSecurities(client, block5a.data);
     const result = await sidechainSecurities.createBlockOutput();
@@ -413,7 +413,7 @@ test('should handle transfers "out" across forks', async () => {
   });
 
   // now try on block 5, where the burn has already occurred
-  await db.transaction(async client => {
+  await MainDb.transaction(async client => {
     const block5 = await getBlock(client, '5');
     const sidechainSecurities = new SidechainSecurities(client, block5);
     const result = await sidechainSecurities.createBlockOutput();

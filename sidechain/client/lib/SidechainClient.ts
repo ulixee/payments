@@ -116,12 +116,12 @@ export default class SidechainClient implements IPaymentProvider {
   }
 
   public async getFundSettlement(
-    batchAddress: string,
+    batchSlug: string,
     fundIds: number[],
   ): Promise<ISidechainApiTypes['MicronoteBatch.getFundSettlement']['result']> {
     return await this.runRemote('MicronoteBatch.getFundSettlement', {
       fundIds,
-      batchAddress,
+      batchSlug,
     });
   }
 

@@ -4,10 +4,10 @@ import { createTerminus, HealthCheckError } from '@godaddy/terminus';
 import * as http from 'http';
 import config from './config';
 import app from './app';
-import MicronoteBatchManager from './lib/MicronoteBatchManager';
-import BlockManager from './lib/BlockManager';
-import db from './lib/defaultDb';
-// must come before initialization of things like protos
+import MicronoteBatchManager from './main/lib/MicronoteBatchManager';
+import BlockManager from './main/lib/BlockManager';
+import MainDb from './main/db';
+
 const { log } = Log(module);
 
 log.info('STARTING SERVER');
@@ -21,20 +21,19 @@ const server = createTerminus(http.createServer(app), {
   },
   signals: ['SIGINT', 'SIGTERM', 'exit', 'SIGQUIT'],
   healthChecks: {
-    db: async () => {
+    async db() {
       try {
-        await db.healthCheck();
+        await MainDb.healthCheck();
       } catch (err) {
         throw new HealthCheckError('Health check failed', [err.toString()]);
       }
     },
   },
-  onSignal: async () => {
-    // eslint-disable-next-line no-console
-    console.debug('SERVER EVENT: server is starting cleanup');
+  async onSignal() {
+    log.info('SERVER EVENT: server is starting cleanup');
     await MicronoteBatchManager.stop();
     await BlockManager.stop();
-    return await db.shutdown();
+    return await MainDb.shutdown();
   },
 });
 

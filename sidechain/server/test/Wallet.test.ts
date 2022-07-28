@@ -1,5 +1,5 @@
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
-import BlockManager from '../lib/BlockManager';
+import BlockManager from '../main/lib/BlockManager';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
 

@@ -1,14 +1,14 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import MainchainClient from '@ulixee/mainchain-client';
-import BlockManager from '../lib/BlockManager';
-import SidechainSecurities from '../lib/SidechainSecurities';
-import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
-import MainchainTransaction from '../models/MainchainTransaction';
-import db from '../lib/defaultDb';
+import BlockManager from '../main/lib/BlockManager';
+import SidechainSecurities from '../main/lib/SidechainSecurities';
+import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
+import MainchainTransaction from '../main/models/MainchainTransaction';
+import MainDb from '../main/db';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
-import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
+import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 
 let client: Client;
 beforeAll(async () => {
@@ -61,7 +61,7 @@ test('should be able to get the status of a transfer', async () => {
   expect(status1.blocks).toHaveLength(0);
   expect(status1.currentBlockHeight).toBeGreaterThan(4);
 
-  await db.transaction(async dbclient => {
+  await MainDb.transaction(async dbclient => {
     const sidechainSecurities = new SidechainSecurities(dbclient, {
       blockHash: Buffer.from('solved'),
       height: 23,
@@ -98,7 +98,7 @@ test('should be able to get the status of a transfer', async () => {
   expect(status2.blocks[0].blockHeight).toBe(23);
   expect(status2.transactionHash).toBeTruthy();
 
-  await db.transaction(async dbclient => {
+  await MainDb.transaction(async dbclient => {
     const tx = await MainchainTransaction.getTransaction(dbclient, status2.transactionHash);
     expect(tx.transactionHash).toEqual(status2.transactionHash);
     expect(tx.outputs.find(x => x.centagons === 10n)).toBeTruthy();

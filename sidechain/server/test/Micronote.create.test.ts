@@ -1,13 +1,13 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
-import BlockManager from '../lib/BlockManager';
-import MicronoteBatchManager from '../lib/MicronoteBatchManager';
-import MicronoteBatch from '../models/MicronoteBatch';
-import PgPool, { DbType } from '../lib/PgPool';
+import BlockManager from '../main/lib/BlockManager';
+import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
+import MicronoteBatch from '../main/models/MicronoteBatch';
+import PgPool, { DbType } from '../utils/PgPool';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
+import MicronoteBatchDb from '../batch/db';
 import config from '../config';
 
 let micronoteBatchDb: PgPool<DbType.Batch>;

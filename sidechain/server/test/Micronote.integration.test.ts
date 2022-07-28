@@ -1,14 +1,14 @@
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import config from '../config';
-import BlockManager from '../lib/BlockManager';
-import MicronoteBatchManager from '../lib/MicronoteBatchManager';
-import Micronote from '../models/Micronote';
-import MicronoteBatch from '../models/MicronoteBatch';
-import PgPool, { DbType } from '../lib/PgPool';
+import BlockManager from '../main/lib/BlockManager';
+import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
+import Micronote from '../batch/models/Micronote';
+import MicronoteBatch from '../main/models/MicronoteBatch';
+import PgPool, { DbType } from '../utils/PgPool';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import Client from './_TestClient';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
-import { IMicronoteFundsRecord } from '../models/MicronoteFunds';
+import MicronoteBatchDb from '../batch/db';
+import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
 
 let micronoteBatchDb: PgPool<DbType.Batch>;
 let micronoteBatch: MicronoteBatch;

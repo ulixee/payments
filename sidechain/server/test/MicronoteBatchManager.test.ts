@@ -2,10 +2,10 @@ import * as moment from 'moment';
 import Address from '@ulixee/crypto/lib/Address';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
-import MicronoteBatchManager from '../lib/MicronoteBatchManager';
-import MicronoteBatch from '../models/MicronoteBatch';
-import MicronoteBatchDb from '../lib/MicronoteBatchDb';
-import defaultDb from '../lib/defaultDb';
+import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
+import MicronoteBatch from '../main/models/MicronoteBatch';
+import MicronoteBatchDb from '../batch/db';
+import mainDb from '../main/db';
 
 beforeAll(async () => {
   await setupDb();
@@ -19,20 +19,20 @@ test('should create a micronoteBatch db if none exists', async () => {
   expect(batch).toBeTruthy();
 
   // @ts-ignore
-  expect(MicronoteBatchManager.openBatches.get(batch.slug)).toBeTruthy();
+  expect(MicronoteBatchManager.openBatchesBySlug.get(batch.slug)).toBeTruthy();
 
   const pool = await MicronoteBatchDb.get(batch.slug);
   await pool.shutdown();
-  await defaultDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)}`);
+  await mainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)}`);
 });
 
 test('should return the micronoteBatch with the most time left', async () => {
   // @ts-ignore
-  MicronoteBatchManager.openBatches.clear();
+  MicronoteBatchManager.openBatchesBySlug.clear();
   // @ts-ignore
-  MicronoteBatchManager.batchesPendingSettlement.clear();
+  MicronoteBatchManager.pendingSettlementBatchesBySlug.clear();
   const identity = Identity.createSync();
-  await defaultDb.transaction(async client => {
+  await mainDb.transaction(async client => {
     // @ts-ignore
     MicronoteBatchManager.updateCached(
       new MicronoteBatch(
@@ -57,7 +57,7 @@ test('should return the micronoteBatch with the most time left', async () => {
   expect(retrieved.slug).toBe('1010');
 
   // @ts-ignore
-  MicronoteBatchManager.openBatches.clear();
+  MicronoteBatchManager.openBatchesBySlug.clear();
 
   try {
     retrieved = await MicronoteBatchManager.get();
@@ -70,7 +70,7 @@ test('should return the micronoteBatch with the most time left', async () => {
   newBatchesNeeded = MicronoteBatchManager.countNewBatchesNeeded();
   expect(newBatchesNeeded).toBe(1);
 
-  await defaultDb.transaction(async client => {
+  await mainDb.transaction(async client => {
     // @ts-ignore
     MicronoteBatchManager.updateCached(
       new MicronoteBatch(
@@ -90,7 +90,7 @@ test('should return the micronoteBatch with the most time left', async () => {
   retrieved = await MicronoteBatchManager.get();
   expect(retrieved.slug).toBe('1011');
 
-  await defaultDb.transaction(async client => {
+  await mainDb.transaction(async client => {
     // @ts-ignore
     MicronoteBatchManager.updateCached(
       new MicronoteBatch(

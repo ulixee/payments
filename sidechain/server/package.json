@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.ts",
-    "migrate": "node db-migrations-default/migrate.js",
+    "migrate": "node main/migrations/migrate.js",
     "start": "nodemon ../../build/sidechain/server/index.js",
     "test": "NODE_ENV=test jest"
   },

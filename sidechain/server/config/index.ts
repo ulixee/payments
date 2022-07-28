@@ -5,7 +5,7 @@ import * as Path from 'path';
 import { PoolConfig } from 'pg';
 import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import config = require('config');
-import { InvalidParameterError } from '../lib/errors';
+import { InvalidParameterError } from '../utils/errors';
 import * as vars from './custom-environment-variables';
 import * as defaultConfig from './default';
 
