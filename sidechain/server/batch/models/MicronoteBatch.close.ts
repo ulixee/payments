@@ -1,7 +1,7 @@
 import { INote, NoteType } from '@ulixee/specification';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import Address from '@ulixee/crypto/lib/Address';
-import addNoteSignature from '@ulixee/sidechain-client/lib/addNoteSignature';
+import addNoteSignature from '@ulixee/sidechain/lib/addNoteSignature';
 import config from '../../config';
 import MicronoteFunds from './MicronoteFunds';
 import PgClient from '../../utils/PgClient';
@@ -253,7 +253,7 @@ export default class MicronoteBatchClose {
     const batchNoteHashes = this.noteHashes ?? [];
 
     this.logger.info(
-      'Orphaned transactions exist.  Searching through all hashes associated with this public key',
+      'Orphaned transactions exist. Searching through all hashes associated with this public key',
       { hashes: batchNoteHashes.length, sessionId: null },
     );
 
@@ -279,7 +279,7 @@ export default class MicronoteBatchClose {
     const promises = this.missingHashes.map(async hash => {
       const note = await bridgeToMain.getNote(hash, this.logger);
       await MicronoteFunds.createFromNote(this.client, note);
-      // blow up on purpose if we can't get the note back.  Something is wrong
+      // blow up on purpose if we can't get the note back. Something is wrong
     });
 
     await Promise.all(promises);

@@ -175,7 +175,7 @@ export default class Wallet {
   }
 
   /**
-   * Claim a bond.  Will auto-calculate the discount price from the provided header
+   * Claim a bond. Will auto-calculate the discount price from the provided header
    */
   public async purchaseBonds(
     stableCentagonsToConvert: number | bigint,

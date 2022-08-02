@@ -9,7 +9,7 @@ import ApiHandler from '../../utils/ApiHandler';
 export default new ApiHandler('Stake.refund', {
   async handler(payload, options) {
     const { address, signature, stakedIdentity } = payload;
-    await this.validateAddressSignature(address, payload, signature);
+    this.validateAddressSignature(address, payload, signature);
 
     return await MainDb.transaction(async client => {
       const stake = await Stake.lock(client, stakedIdentity);

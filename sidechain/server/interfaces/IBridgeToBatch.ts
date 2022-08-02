@@ -1,13 +1,13 @@
 import { Duplex } from 'stream';
 import { IMicronoteBatchOutputRecord } from '../main/models/MicronoteBatchOutput';
-import { IHandlerOptions } from '../utils/ApiHandler';
+import { ITransactionOptions } from '../utils/PgPool';
 
 export default interface IBridgeToBatch {
   closeBatch(
     batchSlug: string,
     batchBalance: bigint,
     noteHashes: Buffer[],
-    opts: IHandlerOptions,
+    opts: ITransactionOptions,
   ): Promise<void>;
   getBatchSummary(batchSlug: string): Promise<IMicronoteBatchOutputRecord>;
   getBatchOutputStream(

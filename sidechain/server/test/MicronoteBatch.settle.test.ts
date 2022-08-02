@@ -4,7 +4,7 @@ import { NoteType } from '@ulixee/specification';
 import { nanoid } from 'nanoid';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
-import Wallet from '../main/models/Wallet';
+import RegisteredAddress from '../main/models/RegisteredAddress';
 import MicronoteBatch from '../main/models/MicronoteBatch';
 import MicronoteBatchOutput from '../main/models/MicronoteBatchOutput';
 import Note, { INoteRecord } from '../main/models/Note';
@@ -80,7 +80,7 @@ test('should not allow a micronote batch to submit a close request that would re
 }, 10000);
 
 test('should allow a micronote batch to close', async () => {
-  const startBalance = await MainDb.transaction(c => Wallet.getBalance(c, batch.data.address));
+  const startBalance = await MainDb.transaction(c => RegisteredAddress.getBalance(c, batch.data.address));
   expect(startBalance.toString()).toBe('0');
 
   const batchClient = new Client(batch.credentials.identity);

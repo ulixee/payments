@@ -15,7 +15,7 @@ export default new ApiHandler('MicronoteBatch.getFundSettlement', {
 
     // need a new tx against the target db
     const funds = await batchDb.transaction(
-      batchClient => MicronoteFunds.find(batchClient, fundIds),
+      batchClient => MicronoteFunds.findWithIds(batchClient, fundIds),
       options,
     );
     return {

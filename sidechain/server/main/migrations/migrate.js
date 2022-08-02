@@ -22,4 +22,5 @@ const postgrator = new Postgrator({
   const applied = await postgrator.migrate();
   // eslint-disable-next-line no-console
   console.log('Completed', applied);
+  await client.release();
 })().catch(console.error);

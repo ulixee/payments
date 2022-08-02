@@ -14,7 +14,8 @@ export default new ApiHandler('MicronoteBatch.findFund', {
     const batchDb = BatchDb.get(batchSlug);
     return await batchDb.transaction(async client => {
       const funds = new MicronoteFunds(client, batch.address, address);
-      return await funds.find(microgons as number);
+
+      return await funds.find(microgons);
     }, options);
   },
 });

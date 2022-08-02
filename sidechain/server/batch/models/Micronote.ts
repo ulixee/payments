@@ -1,12 +1,11 @@
-import { randomBytes } from 'crypto';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer, encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
+import { nanoid } from 'nanoid';
 import config from '../../config';
 import { ConflictError, InvalidParameterError } from '../../utils/errors';
 import PgClient from '../../utils/PgClient';
 import { DbType } from '../../utils/PgPool';
 import MicronoteFunds from './MicronoteFunds';
-import { bridgeToMain } from '../index';
 
 export default class Micronote {
   public static encodingPrefix = 'mcr';
@@ -16,7 +15,7 @@ export default class Micronote {
     return this.data.microgonsAllocated - config.micronoteBatch.settlementFeeMicrogons;
   }
 
-  private data: IMicronoteRecord;
+  public data: IMicronoteRecord;
 
   constructor(
     readonly client: PgClient<DbType.Batch>,
@@ -57,13 +56,16 @@ export default class Micronote {
   }
 
   public async lockForIdentity(identity: string): Promise<boolean> {
-    const { lockedByIdentity } = await this.client.queryOne(
-      'SELECT locked_by_identity FROM micronotes where id=$1 FOR UPDATE LIMIT 1',
+    const { lockedByIdentity, fundsId } = await this.client.queryOne(
+      'SELECT locked_by_identity, funds_id FROM micronotes where id=$1 FOR UPDATE LIMIT 1',
       [this.id],
     );
     if (lockedByIdentity && identity !== lockedByIdentity) {
       throw new ConflictError('Micronote has already been locked by another Identity');
     }
+
+    this.data ??= {} as any;
+    this.data.fundsId = fundsId;
     return await this.client.update(
       'update micronotes set locked_by_identity = $1, locked_time = NOW() where id = $2',
       [identity, this.id],
@@ -74,16 +76,16 @@ export default class Micronote {
     batchAddress: string,
     fundsId: number,
     microgonsAllocated: number,
+    blockHeight: number,
     isAuditable?: boolean,
   ): Promise<IMicronoteRecord> {
-    const nonce = randomBytes(16);
-    const blockHeight = (await bridgeToMain.currentBlock()).height;
+    const nonce = nanoid(16);
     const time = new Date();
     const hash = sha3(concatAsBuffer(blockHeight, nonce, batchAddress, time.toISOString()));
 
     const id = encodeBuffer(hash, Micronote.encodingPrefix);
 
-    return this.client.insert<IMicronoteRecord>('micronotes', {
+    return await this.client.insert<IMicronoteRecord>('micronotes', {
       id,
       clientAddress: this.address,
       blockHeight,
@@ -126,7 +128,7 @@ export default class Micronote {
         'tokenAllocation',
         {
           existingAllocated,
-          microgonsAllocated: this.microgonsAllowed.toString(),
+          microgonsAllocated: this.microgonsAllowed,
           proposedTokenPayout: totalTokens,
         },
       );
@@ -134,7 +136,7 @@ export default class Micronote {
   }
 
   /**
-   * Record microgons allocated to all parties.  Must sum to less than microgons allocated
+   * Record microgons allocated to all parties. Must sum to less than microgons allocated
    * minus processor fee
    * @param tokenAllocation - map of public key to microgons
    */

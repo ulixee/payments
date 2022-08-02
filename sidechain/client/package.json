@@ -1,8 +1,9 @@
 {
-  "name": "@ulixee/sidechain-client",
+  "name": "@ulixee/sidechain",
   "version": "2.0.0-alpha.8",
   "description": "",
   "license": "MIT",
+  "bin": "./bin/cli.js",
   "exports": {
     ".": {
       "import": "./index.mjs",
@@ -11,12 +12,11 @@
     "./lib/*": "./lib/*.js"
   },
   "dependencies": {
+    "commander": "^9.4.0",
     "@ulixee/commons": "2.0.0-alpha.8",
     "@ulixee/crypto": "2.0.0-alpha.8",
     "@ulixee/net": "2.0.0-alpha.8",
     "@ulixee/specification": "2.0.0-alpha.8"
   },
-  "devDependencies": {
-    "@ulixee/sidechain": "2.0.0-alpha.8"
-  }
+  "devDependencies": {}
 }

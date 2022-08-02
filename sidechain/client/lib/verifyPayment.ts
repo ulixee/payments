@@ -1,15 +1,13 @@
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import { IPayment } from '@ulixee/specification';
-import { UnapprovedSidechainError } from '@ulixee/commons/lib/errors';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
-import IAuthorizedSidechain from '@ulixee/specification/types/IAuthorizedSidechain';
-import { InvalidPaymentBlockHeightError } from './errors';
+import { InvalidPaymentBlockHeightError, UnapprovedSidechainError } from './errors';
 
 export default function verifyPayment(
-  approvedSidechains: IAuthorizedSidechain[],
   payment: IPayment,
+  approvedSidechainIdentities: Set<string>,
   currentBlockHeight: number,
 ): void {
   const {
@@ -26,7 +24,7 @@ export default function verifyPayment(
     throw new InvalidPaymentBlockHeightError(currentBlockHeight, blockHeight);
   }
 
-  if (!approvedSidechains.find(x => x.rootIdentity === sidechainIdentity)) {
+  if (!approvedSidechainIdentities.has(sidechainIdentity)) {
     throw new UnapprovedSidechainError();
   }
 

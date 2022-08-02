@@ -59,13 +59,13 @@ test('should handle an end to end note', async () => {
         'select * from micronote_funds where id=$1',
         [fundsId],
       );
-      expect(funding.microgons).toBe(200e3 * client.batchFundingQueriesToPreload);
+      expect(funding.microgons).toBe(200e3 * client.micronoteBatchFunding.queryFundingToPreload);
       expect(funding.microgonsAllocated).toBe(200e3);
     });
   }
 
   {
-    await coordinator.runSignedAsNode('Micronote.lock', {
+    await coordinator.runSignedByIdentity('Micronote.lock', {
       id,
       batchSlug: micronoteBatch.slug,
       identity: coordinator.identity,
@@ -73,7 +73,7 @@ test('should handle an end to end note', async () => {
     // should not allow a router to exceed the available microgons allocated for the note during
     // completion
     try {
-      const res = await coordinator.runSignedAsNode('Micronote.claim', {
+      const res = await coordinator.runSignedByIdentity('Micronote.claim', {
         id,
         batchSlug: micronoteBatch.slug,
         identity: coordinator.identity,
@@ -89,7 +89,7 @@ test('should handle an end to end note', async () => {
     }
 
     // should allow a coordinating bit to claim the note
-    const noteClaimeRes = await coordinator.runSignedAsNode('Micronote.claim', {
+    const noteClaimeRes = await coordinator.runSignedByIdentity('Micronote.claim', {
       id,
       batchSlug: micronoteBatch.slug,
       identity: coordinator.identity,
@@ -135,7 +135,7 @@ test('should handle an end to end note', async () => {
       const miningBit3Part = noteRecipients.find(x => x.address === miningBit3.address);
       expect(miningBit3Part).not.toBeTruthy();
 
-      expect(funding.microgons).toBe(200e3 * client.batchFundingQueriesToPreload);
+      expect(funding.microgons).toBe(200e3 * client.micronoteBatchFunding.queryFundingToPreload);
       const microgonsUsed = 60e3 + config.micronoteBatch.settlementFeeMicrogons;
       expect(funding.microgonsAllocated).toBe(microgonsUsed);
     });

@@ -9,6 +9,7 @@ import {
 } from '../../utils/errors';
 import PgClient from '../../utils/PgClient';
 import { DbType } from '../../utils/PgPool';
+import { ICreditRecord } from './Credit';
 
 const minFunding = config.micronoteBatch.minimumFundingCentagons;
 
@@ -40,7 +41,7 @@ export default class MicronoteFunds {
       [this.clientAddress],
     );
     if (!rows.length) {
-      throw new NotFoundError('The wallet provided could not found', this.clientAddress);
+      throw new NotFoundError('The address provided could not found', this.clientAddress);
     }
   }
 
@@ -61,7 +62,7 @@ export default class MicronoteFunds {
         Math.max(Number(minFunding), Math.ceil(microgons / 10e3)),
       );
     }
-    const record = await this.client.queryOne<{
+    return await this.client.queryOne<{
       guaranteeBlockHeight: number;
       microgonsRemaining: number;
     }>(
@@ -71,7 +72,6 @@ export default class MicronoteFunds {
       from micronote_funds where id=$1`,
       [fundsId],
     );
-    return record;
   }
 
   public async returnHoldTokens(fundsId: number, microgons: number): Promise<boolean> {
@@ -87,30 +87,36 @@ export default class MicronoteFunds {
     return true;
   }
 
-  public async find(microgons: number): Promise<{ microgonsRemaining: number; fundsId: number }> {
+  public async find(microgons: number): Promise<{
+    microgonsRemaining: number;
+    fundsId: number;
+    allowedRecipientAddresses?: string[];
+  }> {
     const params = [this.clientAddress, microgons];
-    const { rows } = await this.client.query<{ id: number; microgonsRemaining: number }>(
-      `SELECT id, 
-        (microgons - microgons_allocated) as microgons_remaining
+    const { rows: funds } = await this.client.query<{
+      fundsId: number;
+      microgonsRemaining: number;
+      allowedRecipientAddresses?: string[];
+    }>(
+      `SELECT id as funds_id, 
+        (microgons - microgons_allocated) as microgons_remaining,
+        allowed_recipient_addresses
       FROM micronote_funds 
-        WHERE address = $1 and microgons >= (microgons_allocated + $2)
-      LIMIT 1`,
+        WHERE address = $1 and microgons >= (microgons_allocated + $2)`,
       params,
     );
 
-    if (!rows.length) {
+    if (!funds.length) {
       return null;
     }
-    this.logger.info('Got datanet funding back', {
+
+    const [fund] = funds;
+    this.logger.info('Got MicronoteBatch funding back', {
       microgons,
-      isEnough: rows[0].microgonsRemaining >= microgons,
-      first: rows[0],
+      isEnough: fund.microgonsRemaining >= microgons,
+      first: fund,
     });
-    const [fund] = rows;
-    return {
-      fundsId: fund.id,
-      microgonsRemaining: fund.microgonsRemaining,
-    };
+    return fund;
   }
 
   public async createFromNote(note: INote): Promise<IMicronoteFundsRecord> {
@@ -172,20 +178,65 @@ export default class MicronoteFunds {
     });
   }
 
-  public static async find(
+  public static async createFromCredit(
+    client: PgClient<DbType.Batch>,
+    credit: ICreditRecord,
+    guaranteeBlockHeight: number,
+  ): Promise<IMicronoteFundsRecord> {
+    const { microgons, id: creditId, allowedRecipientAddresses } = credit;
+    return await client.insertWithId('micronote_funds', {
+      address: credit.claimAddress,
+      creditId,
+      microgons,
+      allowedRecipientAddresses,
+      microgonsAllocated: 0,
+      createdTime: new Date(),
+      lastUpdatedTime: new Date(),
+      guaranteeBlockHeight,
+    });
+  }
+
+  public static async findWithIds(
     client: PgClient<DbType.Batch>,
     ids: number[],
   ): Promise<IMicronoteFundsRecord[]> {
     if (!ids.length) return [];
-    return await client.list(`select * from micronote_funds where id = ANY ($1)`, ids);
+    return await client.list(`select * from micronote_funds where id = ANY ($1)`, [ids]);
+  }
+
+  public static async verifyAllowedPaymentAddresses(
+    client: PgClient<DbType.Batch>,
+    id: number,
+    addresses: string[],
+  ): Promise<boolean> {
+    const fund = await client.queryOne<Pick<IMicronoteFundsRecord, 'allowedRecipientAddresses'>>(
+      `select allowed_recipient_addresses from micronote_funds where id = $1 LIMIT 1`,
+      [id],
+    );
+    for (const address of addresses) {
+      if (!fund.allowedRecipientAddresses.includes(address)) {
+        throw new Error(
+          `This MicronoteFund can't be redeemed with one of the addresses you requested (${address})`,
+        );
+      }
+    }
+    return true;
+  }
+
+  public static async findWithAddress(
+    client: PgClient<DbType.Batch>,
+    address: string,
+  ): Promise<IMicronoteFundsRecord[]> {
+    return await client.list(`select * from micronote_funds where address = $1`, [address]);
   }
 }
 
 export interface IMicronoteFundsRecord {
   id: number;
   address: string;
-  noteHash: Buffer;
+  noteHash?: Buffer;
   guaranteeBlockHeight: number;
+  allowedRecipientAddresses?: string[];
   microgons: number;
   microgonsAllocated: number;
   createdTime: Date;

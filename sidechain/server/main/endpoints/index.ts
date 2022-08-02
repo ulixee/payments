@@ -1,5 +1,5 @@
-import WalletGetBalance from './Wallet.getBalance';
-import WalletRegister from './Wallet.register';
+import WalletGetBalance from './Address.getBalance';
+import WalletRegister from './Address.register';
 import FundingTransferKeys from './FundingTransfer.keys';
 import FundingTransferOut from './FundingTransfer.out';
 import FundingTransferStatus from './FundingTransfer.status';
@@ -9,6 +9,7 @@ import StakeCreate from './Stake.create';
 import StakeRefund from './Stake.refund';
 import StakeSettings from './Stake.settings';
 import StakeSignature from './Stake.signature';
+import SidechainSettings from './Sidechain.settings';
 
 export default [
   WalletGetBalance,
@@ -22,4 +23,5 @@ export default [
   StakeRefund,
   StakeSettings,
   StakeSignature,
+  SidechainSettings
 ];

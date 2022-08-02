@@ -1,7 +1,7 @@
 import Log from '@ulixee/commons/lib/Logger';
-import * as Koa from 'koa';
 import TypeSerializer from '@ulixee/commons/lib/TypeSerializer';
-import ApiRouter from './utils/ApiRouter';
+import { IncomingMessage, ServerResponse } from 'http';
+import ApiRegistry from './utils/ApiRegistry';
 import MainDb from './main/db';
 import batchEndpoints from './batch/endpoints';
 import mainEndpoints from './main/endpoints';
@@ -12,67 +12,53 @@ const packageJson = require('./package.json');
 
 const { log } = Log(module);
 
-const koa = new Koa();
+ApiRegistry.registerEndpoints(...mainEndpoints);
+ApiRegistry.registerEndpoints(...batchEndpoints);
 
-ApiRouter.registerEndpoints(...mainEndpoints);
-ApiRouter.registerEndpoints(...batchEndpoints);
-
-/// /////////////////////////////////////////////////////////////////////////////////////////////////
-
-koa.use(async ctx => {
+export default async function requestHandler(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   try {
-    if (ctx.path === '/') {
-      ctx.status = 200;
-      ctx.body = TypeSerializer.stringify(
-        {
-          is: 'Ulixee Sidechain',
-          version: packageJson.version,
-          activeBatches: MicronoteBatchManager.getOpenBatches().map(batch => ({
-            opened: batch.data.openTime,
-            closing: batch.data.plannedClosingTime,
-            closed: batch.data.closedTime,
-            slug: batch.slug,
-            address: batch.address,
-          })),
-          blockSettings: await BlockManager.settings,
-        },
-        { format: true },
+    if (req.url === '/') {
+      res.writeHead(200, {
+        'content-type': 'application/json',
+      });
+      res.end(
+        TypeSerializer.stringify(
+          {
+            is: 'Ulixee Sidechain',
+            version: packageJson.version,
+            activeBatches: MicronoteBatchManager.getOpenBatches().map(batch => batch.toJSON()),
+            creditBatch: MicronoteBatchManager.creditBatch?.toJSON(),
+            blockSettings: await BlockManager.settings,
+          },
+          { format: true },
+        ),
       );
       return;
     }
-    if (ctx.path === '/health') {
-      return await healthCheck(ctx);
+
+    if (req.url === '/health') {
+      await MainDb.healthCheck();
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.end('OK');
+      return;
     }
-    if (ctx.path.startsWith('/api') || ApiRouter.hasHandlerForPath(ctx.path)) {
-      return await ApiRouter.route(ctx);
+
+    if (req.url.startsWith('/api') || ApiRegistry.hasHandlerForPath(req.url)) {
+      return await ApiRegistry.route(req, res);
     }
-    ctx.status = 404;
-    ctx.body = 'Not Found';
-    log.warn(`${ctx.method}:${ctx.path} (404 MISSING)`);
+
+    res.writeHead(404, { 'content-type': 'text/plain' });
+    res.end('Not Found');
+
+    log.warn(`${req.method}:${req.url} (404 MISSING)`);
   } catch (err) {
-    handleError(ctx, err);
-  }
-});
-
-/// //   HELPERS           /////////////////////////////////////////////////////////////////////////
-
-async function healthCheck(ctx): Promise<void> {
-  await MainDb.healthCheck();
-  ctx.body = 'OK';
-  ctx.status = 200;
-}
-
-function handleError(ctx, err): void {
-  log.error(`ERROR running route ${ctx.path}`, { error: err, sessionId: null });
-  ctx.status = err.status || 500;
-  if (err.toJSON) {
-    ctx.body = err.toJSON();
-  } else {
-    ctx.body = {
-      code: err.code || err.id || 'UNKNOWN',
-      message: err.message,
-    };
+    log.warn(`ERROR running route ${req.method}:${req.url}`, { error: err } as any);
+    res.writeHead(err.status ?? 500, {
+      'content-type': 'application/json',
+    });
+    res.end(TypeSerializer.stringify(err));
   }
 }
-
-export default koa.callback();

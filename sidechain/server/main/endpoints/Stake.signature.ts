@@ -8,7 +8,7 @@ export default new ApiHandler('Stake.signature', {
   async handler(payload, options) {
     const { signature, stakedIdentity } = payload;
 
-    this.validatedDigitalSignature(stakedIdentity, payload, signature);
+    this.validateIdentitySignature(stakedIdentity, payload, signature);
 
     const blockHeight = await BlockManager.currentBlockHeight();
 

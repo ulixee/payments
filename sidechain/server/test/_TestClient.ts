@@ -1,6 +1,6 @@
 import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
 import Identity from '@ulixee/crypto/lib/Identity';
-import SidechainClient from '@ulixee/sidechain-client/lib/SidechainClient';
+import SidechainClient from '@ulixee/sidechain/lib/SidechainClient';
 import { IAddressSignature, INote, NoteType } from '@ulixee/specification';
 import Address from '@ulixee/crypto/lib/Address';
 import { ISidechainApiTypes } from '@ulixee/specification/sidechain';
@@ -29,7 +29,7 @@ export default class TestClient extends SidechainClient {
 
   public async isRegistered() {
     return MainDb.transaction(async client => {
-      const { rows } = await client.query('SELECT 1 from wallets WHERE address = $1 LIMIT 1', [
+      const { rows } = await client.query('SELECT 1 from addresses WHERE address = $1 LIMIT 1', [
         this.address,
       ]);
       return rows.length >= 1;
@@ -37,12 +37,12 @@ export default class TestClient extends SidechainClient {
   }
 
   // make public
-  public override async runSignedByWallet<T extends keyof ISidechainApiTypes & string>(
+  public override async runSignedByAddress<T extends keyof ISidechainApiTypes & string>(
     command: T,
     args: Omit<ISidechainApiTypes[T]['args'], 'signature'>,
     retries = 5,
   ): Promise<ISidechainApiTypes[T]['result']> {
-    return super.runSignedByWallet(command, args);
+    return super.runSignedByAddress(command, args);
   }
 
   // make public
@@ -55,12 +55,12 @@ export default class TestClient extends SidechainClient {
   }
 
   // make public
-  public override async runSignedAsNode<T extends keyof ISidechainApiTypes & string>(
+  public override async runSignedByIdentity<T extends keyof ISidechainApiTypes & string>(
     command: T,
     args: Omit<ISidechainApiTypes[T]['args'], 'signature'>,
     retries = 5,
   ): Promise<ISidechainApiTypes[T]['result']> {
-    return super.runSignedAsNode(command, args);
+    return super.runSignedByIdentity(command, args);
   }
 
   public async grantCentagons(centagons: bigint | number, guaranteeBlockHeight = 0) {

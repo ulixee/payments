@@ -18,10 +18,6 @@ export default class MicronoteBatch implements IBatchState {
     return this.data.slug;
   }
 
-  public get plannedClosingTime(): Date | null {
-    return this.data ? this.data.plannedClosingTime : null;
-  }
-
   public get address(): string | null {
     return this.data ? this.data.address : null;
   }
@@ -33,6 +29,7 @@ export default class MicronoteBatch implements IBatchState {
   public get shouldClose(): boolean {
     return (
       this.data &&
+      this.plannedClosingTime !== null &&
       this.plannedClosingTime <= new Date() && // if we are past planned closing time
       this.isClosed === false
     );
@@ -46,6 +43,10 @@ export default class MicronoteBatch implements IBatchState {
     return this.data && !!this.data.settledTime;
   }
 
+  public get plannedClosingTime(): Date | null {
+    return this.data ? this.data.plannedClosingTime : null;
+  }
+
   public get settledTime(): Date {
     return this.data?.settledTime;
   }
@@ -57,7 +58,12 @@ export default class MicronoteBatch implements IBatchState {
 
   public get isAllowingNewNotes(): boolean {
     if (!this.data) return false;
+    if (!this.data.stopNewNotesTime) return true;
     return this.isClosed === false && this.data.stopNewNotesTime > new Date();
+  }
+
+  public get type(): MicronoteBatchType {
+    return this.data?.type;
   }
 
   public data?: IMicronoteBatchRecord;
@@ -89,6 +95,7 @@ export default class MicronoteBatch implements IBatchState {
     }
     return {
       batchSlug: this.slug,
+      isCreditBatch: this.data.type === MicronoteBatchType.Credit,
       micronoteBatchIdentity: this.identity,
       micronoteBatchAddress: this.address,
       sidechainIdentity: this.sidechainIdentity,
@@ -103,6 +110,11 @@ export default class MicronoteBatch implements IBatchState {
       [this.data.address],
     );
     this.data[state as any] = new Date();
+  }
+
+  public toJSON(): Omit<IMicronoteBatchRecord, 'privateKey'> {
+    const { privateKey, ...data } = this.data;
+    return data;
   }
 
   public static async lock(
@@ -132,24 +144,40 @@ export default class MicronoteBatch implements IBatchState {
     return records.map(x => MicronoteBatch.fromData(client, x));
   }
 
-  public static async create(client: PgClient<DbType.Main>): Promise<MicronoteBatch> {
-    const plannedClose = moment().add(batchOpenMinutes, 'minutes');
-    const stopNotes = moment(plannedClose).subtract(stopNotesMinsBeforeClose, 'minutes');
+  public static async create(
+    client: PgClient<DbType.Main>,
+    type: MicronoteBatchType,
+  ): Promise<MicronoteBatch> {
+    let plannedClose = moment().add(batchOpenMinutes, 'minutes');
+    let stopNotes = moment(plannedClose).subtract(stopNotesMinsBeforeClose, 'minutes');
+    if (type === MicronoteBatchType.Credit) {
+      plannedClose = null;
+      stopNotes = null;
+    }
     const identity = await Identity.create();
     const address = Address.createFromSigningIdentities([identity], {
       signerTypes: [UniversalSigner],
       transferSignatureSettings: 1,
       claimSignatureSettings: 1,
     });
+
+    let slug: string;
+    if (type === MicronoteBatchType.Credit) {
+      slug = `credit_${identity.publicKey.toString('hex').substring(0, 7)}`;
+    } else {
+      slug = `micro_${identity.publicKey.toString('hex').substring(0, 8)}`;
+    }
+
     const batch = new MicronoteBatch(
       client,
       {
-        slug: identity.publicKey.toString('hex').substring(0, 10),
+        slug,
         address: address.bech32,
         privateKey: identity.export(),
         openTime: new Date(),
-        plannedClosingTime: plannedClose.toDate(),
-        stopNewNotesTime: stopNotes.toDate(),
+        type,
+        plannedClosingTime: plannedClose?.toDate(),
+        stopNewNotesTime: stopNotes?.toDate(),
       },
       address,
     );
@@ -185,9 +213,15 @@ export default class MicronoteBatch implements IBatchState {
   }
 }
 
+export enum MicronoteBatchType {
+  Credit = 'Credit',
+  Micronote = 'Micronote',
+}
+
 export interface IMicronoteBatchRecord {
   address: string;
   slug: string;
+  type: MicronoteBatchType;
   privateKey: string;
   openTime: Date;
   plannedClosingTime: Date;

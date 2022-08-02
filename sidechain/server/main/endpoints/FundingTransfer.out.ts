@@ -2,7 +2,7 @@ import { NoteType } from '@ulixee/specification';
 import config from '../../config';
 import BlockManager from '../lib/BlockManager';
 import { InvalidParameterError, InvalidRecipientError } from '../../utils/errors';
-import Wallet from '../models/Wallet';
+import RegisteredAddress from '../models/RegisteredAddress';
 import FundingTransferOut from '../models/FundingTransferOut';
 import MainDb from '../db';
 import ApiHandler from '../../utils/ApiHandler';
@@ -26,7 +26,7 @@ export default new ApiHandler('FundingTransfer.out', {
     }
 
     return await MainDb.transaction(async client => {
-      const wallet = new Wallet(client, identity);
+      const wallet = new RegisteredAddress(client, identity);
       await wallet.lock();
       await wallet.load();
 

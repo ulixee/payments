@@ -58,7 +58,7 @@ const settings = {
 };
 
 if (!settings.mainchain.addresses.length) {
-  throw new InvalidParameterError('No mainchain wallets found to monitor', 'MAINCHAIN_WALLETS');
+  throw new InvalidParameterError('No mainchain addresses found to monitor', 'MAINCHAIN_ADDRESSES');
 }
 
 for (const address of settings.mainchain.addresses) {

@@ -3,6 +3,9 @@ import ApiHandler from '../../utils/ApiHandler';
 
 export default new ApiHandler('MicronoteBatch.get', {
   handler() {
-    return Promise.resolve(ActiveBatches.getCurrent());
+    return Promise.resolve({
+      active: ActiveBatches.getCurrent(),
+      credit: ActiveBatches.getCredit()
+    });
   },
 });

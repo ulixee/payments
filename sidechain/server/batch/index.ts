@@ -2,7 +2,7 @@ import { INote } from '@ulixee/specification';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
 import BlockManager from '../main/lib/BlockManager';
 import MainDb from '../main/db';
-import Wallet from '../main/models/Wallet';
+import RegisteredAddress from '../main/models/RegisteredAddress';
 import Note from '../main/models/Note';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import IBatchState from '../interfaces/IBatchState';
@@ -16,12 +16,21 @@ export const ActiveBatches = {
   get(slug: string): IBatchState {
     return MicronoteBatchManager.get(slug);
   },
+  getOpenBatches(): IBatchState[] {
+    return MicronoteBatchManager.getOpenBatches();
+  },
   getCurrent(): IMicronoteBatch {
     const batch = MicronoteBatchManager.get();
     return { ...batch.getNoteParams() };
   },
+  getCredit(): IMicronoteBatch | null {
+    const batch = MicronoteBatchManager.creditBatch;
+    if (!batch) return null;
+    return { ...batch.getNoteParams() };
+  },
 };
 
+// Bridges are meant to be a place holder for batch <-> main comms so we can eventually swap for apis if need be
 export const bridgeToMain: IBridgeToMain = {
   async currentBlock() {
     return {
@@ -31,7 +40,7 @@ export const bridgeToMain: IBridgeToMain = {
   },
   async saveNote<T>(note, nestedTx, opts): Promise<T> {
     return await MainDb.transaction(async client => {
-      const wallet = new Wallet(client, note.fromAddress);
+      const wallet = new RegisteredAddress(client, note.fromAddress);
       await wallet.lock();
       await wallet.load();
 

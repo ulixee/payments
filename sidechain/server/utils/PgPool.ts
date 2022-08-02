@@ -2,6 +2,7 @@ import Log from '@ulixee/commons/lib/Logger';
 import { Pool, PoolClient, PoolConfig, QueryResult, types } from 'pg';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import TypeSerializer from '@ulixee/commons/lib/TypeSerializer';
+import { TypedEventEmitter } from '@ulixee/commons/lib/eventUtils';
 import PgClient from './PgClient';
 
 const { log } = Log(module);
@@ -9,13 +10,16 @@ const { log } = Log(module);
 types.setTypeParser(types.builtins.JSON, x => TypeSerializer.parse(x));
 types.setTypeParser(types.builtins.INT8, BigInt);
 
-export default class PgPool<K extends keyof typeof DbType = DbType.Main> {
+export default class PgPool<K extends keyof typeof DbType = DbType.Main> extends TypedEventEmitter<{
+  close: void;
+}> {
   private pool: Pool;
   private isEnded = false;
   private config: PoolConfig;
   private shutdownTimeout: NodeJS.Timeout;
 
   constructor(readonly name: string, conf: PoolConfig) {
+    super();
     const config = {
       ...conf,
     };
@@ -49,9 +53,11 @@ export default class PgPool<K extends keyof typeof DbType = DbType.Main> {
   }
 
   public async shutdown(): Promise<void> {
+    clearTimeout(this.shutdownTimeout);
     if (this.pool && !this.isEnded) {
-      await this.pool.end();
       this.isEnded = true;
+      await this.pool.end();
+      this.emit('close');
     }
   }
 
@@ -84,7 +90,7 @@ export default class PgPool<K extends keyof typeof DbType = DbType.Main> {
 
   public async transaction<T = any>(
     cb: (client: PgClient<K>) => Promise<T>,
-    opts?: { logger?: IBoundLog; logQueries?: boolean; retries?: number },
+    opts?: ITransactionOptions,
   ): Promise<T> {
     let client: PoolClient;
     try {
@@ -109,6 +115,12 @@ export default class PgPool<K extends keyof typeof DbType = DbType.Main> {
       client.release();
     }
   }
+}
+
+export interface ITransactionOptions {
+  logger?: IBoundLog;
+  logQueries?: boolean;
+  retries?: number;
 }
 
 export enum DbType {

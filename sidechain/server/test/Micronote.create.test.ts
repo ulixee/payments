@@ -81,7 +81,7 @@ test('should retry if multiple micronotes try to create a lock at once', async (
   // true register client just to simulate process
   await client.register();
   await client.grantCentagons(1500000);
-  client.batchFundingQueriesToPreload = 10;
+  client.micronoteBatchFunding.queryFundingToPreload = 10;
 
   const promises = [];
   for (let i = 0; i < 50; i += 1) {

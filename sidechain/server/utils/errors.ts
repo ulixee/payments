@@ -19,28 +19,9 @@ export class AppError extends Error {
   }
 }
 
-export class PermissionsError extends AppError {
-  constructor(message) {
-    super(message || 'Insufficient permissions', 'ERR_PERMISSIONS');
-  }
-}
-
 export class InvalidParameterError extends AppError {
   constructor(message, parameter?: string, data?: object) {
     super(message || 'Invalid parameter', 'ERR_INVALID_PARAM', { parameter, data });
-  }
-}
-
-export class ValidationError extends AppError {
-  constructor(command: string, errors: string[]) {
-    super(
-      `Please correct the API (${command}) parameters provided -> ${errors.join('; ')}`,
-      'ERR_VALIDATION',
-      {
-        command,
-        errors,
-      },
-    );
   }
 }
 
@@ -68,7 +49,7 @@ export class WalletAlreadyRegisteredError extends AppError {
 
 export class NewNotesNotBeingAcceptedError extends AppError {
   constructor() {
-    super('This micronoteBatch is closing.  New notes are not being accepted', 'ERR_CLOSING');
+    super('This micronoteBatch is closing. New notes are not being accepted', 'ERR_CLOSING');
   }
 }
 
@@ -79,9 +60,9 @@ export class MicronoteBatchClosedError extends AppError {
 }
 
 export class OutOfBalanceError extends AppError {
-  constructor(walletsBalance: string, fundsBalance: string) {
+  constructor(addressesBalance: string, fundsBalance: string) {
     super('The sidechain balances are not adding to zero', 'ERR_OUT_OF_BALANCE', {
-      walletsBalance,
+      addressesBalance,
       fundsBalance,
     });
   }

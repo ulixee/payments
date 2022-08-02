@@ -3,7 +3,7 @@ import { UlixeeError } from '@ulixee/commons/lib/errors';
 
 export class NeedsSidechainBatchFunding extends UlixeeError {
   constructor(message: string, readonly minCentagonsNeeded: number) {
-    super(message, 'ERR_NEEDS_SIDECHAIN_FUNDING', { minCentagonsNeeded });
+    super(message, 'ERR_NEEDS_BATCH_FUNDING', { minCentagonsNeeded });
   }
 }
 
@@ -17,6 +17,18 @@ export class ClientValidationError extends UlixeeError {
         errors,
       },
     );
+  }
+}
+
+export class PermissionsError extends UlixeeError {
+  constructor(message?: string) {
+    super(message ?? 'Insufficient permissions', 'ERR_PERMISSIONS');
+  }
+}
+
+export class UnapprovedSidechainError extends UlixeeError {
+  constructor(message?: string) {
+    super(message ?? 'Unapproved sidechain used', 'ERR_UNAPPROVED_SIDECHAIN');
   }
 }
 

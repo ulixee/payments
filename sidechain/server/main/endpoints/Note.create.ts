@@ -1,7 +1,7 @@
 import { NoteType } from '@ulixee/specification';
 import config from '../../config';
 import { InvalidParameterError } from '../../utils/errors';
-import Wallet from '../models/Wallet';
+import RegisteredAddress from '../models/RegisteredAddress';
 import Note from '../models/Note';
 import MainDb from '../db';
 import ApiHandler from '../../utils/ApiHandler';
@@ -33,7 +33,7 @@ export default new ApiHandler('Note.create', {
     }
 
     return await MainDb.transaction(async client => {
-      const wallet = new Wallet(client, fromAddress);
+      const wallet = new RegisteredAddress(client, fromAddress);
       await wallet.lock();
       await wallet.load();
 
