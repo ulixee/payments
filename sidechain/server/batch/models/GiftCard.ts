@@ -2,17 +2,17 @@ import { nanoid } from 'nanoid';
 import PgClient from '../../utils/PgClient';
 import { DbType } from '../../utils/PgPool';
 
-export default class Credit {
+export default class GiftCard {
   constructor(
     readonly client: PgClient<DbType.Batch>,
-    public data?: ICreditRecord,
+    public data?: IGiftCardRecord,
     public id?: string,
   ) {}
 
-  public async claim(address: string): Promise<Credit> {
+  public async claim(address: string): Promise<GiftCard> {
     this.data.claimAddress = address;
     await this.client.update(
-      `UPDATE credits
+      `UPDATE gift_cards
       SET claim_address = $2,
           claimed_time = now(),
           last_updated_time = now()
@@ -25,8 +25,8 @@ export default class Credit {
   }
 
   public async lock(): Promise<void> {
-    this.data = await this.client.queryOne<ICreditRecord>(
-      `select * from credits where id=$1 LIMIT 1 FOR UPDATE`,
+    this.data = await this.client.queryOne<IGiftCardRecord>(
+      `select * from gift_cards where id=$1 LIMIT 1 FOR UPDATE`,
       [this.id],
     );
   }
@@ -34,34 +34,34 @@ export default class Credit {
   public async saveFund(fundsId: number): Promise<void> {
     this.data.fundsId = fundsId;
     await this.client.update(
-      `UPDATE credits set funds_id = $1, funded_time = NOW() where id=$2 and funds_id is null`,
+      `UPDATE gift_cards set funds_id = $1, funded_time = NOW() where id=$2 and funds_id is null`,
       [fundsId, this.id],
     );
   }
 
-  public async create(record: Partial<ICreditRecord>): Promise<Credit> {
-    const creditId = nanoid(32);
-    this.id = creditId;
+  public async create(record: Partial<IGiftCardRecord>): Promise<GiftCard> {
+    const giftCardId = nanoid(32);
+    this.id = giftCardId;
     const time = new Date();
     this.data = {
-      id: creditId,
+      id: giftCardId,
       microgons: record.microgons,
-      allowedRecipientAddresses: record.allowedRecipientAddresses,
-      allowedRecipientSignatures: record.allowedRecipientSignatures,
+      redeemableWithAddresses: record.redeemableWithAddresses,
+      redeemableAddressSignatures: record.redeemableAddressSignatures,
       createdTime: time,
       lastUpdatedTime: time,
     };
 
-    await this.client.insert<ICreditRecord>('credits', this.data);
+    await this.client.insert<IGiftCardRecord>('gift_cards', this.data);
     return this;
   }
 }
 
-export interface ICreditRecord {
+export interface IGiftCardRecord {
   id: string;
   microgons: number;
-  allowedRecipientAddresses: string[];
-  allowedRecipientSignatures: any;
+  redeemableWithAddresses: string[];
+  redeemableAddressSignatures: any;
   claimAddress?: string;
   claimedTime?: Date;
   fundsId?: number;

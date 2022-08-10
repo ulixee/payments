@@ -2,59 +2,59 @@ import Address from '@ulixee/crypto/lib/Address';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
-import Credit from '../models/Credit';
+import GiftCard from '../models/GiftCard';
 import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches } from '../index';
 import { InvalidParameterError } from '../../utils/errors';
 import { MicronoteBatchType } from '../../main/models/MicronoteBatch';
 
-export default new ApiHandler('Credit.create', {
+export default new ApiHandler('GiftCard.create', {
   async handler(
-    { batchSlug, microgons, allowedRecipientAddresses, allowedRecipientSignatures },
+    { batchSlug, microgons, redeemableWithAddresses, redeemableAddressSignatures },
     options,
   ) {
     const batch = await ActiveBatches.get(batchSlug);
-    if (batch.type !== MicronoteBatchType.Credit) {
+    if (batch.type !== MicronoteBatchType.GiftCard) {
       throw new InvalidParameterError(
-        "You're trying to create a Credit on a non-credit batch. Refresh the available batches with the MicronoteBatch.get API.",
+        "You're trying to create a gift card on a Micronote batch. Refresh the available batches with the MicronoteBatch.get API.",
       );
     }
 
     const message = sha3(
-      concatAsBuffer('Credit.Create:', batchSlug, microgons, ...allowedRecipientAddresses),
+      concatAsBuffer('GiftCard.Create:', batchSlug, microgons, ...redeemableWithAddresses),
     );
 
-    for (let i = 0; i < allowedRecipientAddresses.length; i += 1) {
-      const address = allowedRecipientAddresses[i];
-      const signature = allowedRecipientSignatures[i];
+    for (let i = 0; i < redeemableWithAddresses.length; i += 1) {
+      const address = redeemableWithAddresses[i];
+      const signature = redeemableAddressSignatures[i];
       if (!signature) {
         throw new InvalidParameterError(
-          'A Credit address is missing from the signatures list. All parties must sign this credit.',
+          'An address is missing from the signatures list. All parties must sign this gift card.',
           `signatures[${i}]`,
         );
       }
 
       if (!Address.verify(address, message, signature))
         throw new InvalidSignatureError(
-          'This Credit was not correctly signed by all the addresses',
+          'This gift card was not correctly signed by all the addresses',
           `addresses[${i}]`,
         );
     }
 
     const batchDb = BatchDb.get(batchSlug);
     return await batchDb.transaction(async client => {
-      const credit = new Credit(client);
+      const giftCard = new GiftCard(client);
 
-      const result = await credit.create({
+      const result = await giftCard.create({
         microgons,
-        allowedRecipientAddresses,
-        allowedRecipientSignatures,
+        redeemableWithAddresses,
+        redeemableAddressSignatures,
       });
 
       const batchDetails = batch.getNoteParams();
       return {
-        creditId: result.data.id,
+        giftCardId: result.data.id,
         sidechainIdentity: batchDetails.sidechainIdentity,
         sidechainValidationSignature: batchDetails.sidechainValidationSignature,
       };

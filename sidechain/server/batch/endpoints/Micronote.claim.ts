@@ -30,7 +30,7 @@ export default new ApiHandler('Micronote.claim', {
       await note.claim(identity);
       await note.recordMicrogonsEarned(tokenAllocation);
 
-      if (batch.type === MicronoteBatchType.Credit) {
+      if (batch.type === MicronoteBatchType.GiftCard) {
         await MicronoteFunds.verifyAllowedPaymentAddresses(
           client,
           note.data.fundsId,

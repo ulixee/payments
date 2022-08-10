@@ -14,7 +14,7 @@ import { ITransactionOptions } from '../../utils/PgPool';
 const { log } = Log(module);
 
 export default class MicronoteBatchManager {
-  public static creditBatch: MicronoteBatch;
+  public static giftCardBatch: MicronoteBatch;
 
   private static logger = log.createChild(module, { action: 'MicronoteBatchManager' });
   private static batchesBySlug = new Map<string, MicronoteBatch>();
@@ -67,17 +67,17 @@ export default class MicronoteBatchManager {
       counterNeeded -= 1;
     }
 
-    if (!this.creditBatch) {
+    if (!this.giftCardBatch) {
       await MainDb.transaction(
         async client => {
-          const batch = await MicronoteBatch.create(client, MicronoteBatchType.Credit);
+          const batch = await MicronoteBatch.create(client, MicronoteBatchType.GiftCard);
 
           const dbName = BatchDb.getName(batch.slug);
           await MainDb.query(`CREATE DATABASE ${dbName}`);
 
           await BatchDb.createDb(batch.slug, this.logger);
           this.updateCached(batch);
-          this.logger.info('MicronoteCredits.open', {
+          this.logger.info('MicronoteGiftCards.open', {
             openTime: batch.data.openTime,
             slug: batch.slug,
           });
@@ -88,7 +88,7 @@ export default class MicronoteBatchManager {
   }
 
   public static get(slug?: string): MicronoteBatch {
-    if (slug === this.creditBatch?.slug) return this.creditBatch;
+    if (slug === this.giftCardBatch?.slug) return this.giftCardBatch;
 
     let batchSlug = slug;
 
@@ -125,8 +125,8 @@ export default class MicronoteBatchManager {
     }, txOptions);
 
     for (const pendingBatch of this.batchesBySlug.values()) {
-      // do not settle or close credit batches
-      if (pendingBatch.data.type === MicronoteBatchType.Credit) continue;
+      // do not settle or close giftCard batches
+      if (pendingBatch.data.type === MicronoteBatchType.GiftCard) continue;
 
       if (pendingBatch.shouldClose) {
         await this.closeBatch(pendingBatch.address, txOptions);
@@ -148,8 +148,8 @@ export default class MicronoteBatchManager {
   }
 
   private static updateCached(batch: MicronoteBatch): void {
-    if (batch.data.type === MicronoteBatchType.Credit) {
-      this.creditBatch = batch;
+    if (batch.data.type === MicronoteBatchType.GiftCard) {
+      this.giftCardBatch = batch;
       return;
     }
     // record cache
@@ -191,9 +191,9 @@ export default class MicronoteBatchManager {
         client.logger.warn('Not settling micronoteBatch. Already settled.');
         return batch.data;
       }
-      if (batch.data.type === MicronoteBatchType.Credit) {
+      if (batch.data.type === MicronoteBatchType.GiftCard) {
         throw new Error(
-          'Attempted to settle a credit batch!! Credit batches cannot write to the ledger.',
+          'Attempted to settle a gift card batch!! Gift card batches cannot write to the ledger.',
         );
       }
 

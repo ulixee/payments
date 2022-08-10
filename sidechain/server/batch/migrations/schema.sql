@@ -7,7 +7,7 @@ CREATE TABLE micronote_funds (
   address varchar(64) NOT NULL,
   guarantee_block_height integer NOT NULL,
   note_hash bytea NULL,
-  credit_id varchar(32) NULL,
+  gift_card_id varchar(32) NULL,
   allowed_recipient_addresses varchar(64) ARRAY NULL,
   microgons integer NOT NULL
       CHECK (microgons > 0), --immutable stored once
@@ -17,11 +17,11 @@ CREATE TABLE micronote_funds (
   created_time timestamp NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE credits (
+CREATE TABLE gift_cards (
   id varchar(32) PRIMARY KEY,
   microgons integer NOT NULL CHECK (microgons > 0),
-  allowed_recipient_addresses varchar(64) ARRAY NOT NULL,
-  allowed_recipient_signatures json ARRAY NOT NULL,
+  redeemable_with_addresses varchar(64) ARRAY NOT NULL,
+  redeemable_address_signatures json ARRAY NOT NULL,
   claim_address varchar(64) NULL,
   claimed_time timestamp NULL,
   funds_id integer NULL REFERENCES micronote_funds (id),

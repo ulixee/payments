@@ -21,7 +21,7 @@ export default new ApiHandler('Micronote.lock', {
       const micronote = new Micronote(client, null, id);
       await micronote.lockForIdentity(identity);
 
-      if (addresses && batch.type === MicronoteBatchType.Credit) {
+      if (addresses && batch.type === MicronoteBatchType.GiftCard) {
         await MicronoteFunds.verifyAllowedPaymentAddresses(
           client,
           micronote.data.fundsId,

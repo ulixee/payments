@@ -16,7 +16,7 @@ export default class MicronoteBatchFunding {
 
   private fundsByIdPerBatch: { [batchSlug: string]: { [fundsId: number]: IMicronoteFund } } = {};
   private activeFundsId: number;
-  private activeCreditFundsPromise: Promise<any>;
+  private activeGiftCardFundsPromise: Promise<any>;
 
   private activeBatchesPromise?: Resolvable<ISidechainApiTypes['MicronoteBatch.get']['result']>;
 
@@ -28,44 +28,44 @@ export default class MicronoteBatchFunding {
     },
   ) {}
 
-  public async findCreditForRecipients(
+  public async findGiftCardForRecipients(
     microgons: number,
     recipientAddresses: string[],
     batch?: IMicronoteBatch,
   ): Promise<IMicronoteFund> {
-    batch ??= (await this.getActiveBatches()).credit;
+    batch ??= (await this.getActiveBatches()).giftCard;
     if (!batch) return null;
 
-    await (this.activeCreditFundsPromise ??= this.getActiveFunds(batch));
+    await (this.activeGiftCardFundsPromise ??= this.getActiveFunds(batch));
 
     recipientAddresses ??= [];
     this.fundsByIdPerBatch[batch.batchSlug] ??= {};
     const recipientsKey = recipientAddresses.sort().toString();
-    for (const credit of Object.values(this.fundsByIdPerBatch[batch.batchSlug])) {
+    for (const giftCard of Object.values(this.fundsByIdPerBatch[batch.batchSlug])) {
       if (
-        credit.isCreditBatch &&
-        credit.recipientsKey === recipientsKey &&
-        credit.microgonsRemaining >= microgons
+        giftCard.isGiftCardBatch &&
+        giftCard.recipientsKey === recipientsKey &&
+        giftCard.microgonsRemaining >= microgons
       ) {
-        return credit;
+        return giftCard;
       }
     }
   }
 
-  public async recordCredit(
+  public async recordGiftCard(
     batchSlug: string,
-    credit: ISidechainApiTypes['Credit.claim']['result'],
+    giftCard: ISidechainApiTypes['GiftCard.claim']['result'],
   ): Promise<IMicronoteFund> {
-    await this.activeCreditFundsPromise;
+    await this.activeGiftCardFundsPromise;
     this.fundsByIdPerBatch[batchSlug] ??= {};
-    this.fundsByIdPerBatch[batchSlug][credit.fundsId] = {
-      ...credit,
+    this.fundsByIdPerBatch[batchSlug][giftCard.fundsId] = {
+      ...giftCard,
       batchSlug,
-      isCreditBatch: true,
-      microgonsRemaining: credit.microgons,
-      recipientsKey: credit.allowedRecipientAddresses.sort().toString(),
+      isGiftCardBatch: true,
+      microgonsRemaining: giftCard.microgons,
+      recipientsKey: giftCard.redeemableWithAddresses.sort().toString(),
     };
-    return this.fundsByIdPerBatch[batchSlug][credit.fundsId];
+    return this.fundsByIdPerBatch[batchSlug][giftCard.fundsId];
   }
 
   public async reserveFunds(
@@ -77,18 +77,18 @@ export default class MicronoteBatchFunding {
 
     const batchFund = await this.queue.run<{ fund: IMicronoteFund; batch: IMicronoteBatch }>(
       async () => {
-        const { active, credit } = await this.getActiveBatches();
-        /// CHECK CREDITS
+        const { active, giftCard } = await this.getActiveBatches();
+        /// CHECK GiftCardS
 
-        const creditFund = await this.findCreditForRecipients(
+        const giftCardFund = await this.findGiftCardForRecipients(
           microgons,
           recipientAddresses,
-          credit,
+          giftCard,
         );
 
-        if (creditFund) {
-          creditFund.microgonsRemaining -= microgons;
-          return { fund: creditFund, batch: credit };
+        if (giftCardFund) {
+          giftCardFund.microgonsRemaining -= microgons;
+          return { fund: giftCardFund, batch: giftCard };
         }
 
         /// USE REAL BATCH MICRONOTE FUNDS
@@ -192,7 +192,7 @@ export default class MicronoteBatchFunding {
     this.fundsByIdPerBatch[batch.batchSlug][fundsId] = {
       fundsId,
       microgonsRemaining: microgons,
-      isCreditBatch: batch.isCreditBatch,
+      isGiftCardBatch: batch.isGiftCardBatch,
       batchSlug: batch.batchSlug,
       allowedRecipientAddresses,
       recipientsKey,
@@ -255,7 +255,7 @@ export default class MicronoteBatchFunding {
     try {
       const batches = await this.client.runRemote('MicronoteBatch.get', undefined);
       this.verifyBatch(batches.active);
-      if (batches.credit) this.verifyBatch(batches.credit);
+      if (batches.giftCard) this.verifyBatch(batches.giftCard);
       promise.resolve(batches);
     } catch (error) {
       this.activeBatchesPromise = null;
@@ -312,7 +312,7 @@ export default class MicronoteBatchFunding {
 export type IMicronoteFund = {
   fundsId: number;
   microgonsRemaining: number;
-  isCreditBatch?: boolean;
+  isGiftCardBatch?: boolean;
   allowedRecipientAddresses?: string[];
   recipientsKey?: string;
   batchSlug: string;

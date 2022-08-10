@@ -6,8 +6,8 @@ import MicronoteBatchFindFund from './MicronoteBatch.findFund';
 import MicronoteBatchActiveFunds from './MicronoteBatch.activeFunds';
 import MicronoteBatchGet from './MicronoteBatch.get';
 import MicronoteBatchGetFundSettlement from './MicronoteBatch.getFundSettlement';
-import CreditCreate from './Credit.create';
-import CreditClaim from './Credit.claim';
+import GiftCardCreate from './GiftCard.create';
+import GiftCardClaim from './GiftCard.claim';
 
 export default [
   MicronoteClaim,
@@ -18,6 +18,6 @@ export default [
   MicronoteBatchActiveFunds,
   MicronoteBatchGet,
   MicronoteBatchGetFundSettlement,
-  CreditCreate,
-  CreditClaim
+  GiftCardCreate,
+  GiftCardClaim
 ];

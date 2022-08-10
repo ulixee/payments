@@ -25,9 +25,9 @@ export default new ApiHandler('MicronoteBatch.fund', {
       throw new NewNotesNotBeingAcceptedError();
     }
 
-    if (batch.type === MicronoteBatchType.Credit) {
+    if (batch.type === MicronoteBatchType.GiftCard) {
       throw new InvalidParameterError(
-        "You're trying to fund a Credit batch with a Note. You need to use a Micronote batch.",
+        "You're trying to fund a gift card batch with a Note. You need to use a Micronote batch.",
         'batchSlug',
       );
     }

@@ -5,7 +5,7 @@ export default new ApiHandler('MicronoteBatch.get', {
   handler() {
     return Promise.resolve({
       active: ActiveBatches.getCurrent(),
-      credit: ActiveBatches.getCredit()
+      giftCard: ActiveBatches.getGiftCard()
     });
   },
 });

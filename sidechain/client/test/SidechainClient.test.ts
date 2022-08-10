@@ -134,7 +134,7 @@ test('should only create a new micronote fund if funds are exhausted', async () 
   let microgonsRemaining = 80;
   const batch = {
     batchSlug,
-    isCreditBatch: false,
+    isGiftCardBatch: false,
   } as IMicronoteBatch;
   mock.MicronoteBatchFunding.fundBatch.mockImplementation(async function (_, centagons) {
     microgonsRemaining = centagons * 10e3;

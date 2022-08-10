@@ -95,7 +95,7 @@ export default class MicronoteBatch implements IBatchState {
     }
     return {
       batchSlug: this.slug,
-      isCreditBatch: this.data.type === MicronoteBatchType.Credit,
+      isGiftCardBatch: this.data.type === MicronoteBatchType.GiftCard,
       micronoteBatchIdentity: this.identity,
       micronoteBatchAddress: this.address,
       sidechainIdentity: this.sidechainIdentity,
@@ -150,7 +150,7 @@ export default class MicronoteBatch implements IBatchState {
   ): Promise<MicronoteBatch> {
     let plannedClose = moment().add(batchOpenMinutes, 'minutes');
     let stopNotes = moment(plannedClose).subtract(stopNotesMinsBeforeClose, 'minutes');
-    if (type === MicronoteBatchType.Credit) {
+    if (type === MicronoteBatchType.GiftCard) {
       plannedClose = null;
       stopNotes = null;
     }
@@ -161,12 +161,8 @@ export default class MicronoteBatch implements IBatchState {
       claimSignatureSettings: 1,
     });
 
-    let slug: string;
-    if (type === MicronoteBatchType.Credit) {
-      slug = `credit_${identity.publicKey.toString('hex').substring(0, 7)}`;
-    } else {
-      slug = `micro_${identity.publicKey.toString('hex').substring(0, 8)}`;
-    }
+    const prefix = type === MicronoteBatchType.GiftCard ? 'gifts' : 'micro';
+    const slug = `${prefix}_${identity.publicKey.toString('hex').substring(0, 8)}`;
 
     const batch = new MicronoteBatch(
       client,
@@ -214,7 +210,7 @@ export default class MicronoteBatch implements IBatchState {
 }
 
 export enum MicronoteBatchType {
-  Credit = 'Credit',
+  GiftCard = 'GiftCard',
   Micronote = 'Micronote',
 }
 

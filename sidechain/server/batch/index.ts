@@ -23,8 +23,8 @@ export const ActiveBatches = {
     const batch = MicronoteBatchManager.get();
     return { ...batch.getNoteParams() };
   },
-  getCredit(): IMicronoteBatch | null {
-    const batch = MicronoteBatchManager.creditBatch;
+  getGiftCard(): IMicronoteBatch | null {
+    const batch = MicronoteBatchManager.giftCardBatch;
     if (!batch) return null;
     return { ...batch.getNoteParams() };
   },

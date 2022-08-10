@@ -9,7 +9,7 @@ import {
 } from '../../utils/errors';
 import PgClient from '../../utils/PgClient';
 import { DbType } from '../../utils/PgPool';
-import { ICreditRecord } from './Credit';
+import { IGiftCardRecord } from './GiftCard';
 
 const minFunding = config.micronoteBatch.minimumFundingCentagons;
 
@@ -90,13 +90,13 @@ export default class MicronoteFunds {
   public async find(microgons: number): Promise<{
     microgonsRemaining: number;
     fundsId: number;
-    allowedRecipientAddresses?: string[];
+    redeemableWithAddresses?: string[];
   }> {
     const params = [this.clientAddress, microgons];
     const { rows: funds } = await this.client.query<{
       fundsId: number;
       microgonsRemaining: number;
-      allowedRecipientAddresses?: string[];
+      redeemableWithAddresses?: string[];
     }>(
       `SELECT id as funds_id, 
         (microgons - microgons_allocated) as microgons_remaining,
@@ -178,17 +178,17 @@ export default class MicronoteFunds {
     });
   }
 
-  public static async createFromCredit(
+  public static async createFromGiftCard(
     client: PgClient<DbType.Batch>,
-    credit: ICreditRecord,
+    giftCard: IGiftCardRecord,
     guaranteeBlockHeight: number,
   ): Promise<IMicronoteFundsRecord> {
-    const { microgons, id: creditId, allowedRecipientAddresses } = credit;
+    const { microgons, id: giftCardId, redeemableWithAddresses } = giftCard;
     return await client.insertWithId('micronote_funds', {
-      address: credit.claimAddress,
-      creditId,
+      address: giftCard.claimAddress,
+      giftCardId,
       microgons,
-      allowedRecipientAddresses,
+      allowedRecipientAddresses: redeemableWithAddresses,
       microgonsAllocated: 0,
       createdTime: new Date(),
       lastUpdatedTime: new Date(),
