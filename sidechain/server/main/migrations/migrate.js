@@ -13,14 +13,13 @@ const postgrator = new Postgrator({
   execQuery: query => client.query(query),
 });
 
-// postgrator.on('validation-started', migration => console.log('VALIDATION STARTED',migration));
-// postgrator.on('validation-finished', migration => console.log('VALIDATION DONE',migration));
-// postgrator.on('migration-started', migration => console.log('MIGRATION STARTED',migration));
-// postgrator.on('migration-finished', migration => console.log('MIGRATION DONE',migration));
-
 (async () => {
-  const applied = await postgrator.migrate();
-  // eslint-disable-next-line no-console
-  console.log('Completed', applied);
-  await client.release();
+  await client.connect();
+  try {
+    const applied = await postgrator.migrate();
+    // eslint-disable-next-line no-console
+    console.log('Completed', applied);
+  } finally {
+    await client.end();
+  }
 })().catch(console.error);
