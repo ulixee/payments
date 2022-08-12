@@ -1,12 +1,10 @@
 import { Command } from 'commander';
 import Address from '@ulixee/crypto/lib/Address';
 import SidechainClient from '../lib/SidechainClient';
-import { commonOptions } from './common';
+import { sidechainHostOption } from './common';
 
 export default function addressCli(): Command {
   const cli = new Command('address');
-
-  const { sidechainHostOption } = commonOptions(cli);
 
   cli
     .command('balance <address>')

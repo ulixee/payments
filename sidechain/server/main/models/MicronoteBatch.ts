@@ -128,7 +128,7 @@ export default class MicronoteBatch implements IBatchState {
 
     if (rows.length) {
       const state = MicronoteBatch.fromData(client, rows[0]);
-      client.logger.info('Got micronoteBatch from db', { state: state.data, rows });
+      client.logger.info('Got micronoteBatch from db', { micronoteBatch: state.data });
 
       return state;
     }

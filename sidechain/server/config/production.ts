@@ -1,6 +1,7 @@
 import ISettings from './ISettings';
 
 module.exports = <ISettings>{
+  baseUrl: 'https://payments.ulixee.org',
   micronoteBatch: {
     stopNewNotesMinsBeforeClose: 60,
     openMinutes: 60 * 8,

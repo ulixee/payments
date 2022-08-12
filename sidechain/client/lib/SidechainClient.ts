@@ -15,6 +15,7 @@ import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import SidechainApiSchema, { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { IDataboxApiTypes } from '@ulixee/specification/databox';
+import { bindFunctions } from '@ulixee/commons/lib/utils';
 import IPaymentProvider from '../interfaces/IPaymentProvider';
 import { ClientValidationError } from './errors';
 import ConnectionToSidechainCore from './ConnectionToSidechainCore';
@@ -56,6 +57,7 @@ export default class SidechainClient implements IPaymentProvider {
     },
     keepAliveRemoteConnections = false,
   ) {
+    bindFunctions(this);
     if (keepAliveRemoteConnections) {
       sidechainRemotePool[host] ??= ConnectionToSidechainCore.remote(host);
       this.connectionToCore = sidechainRemotePool[host];
@@ -101,7 +103,10 @@ export default class SidechainClient implements IPaymentProvider {
   public async createMicroPayment(
     options: Pick<
       IDataboxApiTypes['Databox.meta']['result'],
-      'basePricePerQuery' | 'computePricePerKb' | 'giftCardPaymentAddresses' | 'averageBytesPerQuery'
+      | 'basePricePerQuery'
+      | 'computePricePerKb'
+      | 'giftCardPaymentAddresses'
+      | 'averageBytesPerQuery'
     >,
   ): Promise<IPayment> {
     options.averageBytesPerQuery ??= 256;

@@ -1,7 +1,7 @@
 import ISettings from './ISettings';
 
 module.exports = <ISettings>{
-  port: 2500,
+  baseUrl: `http://localhost:2500`,
   db: {
     host: 'localhost',
     database: 'ulx_sidechain',
@@ -16,7 +16,7 @@ module.exports = <ISettings>{
     prefix: 'ulx_micronote_batch_',
   },
   mainchain: {
-    host: '127.0.0.1:3005',
+    host: null,
     fundingHoldBlocks: 6,
     addresses: ['../test/assets/addresses/SidechainWallet1.json'], // must be injected
   },

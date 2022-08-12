@@ -293,7 +293,8 @@ export default class MicronoteBatchClose {
       WHERE claimed_time is null 
        AND canceled_time is null`);
 
-    await this.client.update(`UPDATE micronotes set canceled_time = now() 
+    // might not have any rows to update, so run a regular query
+    await this.client.query(`UPDATE micronotes set canceled_time = now() 
        WHERE claimed_time is null 
         AND canceled_time is null`);
 

@@ -81,6 +81,15 @@ export default class BlockManager {
   }
 
   public static async start(): Promise<void> {
+    if (!config.mainchain.host) {
+      this.logger.warn('No mainchain configured. Setting block height to 0');
+      this.settingsLoader.resolve({
+        height: 0,
+        sidechains: [{ rootIdentity: config.rootIdentity.bech32, url: config.baseUrl }],
+      } as IBlockSettings);
+      return;
+    }
+
     BlockManager.client = new MainchainClient(config.mainchain.host);
     BlockManager.last4Blocks = MainchainBlock.getLatest4Blocks();
     await BlockManager.loadSettings();

@@ -27,8 +27,10 @@ const rootIdentity = config.has('rootIdentityPath')
   ? Identity.loadFromFile(Path.resolve(__dirname, config.get('rootIdentityPath')))
   : Identity.loadFromPem(config.get('rootIdentitySecretKey'));
 
+const baseUrl = config.has('baseUrl') ? new URL(config.get('baseUrl')) : { port: 0, href: 'http://localhost:' };
 const settings = {
-  port: config.get('port') as number,
+  port: baseUrl.port,
+  baseUrl: baseUrl.href,
   db: config.get('db') as PoolConfig,
   micronoteBatch: {
     minimumFundingCentagons: config.get('micronoteBatch.minimumFundingCentagons'),

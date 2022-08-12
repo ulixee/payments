@@ -59,11 +59,12 @@ export default class MicronoteBatchFunding {
     await this.activeGiftCardFundsPromise;
     this.fundsByIdPerBatch[batchSlug] ??= {};
     this.fundsByIdPerBatch[batchSlug][giftCard.fundsId] = {
-      ...giftCard,
       batchSlug,
       isGiftCardBatch: true,
-      microgonsRemaining: giftCard.microgons,
+      fundsId: giftCard.fundsId,
+      allowedRecipientAddresses: giftCard.redeemableWithAddresses,
       recipientsKey: giftCard.redeemableWithAddresses.sort().toString(),
+      microgonsRemaining: giftCard.microgons,
     };
     return this.fundsByIdPerBatch[batchSlug][giftCard.fundsId];
   }

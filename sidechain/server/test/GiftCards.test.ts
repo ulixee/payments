@@ -52,14 +52,14 @@ test('should not be able to create a giftCard on a micronote batch', async () =>
     return { giftCard: batches.active, active: batches.giftCard };
   });
 
-  await expect(client.createGiftCard(50e3)).rejects.toThrowError('non-giftCard batch');
+  await expect(client.createGiftCard(50e3)).rejects.toThrowError('trying to create a gift card on a Micronote batch');
 });
 
 test('should not be able to settle a giftCard batch', async () => {
   await expect(
     // @ts-expect-error
     MicronoteBatchManager.settleBatch(MicronoteBatchManager.giftCardBatch.address, {}),
-  ).rejects.toThrowError('GiftCard batches cannot write to the ledger');
+  ).rejects.toThrowError('Gift card batches cannot write to the ledger');
 });
 
 test('should not be able to use a note in a giftCard batch', async () => {
@@ -80,7 +80,7 @@ test('should allow multiple addresses', async () => {
   ]);
 
   await expect(client1.saveGiftCard(signedOnceGiftCard)).rejects.toThrowError(
-    'A GiftCard address is missing from the signatures list',
+    'address is missing from the signatures list',
   );
 
   const signedTwiceGiftCard = await client2.signGiftCard(signedOnceGiftCard);

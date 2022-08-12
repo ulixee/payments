@@ -112,7 +112,7 @@ export default class MicronoteBatchSettle {
     options?: { logger: IBoundLog },
   ): Promise<IMicronoteBatchOutputRecord> {
     const batch = await ActiveBatches.get(batchSlug);
-    const batchDb = BatchDb.get(batch.slug, true);
+    const batchDb = BatchDb.get(batch.slug, false);
     if (!batchDb) throw new NotFoundError('Micronote Batch not found');
 
     return await batchDb.transaction(async client => {

@@ -1,7 +1,7 @@
 import { PoolConfig } from 'pg';
 
 export default interface ISettings {
-  port?: number;
+  baseUrl?: string;
   db?: PoolConfig & {
     port?: number | string;
   };

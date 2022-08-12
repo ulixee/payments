@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 30
 
     runs-on: ubuntu-latest
-    container: node:16-buster-slim
+    container: node:16-buster
 
     services:
       postgres:
@@ -25,9 +25,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'true'
+      - uses: actions/checkout@v3
 
       - uses: actions/setup-node@v2
         with:
@@ -45,6 +43,9 @@ jobs:
       - name: Run Lint
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == 14 }}
         run: NODE_OPTIONS=--max-old-space-size=4096 yarn lint
+
+      - name: Build
+        run: yarn && yarn build
 
       - name: Run tests
         run: yarn test --testTimeout=60000 --maxWorkers=2 --verbose

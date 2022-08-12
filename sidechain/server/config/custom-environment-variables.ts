@@ -1,7 +1,7 @@
 import ISettings from './ISettings';
 
 module.exports = <{ [K in keyof ISettings]: string | { [X in keyof ISettings[K]]: string } }>{
-  port: 'PORT',
+  baseUrl: 'SIDECHAIN_HOST',
   db: {
     host: 'PGHOST',
     database: 'PGDATABASE',
@@ -13,6 +13,7 @@ module.exports = <{ [K in keyof ISettings]: string | { [X in keyof ISettings[K]]
     openMinutes: 'MICRONOTE_BATCH_MINS_OPEN',
     stopNewNotesMinsBeforeClose: 'MICRONOTE_BATCH_NEW_NOTE_STOP_MINS',
     payoutAddress: 'MICRONOTE_BATCH_PAYOUT_ADDRESS',
+    prefix: 'MICRONOTE_BATCH_DB_PREFIX'
   },
   mainchain: {
     addresses: 'MAINCHAIN_ADDRESSES',

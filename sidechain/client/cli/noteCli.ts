@@ -2,12 +2,10 @@ import { Command } from 'commander';
 import Address from '@ulixee/crypto/lib/Address';
 import { bufferReplacer } from '@ulixee/commons/lib/bufferUtils';
 import SidechainClient from '../lib/SidechainClient';
-import { commonOptions } from './common';
+import { sidechainHostOption, addressPathOption } from './common';
 
 export default function noteCli(): Command {
   const cli = new Command('note');
-
-  const { sidechainHostOption, addressPathOption } = commonOptions(cli);
 
   cli
     .command('note <noteHashHex>')

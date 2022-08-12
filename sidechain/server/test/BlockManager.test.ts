@@ -20,6 +20,7 @@ beforeAll(async () => {
   await setupDb();
   userClient = new TestClient();
   userSidechainClient = new TestClient();
+  config.mainchain.host = 'ws://127.0.0.1:2344';
 });
 
 afterAll(async () => {
