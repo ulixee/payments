@@ -2,7 +2,6 @@ import { nanoid } from 'nanoid';
 import ISettings from './ISettings';
 
 module.exports = <ISettings>{
-  port: 0,
   micronoteBatch: {
     minimumFundingCentagons: 100n,
     prefix: 'ulx_test_batch_',

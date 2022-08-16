@@ -1,11 +1,11 @@
 import Logger from '@ulixee/commons/lib/Logger';
-import * as Koa from 'koa';
+import { IncomingMessage, ServerResponse } from 'http';
 import HttpTransportToClient from '@ulixee/net/lib/HttpTransportToClient';
 import ApiHandler from './ApiHandler';
 
 const { log } = Logger(module);
 
-export default class ApiRouter {
+export default class ApiRegistry {
   private static commands: { [key: string]: (...args: any[]) => Promise<any> } = {};
 
   public static hasHandlerForPath(path: string): boolean {
@@ -18,15 +18,15 @@ export default class ApiRouter {
     }
   }
 
-  public static async route(ctx: Koa.Context): Promise<any> {
+  public static async route(req: IncomingMessage, res: ServerResponse): Promise<any> {
     const startTime = Date.now();
 
-    const transport = new HttpTransportToClient(ctx.req, ctx.res);
+    const transport = new HttpTransportToClient(req, res);
     const apiRequest = await transport.readRequest();
     const { command, messageId } = apiRequest;
 
     const logger = log.createChild(module, {
-      remote: `${ctx.req.socket.remoteAddress}:${ctx.req.socket.remotePort}`,
+      remote: transport.remoteId,
       messageId,
       command,
     });
@@ -34,7 +34,7 @@ export default class ApiRouter {
     let data: any;
     try {
       logger.info(`api/${apiRequest.command}`, {
-        path: ctx.url,
+        path: req.url,
         apiRequest,
       });
 

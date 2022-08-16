@@ -8,13 +8,13 @@ import { DbType } from '../../utils/PgPool';
 import { INoteRecord } from './Note';
 import BlockManager from '../lib/BlockManager';
 
-interface ISystemWallet {
+interface IAddressBalance {
   address: string;
   centagons: bigint;
   guaranteeBlockHeight: number;
 }
 
-export default class Wallet {
+export default class RegisteredAddress {
   public readonly address: string;
   public balance = 0n;
 
@@ -22,19 +22,19 @@ export default class Wallet {
     this.address = address;
   }
 
-  public async create(): Promise<Wallet> {
-    await this.client.insert('wallets', { address: this.address });
+  public async create(): Promise<RegisteredAddress> {
+    await this.client.insert('addresses', { address: this.address });
     return this;
   }
 
-  public async lock(isRetry = false): Promise<Wallet> {
+  public async lock(isRetry = false): Promise<RegisteredAddress> {
     const { rows } = await this.client.query(
-      'SELECT 1 from wallets WHERE address = $1 LIMIT 1 FOR UPDATE',
+      'SELECT 1 from addresses WHERE address = $1 LIMIT 1 FOR UPDATE',
       [this.address],
     );
     if (!rows.length) {
       if (isRetry) {
-        throw new NotFoundError('The wallet provided could not found', this.address);
+        throw new NotFoundError('The address provided could not found', this.address);
       }
       await this.create();
       await this.lock(true);
@@ -42,25 +42,22 @@ export default class Wallet {
     return this;
   }
 
-  public async load(): Promise<Wallet> {
-    this.balance = await Wallet.getBalance(this.client, this.address);
+  public async load(): Promise<RegisteredAddress> {
+    this.balance = await RegisteredAddress.getBalance(this.client, this.address);
     return this;
   }
 
-  public static async registerAddress(address, logger?: IBoundLog): Promise<Wallet> {
+  public static async register(address: string, logger?: IBoundLog): Promise<RegisteredAddress> {
     return await MainDb.transaction(
       client => {
-        const wallet = new Wallet(client, address);
-        return wallet.create();
+        const registeredAddress = new RegisteredAddress(client, address);
+        return registeredAddress.create();
       },
       { logger },
     );
   }
 
-  public static async getBalance(
-    client: PgClient<DbType.Main>,
-    address: string,
-  ): Promise<bigint> {
+  public static async getBalance(client: PgClient<DbType.Main>, address: string): Promise<bigint> {
     const { rows } = await client.preparedQuery<{ balance: bigint }>({
       text: `select
   (SELECT COALESCE(SUM(centagons),0)::bigint FROM notes WHERE to_address = $1 and (effective_block_height is null or effective_block_height <= $2)) -
@@ -76,11 +73,11 @@ export default class Wallet {
 
   public static async getNoteHashes(
     client: PgClient<DbType.Main>,
-    walletAddress: string,
+    address: string,
   ): Promise<Buffer[]> {
     const records = await client.list<Pick<INoteRecord, 'noteHash'>>(
       'select note_hash from notes where to_address = $1 or from_address = $1',
-      [walletAddress],
+      [address],
     );
     return records.map(x => x.noteHash);
   }
@@ -93,12 +90,12 @@ export default class Wallet {
   ): Promise<{
     burnBalance: bigint;
     sidechainFundingIn: bigint;
-    wallets: ISystemWallet[];
+    addressBalances: IAddressBalance[];
   }> {
     // don't ignore sending money to burn
     const ignoredDestinations = [stakeAddress].concat(openBatchAddresses || []);
 
-    const plusBalances = await client.list<ISystemWallet>(
+    const plusBalances = await client.list<IAddressBalance>(
       `
     SELECT 
       COALESCE(SUM(centagons),0)::bigint as centagons, 
@@ -111,7 +108,7 @@ export default class Wallet {
       [asOfBlockHeight, NoteType.transferOut],
     );
 
-    const minusBalances = await client.list<ISystemWallet>(
+    const minusBalances = await client.list<IAddressBalance>(
       `
     SELECT 
       COALESCE(SUM(centagons),0)::bigint as centagons, 
@@ -145,8 +142,8 @@ export default class Wallet {
     const sidechainFundingIn =
       (sidechainFundingInQuery.centagons ?? 0n) - (sidechainFundingOutQuery.centagons ?? 0n);
 
-    const wallets: {
-      [address: string]: ISystemWallet;
+    const balancesByAddress: {
+      [address: string]: IAddressBalance;
     } = {};
 
     const openBatchKeys = new Set<string>();
@@ -156,32 +153,32 @@ export default class Wallet {
 
     for (const record of plusBalances) {
       const address = record.address;
-      // don't track money in open batch wallets, sent to burn and/or stake
+      // don't track money in open batch addresses, sent to burn and/or stake
       if (openBatchKeys.has(address) || address === stakeAddress) {
         continue;
       }
 
-      wallets[address] = record;
+      balancesByAddress[address] = record;
     }
 
     for (const { address, centagons } of minusBalances) {
-      if (!wallets[address]) {
-        wallets[address] = { address, guaranteeBlockHeight: asOfBlockHeight, centagons: 0n };
+      if (!balancesByAddress[address]) {
+        balancesByAddress[address] = { address, guaranteeBlockHeight: asOfBlockHeight, centagons: 0n };
       }
 
-      wallets[address].centagons -= centagons;
-      if (wallets[address].centagons === 0n) {
-        delete wallets[address];
+      balancesByAddress[address].centagons -= centagons;
+      if (balancesByAddress[address].centagons === 0n) {
+        delete balancesByAddress[address];
       }
     }
 
-    const burnBalance = wallets[config.nullAddress] || { centagons: 0n };
-    delete wallets[config.nullAddress];
+    const burnBalance = balancesByAddress[config.nullAddress] || { centagons: 0n };
+    delete balancesByAddress[config.nullAddress];
 
     return {
       burnBalance: burnBalance.centagons,
       sidechainFundingIn,
-      wallets: Object.values(wallets),
+      addressBalances: Object.values(balancesByAddress),
     };
   }
 }

@@ -36,9 +36,10 @@ export async function setupDb() {
     await migrationClient.end();
 
     await MainDb.transaction(async client => {
-      await client.insert('wallets', { address: sidechainAddress });
+      await client.insert('addresses', { address: sidechainAddress });
     });
 
+    await MicronoteBatchManager.start();
     await TestServer.start();
     return TestServer.serverPort();
   } catch (err) {
@@ -49,15 +50,13 @@ export async function setupDb() {
 
 export async function cleanDb() {
   try {
-    // @ts-expect-error
-    await MicronoteBatchManager.openBatchesBySlug.clear();
     // @ts-ignore
-    await MicronoteBatchManager.pendingSettlementBatchesBySlug.clear();
+    await MicronoteBatchManager.batchesBySlug.clear();
     await MainDb.transaction(async client => {
       await client.query(
-        'TRUNCATE wallets, notes, micronote_batch_outputs, micronote_batches, mainchain_blocks, securities, stakes, stake_history, security_mainchain_blocks, funding_transfers_out, mainchain_transactions CASCADE',
+        'TRUNCATE addresses, notes, micronote_batch_outputs, micronote_batches, mainchain_blocks, securities, stakes, stake_history, security_mainchain_blocks, funding_transfers_out, mainchain_transactions CASCADE',
       );
-      await client.insert('wallets', { address: sidechainAddress });
+      await client.insert('addresses', { address: sidechainAddress });
     });
     return TestServer.serverPort();
   } catch (err) {
@@ -101,11 +100,15 @@ export async function grantCentagons(centagons: number | bigint, toAddress: stri
 
 export async function stop() {
   try {
-    const batch = await MicronoteBatchManager.get();
     await MicronoteBatchManager.stop();
-    const pool = await MicronoteBatchDb.get(batch.slug);
-    await pool.shutdown();
-    await MainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
+
+    for (const batch of MicronoteBatchManager.getOpenBatches()) {
+      await MainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
+    }
+    const giftCardSlug = MicronoteBatchManager.giftCardBatch?.slug;
+    if (giftCardSlug) {
+      await MainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(giftCardSlug)} WITH (FORCE);`);
+    }
   } catch (err) {
     if (!(err instanceof NotFoundError)) {
       logger.info('ERROR stopping service', err);

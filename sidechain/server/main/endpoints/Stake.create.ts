@@ -1,7 +1,7 @@
 import config from '../../config';
 import BlockManager from '../lib/BlockManager';
 import { InvalidParameterError, InvalidStakeTransactionRecipientError } from '../../utils/errors';
-import Wallet from '../models/Wallet';
+import RegisteredAddress from '../models/RegisteredAddress';
 import Note from '../models/Note';
 import Stake from '../models/Stake';
 import MainDb from '../db';
@@ -27,7 +27,7 @@ export default new ApiHandler('Stake.create', {
     }
 
     const stake = await MainDb.transaction(async client => {
-      const wallet = new Wallet(client, address);
+      const wallet = new RegisteredAddress(client, address);
       await wallet.lock();
       await wallet.load();
 

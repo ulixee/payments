@@ -5,7 +5,7 @@ import Logger from '@ulixee/commons/lib/Logger';
 import MainchainClient from '@ulixee/mainchain-client';
 import { IBlock, IBlockHeader, ITransaction, TransactionType } from '@ulixee/specification';
 import config from '../../config';
-import Wallet from '../models/Wallet';
+import RegisteredAddress from '../models/RegisteredAddress';
 import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
 import Security from '../models/Security';
 import MainDb from '../db';
@@ -81,6 +81,15 @@ export default class BlockManager {
   }
 
   public static async start(): Promise<void> {
+    if (!config.mainchain.host) {
+      this.logger.warn('No mainchain configured. Setting block height to 0');
+      this.settingsLoader.resolve({
+        height: 0,
+        sidechains: [{ rootIdentity: config.rootIdentity.bech32, url: config.baseUrl }],
+      } as IBlockSettings);
+      return;
+    }
+
     BlockManager.client = new MainchainClient(config.mainchain.host);
     BlockManager.last4Blocks = MainchainBlock.getLatest4Blocks();
     await BlockManager.loadSettings();
@@ -255,7 +264,7 @@ export default class BlockManager {
     const settings = await BlockManager.getBlockSettings();
     await MainDb.transaction(async client => {
       // lock so multi-server setups don't create conflicting batches
-      await new Wallet(client, config.nullAddress).lock();
+      await new RegisteredAddress(client, config.nullAddress).lock();
 
       BlockManager.last4Blocks = MainchainBlock.getLatest4Blocks();
 
@@ -294,7 +303,7 @@ export default class BlockManager {
         } as IBlockSettings);
       })
       .catch(async error => {
-        this.logger.warn('Mainchain client not available.  Retrying in 10 seconds', { error });
+        this.logger.warn('Mainchain client not available. Retrying in 10 seconds', { error });
         await new Promise(resolve => setTimeout(resolve, 10e3));
         if (!BlockManager.isStopping) {
           return await BlockManager.getBlockSettings();

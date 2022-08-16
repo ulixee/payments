@@ -4,7 +4,7 @@ import TransactionBuilder from '@ulixee/wallet/lib/TransactionBuilder';
 import { LedgerType, NoteType, TransactionType } from '@ulixee/specification';
 import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
-import Wallet from '../main/models/Wallet';
+import RegisteredAddress from '../main/models/RegisteredAddress';
 import MainchainBlock from '../main/models/MainchainBlock';
 import Note from '../main/models/Note';
 import Security, { ISecurityRecord } from '../main/models/Security';
@@ -231,7 +231,7 @@ test('should create proper unspent outputs when some money is returned to users'
   });
 
   await MainDb.transaction(async client => {
-    const balance = await Wallet.getBalance(client, clientAddress);
+    const balance = await RegisteredAddress.getBalance(client, clientAddress);
     expect(balance).toBe(1n);
   });
 

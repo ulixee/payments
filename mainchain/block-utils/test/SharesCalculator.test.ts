@@ -84,7 +84,7 @@ test.skip('show period block rewards and total mined', () => {
     } else {
       if (i % Constants.miningRewardsPhaseInterval === Constants.miningRewardsPhaseInterval - 1) {
         console.log(
-          'Phase %s.  Ending rewards: %s   Total: %s    Block: %s',
+          'Phase %s. Ending rewards: %s   Total: %s    Block: %s',
           phase,
           rewards,
           totalMined / 100n,

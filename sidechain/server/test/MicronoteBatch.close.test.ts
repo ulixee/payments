@@ -5,7 +5,7 @@ import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchClose from '../batch/models/MicronoteBatch.close';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
-import Wallet from '../main/models/Wallet';
+import RegisteredAddress from '../main/models/RegisteredAddress';
 import MicronoteBatch from '../main/models/MicronoteBatch';
 import Note, { INoteRecord } from '../main/models/Note';
 import mainDb from '../main/db';
@@ -95,12 +95,12 @@ beforeAll(async () => {
       parts[miningBit.address] = note.microgonsAllocated / 5;
     }
     const client = clients.find(x => x.address === note.clientAddress);
-    await client.runSignedAsNode('Micronote.lock', {
+    await client.runSignedByIdentity('Micronote.lock', {
       id: note.id,
       batchSlug: batch.slug,
       identity: client.identity,
     });
-    const noteClaim = await client.runSignedAsNode('Micronote.claim', {
+    const noteClaim = await client.runSignedByIdentity('Micronote.claim', {
       id: note.id,
       batchSlug: batch.slug,
       identity: client.identity,
@@ -147,8 +147,8 @@ test('should make sure balances match the ledger', async () => {
     return new Note(client, data).saveUnchecked();
   });
   await mainDb.transaction(async defaultClient => {
-    const balance = await Wallet.getBalance(defaultClient, batch.address);
-    const hashes = await Wallet.getNoteHashes(defaultClient, batch.address);
+    const balance = await RegisteredAddress.getBalance(defaultClient, batch.address);
+    const hashes = await RegisteredAddress.getNoteHashes(defaultClient, batch.address);
     await batchDb.transaction(
       async client => {
         const batchClose = new MicronoteBatchClose(
@@ -181,12 +181,12 @@ test('should make sure balances match the ledger', async () => {
 
 test('should close unfinished notes', async () => {
   const [client1] = clients;
-  const fundsId = await client1.reserveBatchFunds(11e4);
-  await client1.runSignedByWallet(`Micronote.create`, {
+  const { fund } = await client1.micronoteBatchFunding.reserveFunds(11e4);
+  await client1.runSignedByAddress(`Micronote.create`, {
     batchSlug: batch.slug,
     address: client1.address,
     microgons: 11e4,
-    fundsId: fundsId.fundsId,
+    fundsId: fund.fundsId,
   });
 
   await batchDb.transaction(
@@ -264,7 +264,7 @@ test('should properly create payouts', async () => {
     { logger },
   );
   await mainDb.transaction(async defaultClient => {
-    const wallet = await new Wallet(defaultClient, batch.address).load();
+    const wallet = await new RegisteredAddress(defaultClient, batch.address).load();
     await batchDb.transaction(
       async client => {
         const batchSettle = new MicronoteBatchSettle(client, batch.address);

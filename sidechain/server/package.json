@@ -1,5 +1,5 @@
 {
-  "name": "@ulixee/sidechain",
+  "name": "@ulixee/sidechain-server",
   "version": "2.0.0-alpha.8",
   "private": true,
   "description": "The Ulixee batch is a sidechain batched settlement channel",
@@ -28,7 +28,7 @@
     "@ulixee/wallet": "2.0.0-alpha.8",
     "@ulixee/specification": "2.0.0-alpha.8",
     "@ulixee/mainchain-client": "2.0.0-alpha.8",
-    "@ulixee/sidechain-client": "2.0.0-alpha.8",
+    "@ulixee/sidechain": "2.0.0-alpha.8",
     "config": "^3.3.7",
     "koa": "^2.13.4",
     "camelcase": "^6.3.0",

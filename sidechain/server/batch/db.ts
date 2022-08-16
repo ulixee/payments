@@ -12,6 +12,11 @@ const pools: {
 export default class BatchDb {
   static batchNamePrefix = config.micronoteBatch.prefix;
 
+  static async close(): Promise<void> {
+    await Promise.allSettled(pools.map(x => x.pool.shutdown()));
+    pools.length = 0;
+  }
+
   static get(slug: string, doNotCreateNewPool = false): PgPool<DbType.Batch> {
     const db = this.getName(slug);
     const existing = pools.find(x => x.pool.name === db);
@@ -21,7 +26,7 @@ export default class BatchDb {
     }
     if (doNotCreateNewPool) return null;
 
-    if (pools.length >= 4) {
+    if (pools.length >= 5) {
       pools.sort((a, b) => b.accesses - a.accesses);
       const last = pools.pop();
       if (last) {
@@ -36,6 +41,10 @@ export default class BatchDb {
       pool,
       accesses: 1,
     });
+    pool.once('close', () => {
+      const index = pools.findIndex(x => x.pool.name === db);
+      if (index >= 0) pools.splice(index, 1);
+    });
     return pool;
   }
 
@@ -45,9 +54,7 @@ export default class BatchDb {
 
   static async createDb(slug: string, logger: IBoundLog): Promise<PgPool<DbType.Batch>> {
     const batchDb = this.get(slug);
-    const script = fs
-      .readFileSync(path.join(__dirname, './migrations/schema.sql'))
-      .toString();
+    const script = fs.readFileSync(path.join(__dirname, './migrations/schema.sql')).toString();
 
     await batchDb.transaction(client => client.query(script), {
       logger,

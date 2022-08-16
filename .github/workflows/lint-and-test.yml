@@ -1,0 +1,55 @@
+name: Test Matrix
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  lint-and-test:
+    name: Test Node.js ${{ matrix.node-version }} on ${{ matrix.os }}
+    timeout-minutes: 30
+
+    runs-on: ubuntu-latest
+    container: node:16-buster
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
+
+      - name: (TEMP) Clone ulixee/shared
+        run: git clone --recurse-submodules -j8 https://github.com/ulixee/shared.git
+        working-directory: ..
+
+      - name: (TEMP) Install ulixee/shared
+        run: yarn && yarn build
+        working-directory: ../shared
+
+      - name: Run Lint
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == 14 }}
+        run: NODE_OPTIONS=--max-old-space-size=4096 yarn lint
+
+      - name: Build
+        run: yarn && yarn build
+
+      - name: Run tests
+        run: yarn test --testTimeout=60000 --maxWorkers=2 --verbose
+        env:
+          PGHOST: postgres
+          PGPASSWORD: postgres
+          PGUSER: postgres

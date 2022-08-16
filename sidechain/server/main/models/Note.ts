@@ -6,7 +6,7 @@ import Address from '@ulixee/crypto/lib/Address';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import { Duplex } from 'stream';
 import { from } from 'pg-copy-streams';
-import addNoteSignature, { hashNote } from '@ulixee/sidechain-client/lib/addNoteSignature';
+import addNoteSignature, { hashNote } from '@ulixee/sidechain/lib/addNoteSignature';
 import BlockManager from '../lib/BlockManager';
 import {
   ConflictError,
@@ -17,7 +17,7 @@ import {
 import MainDb from '../db';
 import PgClient from '../../utils/PgClient';
 import { DbType } from '../../utils/PgPool';
-import Wallet from './Wallet';
+import RegisteredAddress from './RegisteredAddress';
 
 export default class Note {
   public data: INoteRecord;
@@ -29,7 +29,7 @@ export default class Note {
     this.data = data as any;
   }
 
-  public async save(fundingSourceWallet: Wallet, guaranteeBlockHeight?: number): Promise<Note> {
+  public async save(fundingSourceWallet: RegisteredAddress, guaranteeBlockHeight?: number): Promise<Note> {
     if (this.data.centagons <= 0) {
       throw new InvalidParameterError('Centagons must be greater than 0', 'centagons', {
         centagons: this.data.centagons,
@@ -89,7 +89,7 @@ export default class Note {
       return this;
     } catch (error) {
       this.client.logger.error('ERROR creating note', { error });
-      throw new ConflictError('Could not record note.  Ensure the note has valid parameters');
+      throw new ConflictError('Could not record note. Ensure the note has valid parameters');
     }
   }
 

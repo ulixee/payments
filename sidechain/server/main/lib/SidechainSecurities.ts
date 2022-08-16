@@ -205,33 +205,33 @@ export default class SidechainSecurities {
     sidechainSecurityFunds: ICentagon[],
   ): void {
     // wallet balances need to add to 0
-    let totalWalletsBalance = 0n;
+    let totalAddressesBalance = 0n;
     let securitiesBalance = 0n;
 
     // now add up wallet balances
     for (const balance of walletBalances) {
-      totalWalletsBalance += balance.centagons;
+      totalAddressesBalance += balance.centagons;
     }
 
     for (const fund of sidechainSecurityFunds) {
       securitiesBalance += fund.centagons;
     }
 
-    // 1. <all wallets> + <burn> - <sidechain wallets> === 0 (sidechain wallets have negative amounts since funds "appear" in the ledger without a source)
-    // 2. <all wallets> === <funding>
+    // 1. <all addresses> + <burn> - <sidechain addresses> === 0 (sidechain addresses negative amounts since funds "appear" in the ledger without a source)
+    // 2. <all addresses> === <funding>
     if (
-      totalWalletsBalance - sidechainFundingIn + burnBalance !== 0n ||
-      totalWalletsBalance !== securitiesBalance
+      totalAddressesBalance - sidechainFundingIn + burnBalance !== 0n ||
+      totalAddressesBalance !== securitiesBalance
     ) {
       log.warn('SidechainSecurities.OutOfBalance', {
-        totalWalletsBalance,
+        totalAddressesBalance,
         fundsBalance: securitiesBalance,
-        fundsMinusBurn: totalWalletsBalance - sidechainFundingIn + burnBalance,
+        fundsMinusBurn: totalAddressesBalance - sidechainFundingIn + burnBalance,
         burnBalance,
         sidechainFundingInCentagons: sidechainFundingIn,
         sessionId: null,
       });
-      throw new OutOfBalanceError(totalWalletsBalance.toString(), securitiesBalance.toString());
+      throw new OutOfBalanceError(totalAddressesBalance.toString(), securitiesBalance.toString());
     }
   }
 }

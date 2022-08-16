@@ -1,18 +1,18 @@
-CREATE TABLE wallets (
-	address varchar(64) PRIMARY KEY,
-	created_at timestamp NOT NULL DEFAULT NOW()
+CREATE TABLE addresses (
+  address varchar(64) PRIMARY KEY,
+  created_at timestamp NOT NULL DEFAULT NOW()
  ) WITH (autovacuum_enabled=false);
 
 CREATE TABLE notes (
-	note_hash bytea PRIMARY KEY,
-	from_address varchar(64) NOT NULL,
-	to_address varchar(64) NOT NULL,
-	centagons bigint NOT NULL CHECK (centagons > 0), --the amount moved from From to To
-	timestamp timestamp NOT NULL, --the time the note occurred
-	effective_block_height integer null CHECK (effective_block_height > 0),
-	type integer NOT NULL,
-	signature json NOT NULL,
-    guarantee_block_height integer NOT NULL
+  note_hash bytea PRIMARY KEY,
+  from_address varchar(64) NOT NULL,
+  to_address varchar(64) NOT NULL,
+  centagons bigint NOT NULL CHECK (centagons > 0), --the amount moved from From to To
+  timestamp timestamp NOT NULL, --the time the note occurred
+  effective_block_height integer null CHECK (effective_block_height > 0),
+  type integer NOT NULL,
+  signature json NOT NULL,
+  guarantee_block_height integer NOT NULL
 );
 
 -- TODO: partition notes table (probably by date at first)
@@ -56,7 +56,7 @@ CREATE TABLE securities (
   transaction_output_index integer NOT NULL,
   transaction_output_address varchar(64) NOT NULL, -- need to store to be able to output
   transaction_time text NOT NULL,
-	centagons bigint NOT NULL CHECK (centagons > 0),
+  centagons bigint NOT NULL CHECK (centagons > 0),
   from_address varchar(64) NOT NULL,
   to_address varchar(64) NOT NULL,
   is_to_sidechain boolean NOT NULL,
@@ -90,11 +90,12 @@ CREATE INDEX idx_unsettled_funding_transfers_out on funding_transfers_out (trans
 
 CREATE TABLE micronote_batches (
   address varchar(64) PRIMARY KEY,
-  slug varchar(10),
+  slug varchar(14) NOT NULL,
+  type varchar(10) NOT NULL,
   private_key bytea NOT NULL, -- TODO: move to a vault at some point
   open_time timestamp NOT NULL DEFAULT NOW(),
-  stop_new_notes_time timestamp NOT NULL,
-  planned_closing_time  timestamp NOT NULL,
+  stop_new_notes_time timestamp NULL,
+  planned_closing_time  timestamp NULL,
   closed_time timestamp,
   settled_time timestamp
 );

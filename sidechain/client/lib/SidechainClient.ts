@@ -1,22 +1,26 @@
 import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
 import { APIError } from '@ulixee/commons/lib/errors';
-import { createPromise } from '@ulixee/commons/lib/utils';
 import Logger from '@ulixee/commons/lib/Logger';
-import { IAddressSignature, INote, IStakeSignature, NoteType } from '@ulixee/specification';
+import {
+  IAddressSignature,
+  INote,
+  IPayment,
+  IStakeSignature,
+  NoteType,
+} from '@ulixee/specification';
 import * as assert from 'assert';
-import * as Url from 'url';
-import Queue from '@ulixee/commons/lib/Queue';
 import Identity from '@ulixee/crypto/lib/Identity';
 import Address from '@ulixee/crypto/lib/Address';
-import IResolvablePromise from '@ulixee/commons/interfaces/IResolvablePromise';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
-import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
 import SidechainApiSchema, { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
+import { IDataboxApiTypes } from '@ulixee/specification/databox';
+import { bindFunctions } from '@ulixee/commons/lib/utils';
 import IPaymentProvider from '../interfaces/IPaymentProvider';
-import { ClientValidationError, NeedsSidechainBatchFunding } from './errors';
-import IMicronote from '../interfaces/IMicronote';
+import { ClientValidationError } from './errors';
 import ConnectionToSidechainCore from './ConnectionToSidechainCore';
+import MicronoteBatchFunding, { IMicronoteFund } from './MicronoteBatchFunding';
+import IMicronote from '../interfaces/IMicronote';
 
 const isDebug = process.env.ULX_DEBUG ?? false;
 
@@ -32,14 +36,6 @@ const { log } = Logger(module);
 const sidechainRemotePool: { [url: string]: ConnectionToSidechainCore } = {};
 
 export default class SidechainClient implements IPaymentProvider {
-  get batchSlug(): string {
-    return this._micronoteBatch ? this._micronoteBatch.batchSlug : '';
-  }
-
-  get fullHost(): string {
-    return Url.resolve(this.host, this.batchSlug || '');
-  }
-
   get address(): string | null {
     return this.credentials.address ? this.credentials.address.bech32 : null;
   }
@@ -48,26 +44,10 @@ export default class SidechainClient implements IPaymentProvider {
     return this.credentials.identity ? this.credentials.identity.bech32 : null;
   }
 
-  public batchFundingQueriesToPreload = 100;
+  public readonly micronoteBatchFunding: MicronoteBatchFunding;
 
   protected readonly connectionToCore: ConnectionToSidechainCore;
-
-  private _micronoteBatch?: IMicronoteBatch;
-
-  private set micronoteBatch(value: IMicronoteBatch) {
-    if (value === null) {
-      this.getBatchPromise = null;
-      this.getActiveBatchFunds = null;
-    }
-    this._micronoteBatch = value;
-  }
-
-  private batchFundingQueue = new Queue();
-  private getActiveBatchFunds: IResolvablePromise<
-    ISidechainApiTypes['MicronoteBatch.findFund']['result'] & { batch: IMicronoteBatch }
-  >;
-
-  private getBatchPromise?: Promise<IMicronoteBatch>;
+  private settingsPromise: Promise<ISidechainApiTypes['Sidechain.settings']['result']>;
 
   constructor(
     readonly host: string,
@@ -75,159 +55,82 @@ export default class SidechainClient implements IPaymentProvider {
       address?: Address;
       identity?: Identity;
     },
-    micronoteBatch?: IMicronoteBatch,
     keepAliveRemoteConnections = false,
   ) {
+    bindFunctions(this);
     if (keepAliveRemoteConnections) {
-      if (!sidechainRemotePool[host])
-        sidechainRemotePool[host] = ConnectionToSidechainCore.remote(host);
+      sidechainRemotePool[host] ??= ConnectionToSidechainCore.remote(host);
       this.connectionToCore = sidechainRemotePool[host];
     } else {
       this.connectionToCore = ConnectionToSidechainCore.remote(host);
     }
-    if (micronoteBatch) this.micronoteBatch = micronoteBatch;
+    this.micronoteBatchFunding = new MicronoteBatchFunding({
+      address: this.address,
+      buildNote: this.buildNote.bind(this),
+      runRemote: this.runRemote.bind(this),
+    });
   }
 
-  /**
-   * To create an micronoteBatch, we need to transfer tokens to the micronoteBatch server public keys on the
-   * Ulixee fast token chain.
-   *
-   * NOTE: this should ONLY be done for a trusted micronoteBatch service (see verifymicronoteBatchUrl above)
-   */
-  public async fundMicronoteBatch(
-    centagons: number,
-  ): Promise<{ fundsId: number; batch: IMicronoteBatch }> {
-    const batch = await this.getMicronoteBatch();
-    const note = await this.buildNote(
-      centagons,
-      this._micronoteBatch.micronoteBatchAddress,
-      NoteType.micronoteFunds,
+  public async getSettings(
+    requireProof: boolean,
+    refresh = false,
+  ): Promise<ISidechainApiTypes['Sidechain.settings']['result']> {
+    if (!this.settingsPromise || refresh) {
+      this.settingsPromise = this.runRemote('Sidechain.settings', {
+        identity: requireProof ? this.identity : null,
+      });
+      if (requireProof && this.identity) {
+        const settings = await this.settingsPromise;
+        for (let i = 0; i < settings.rootIdentities.length; i += 1) {
+          const sidechainIdentity = settings.rootIdentities[i];
+          const signature = settings.identityProofSignatures[i];
+          const isValid = Identity.verify(
+            sidechainIdentity,
+            sha3(concatAsBuffer('Sidechain.settings', this.identity)),
+            signature,
+          );
+
+          if (!isValid)
+            throw new InvalidSignatureError(
+              `The signature proving the Sidechain RootIdentity (${sidechainIdentity}, ${i}) is invalid.`,
+            );
+        }
+      }
+    }
+    return this.settingsPromise;
+  }
+
+  public async createMicroPayment(
+    options: Pick<
+      IDataboxApiTypes['Databox.meta']['result'],
+      | 'basePricePerQuery'
+      | 'computePricePerKb'
+      | 'giftCardPaymentAddresses'
+      | 'averageBytesPerQuery'
+    >,
+  ): Promise<IPayment> {
+    options.averageBytesPerQuery ??= 256;
+    options.computePricePerKb ??= 0;
+    const { basePricePerQuery, computePricePerKb, averageBytesPerQuery, giftCardPaymentAddresses } =
+      options;
+
+    const settings = await this.getSettings(true);
+
+    if (!basePricePerQuery) return null;
+
+    let microgons = basePricePerQuery + averageBytesPerQuery * 1.2 * computePricePerKb;
+    if (settings.settlementFeeMicrogons) microgons += settings.settlementFeeMicrogons;
+
+    const { id: micronoteId, ...micronote } = await this.createMicronote(
+      microgons,
+      giftCardPaymentAddresses,
     );
 
-    // not signing whole package, so can't use runMultisigRemote
-    const { fundsId } = await this.runRemote('MicronoteBatch.fund', {
-      note,
-      batchSlug: batch.batchSlug,
-    });
-
-    await this.recordBatchFunding({ fundsId, microgonsRemaining: centagons * 10e3 }, batch);
-
-    return { fundsId, batch };
-  }
-
-  public async getFundSettlement(
-    batchSlug: string,
-    fundIds: number[],
-  ): Promise<ISidechainApiTypes['MicronoteBatch.getFundSettlement']['result']> {
-    return await this.runRemote('MicronoteBatch.getFundSettlement', {
-      fundIds,
-      batchSlug,
-    });
-  }
-
-  public async reserveBatchFunds(
-    microgons: number,
-    retries = 5,
-  ): Promise<ISidechainApiTypes['MicronoteBatch.findFund']['result'] & { batch: IMicronoteBatch }> {
-    await this.batchFundingQueue.run(async () => {
-      if (this.getActiveBatchFunds) {
-        await this.debitFromActiveBatchFund(microgons);
-        return;
-      }
-
-      const promise = createPromise<
-        ISidechainApiTypes['MicronoteBatch.findFund']['result'] & { batch: IMicronoteBatch }
-      >();
-      this.getActiveBatchFunds = promise;
-
-      try {
-        const batch = await this.getMicronoteBatch();
-
-        const response = await this.runRemote('MicronoteBatch.findFund', {
-          microgons,
-          batchSlug: batch.batchSlug,
-          address: this.address,
-        });
-        if (response?.fundsId) {
-          promise.resolve({
-            ...response,
-            batch,
-          });
-        } else {
-          const centagons = Math.ceil((microgons * this.batchFundingQueriesToPreload) / 10e3);
-          await this.fundMicronoteBatch(centagons);
-        }
-        await this.debitFromActiveBatchFund(microgons);
-      } catch (error) {
-        // if nsf, don't keep looping and retrying
-        if (this.isRetryableErrorCode(error.code) && retries >= 0) {
-          this.getActiveBatchFunds = null;
-        } else {
-          promise.reject(error);
-        }
-      }
-    });
-
-    if (!this.getActiveBatchFunds) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      return this.reserveBatchFunds(microgons, retries - 1);
-    }
-
-    const funds = await this.getActiveBatchFunds.promise;
-
     return {
-      ...funds,
+      ...micronote,
+      micronoteId,
+      microgons,
     };
-  }
-
-  public async getMicronoteBatch(): Promise<ISidechainApiTypes['MicronoteBatch.get']['result']> {
-    if (this.getBatchPromise) return await this.getBatchPromise;
-
-    const promise = createPromise<IMicronoteBatch>();
-    this.getBatchPromise = promise.promise;
-
-    try {
-      const batch = await this.runRemote('MicronoteBatch.get', undefined);
-      await this.verifyBatch(batch);
-      promise.resolve(this._micronoteBatch);
-    } catch (error) {
-      this.getBatchPromise = null;
-      promise.reject(error);
-    }
-
-    // return promise in case caller isn't already holder of the getBatchPromise (we just set to null)
-    return promise.promise;
-  }
-
-  public async createMicronoteUnsafe(
-    batch: IMicronoteBatch,
-    microgons: number,
-    isAuditable: boolean,
-    fundsId: number,
-  ): Promise<ISidechainApiTypes['Micronote.create']['result']> {
-    isAuditable ??= true;
-    try {
-      const response = await this.runSignedByWallet('Micronote.create', {
-        batchSlug: batch.batchSlug,
-        address: this.address,
-        fundsId,
-        isAuditable,
-        microgons,
-      });
-      await this.verifyMicronoteSignature(batch.micronoteBatchIdentity, microgons, response);
-      return response;
-    } catch (error) {
-      if (error.code === 'ERR_NEEDS_BATCH_FUNDING') {
-        this.getActiveBatchFunds = null;
-        throw new NeedsSidechainBatchFunding(
-          'No micronote batch funding found on the sidechain',
-          error.data.minCentagonsNeeded,
-        );
-      } else {
-        this.micronoteBatch = null;
-      }
-      throw error;
-    }
   }
 
   /**
@@ -235,6 +138,7 @@ export default class SidechainClient implements IPaymentProvider {
    */
   public async createMicronote(
     microgons: number,
+    recipientAddresses?: string[],
     isAuditable = true,
     tries = 0,
   ): Promise<IMicronote> {
@@ -242,70 +146,160 @@ export default class SidechainClient implements IPaymentProvider {
       throw new Error('Could not create new Micronote after 5 retries');
     }
 
-    try {
-      const batchFunds = await this.reserveBatchFunds(microgons);
+    const funds = await this.micronoteBatchFunding.reserveFunds(microgons, recipientAddresses);
+    const { fund, batch } = funds;
 
-      const response = await this.createMicronoteUnsafe(
-        batchFunds.batch,
-        microgons,
+    try {
+      const response = await this.runSignedByAddress('Micronote.create', {
+        batchSlug: batch.batchSlug,
+        address: this.address,
+        fundsId: fund.fundsId,
         isAuditable,
-        batchFunds.fundsId,
-      );
+        microgons,
+      });
+
+      await this.verifyMicronoteSignature(batch.micronoteBatchIdentity, microgons, response);
 
       return {
         ...response,
-        ...this._micronoteBatch,
-        micronoteBatchUrl: this.fullHost,
+        ...batch,
+        micronoteBatchUrl: new URL(batch.batchSlug, this.host).href,
       };
     } catch (error) {
+      // restore funds
+      this.micronoteBatchFunding.updateBatchFundsRemaining(
+        batch.batchSlug,
+        fund.fundsId,
+        -microgons,
+      );
       if (
         error.code === 'ERR_CLOSING' ||
         error.code === 'ERR_CLOSED' ||
         error.code === 'ERR_NOT_FOUND'
       ) {
-        this.micronoteBatch = null;
+        await this.micronoteBatchFunding.clearBatch(fund.batchSlug);
+        this.micronoteBatchFunding.clearActiveFundsId(fund.fundsId);
       }
 
-      if (!this.isRetryableErrorCode(error.code)) {
+      if (error.code === 'ERR_NEEDS_BATCH_FUNDING') {
+        this.micronoteBatchFunding.clearActiveFundsId(fund.fundsId);
+      }
+
+      if (!this.micronoteBatchFunding.shouldRetryFunding(error)) {
         throw error;
       }
 
-      return this.createMicronote(microgons, isAuditable, tries + 1);
+      return this.createMicronote(microgons, recipientAddresses, isAuditable, tries + 1);
     }
   }
 
   public async lockMicronote(
     micronoteId: string,
+    batchSlug: string,
+    addresses?: string[],
   ): Promise<ISidechainApiTypes['Micronote.lock']['result']> {
-    return await this.runSignedAsNode('Micronote.lock', {
-      batchSlug: this.batchSlug,
+    return await this.runSignedByIdentity('Micronote.lock', {
+      batchSlug,
       id: micronoteId,
       identity: this.identity,
+      addresses,
     });
   }
 
   public async claimMicronote(
     micronoteId: string,
+    batchSlug: string,
     tokenAllocation: { [identity: string]: number },
   ): Promise<ISidechainApiTypes['Micronote.claim']['result']> {
-    return await this.runSignedAsNode('Micronote.claim', {
-      batchSlug: this.batchSlug,
+    return await this.runSignedByIdentity('Micronote.claim', {
+      batchSlug,
       id: micronoteId,
       tokenAllocation,
       identity: this.identity,
     });
   }
 
+  /////// GiftCard APIS   ///////////////////////////////////////////////////////////////////////////
+
+  public async createUnsavedGiftCard(
+    microgons: number,
+    addresses?: string[],
+  ): Promise<ISidechainApiTypes['GiftCard.create']['args']> {
+    const { giftCard: giftCardBatch } = await this.micronoteBatchFunding.getActiveBatches();
+    if (!giftCardBatch) throw new Error('This Sidechain does not support gift cards.');
+
+    const giftCard: ISidechainApiTypes['GiftCard.create']['args'] = {
+      microgons,
+      batchSlug: giftCardBatch.batchSlug,
+      redeemableAddressSignatures: [],
+      redeemableWithAddresses: addresses ?? [],
+    };
+    if (!giftCard.redeemableWithAddresses.includes(this.address)) {
+      giftCard.redeemableWithAddresses.push(this.address);
+    }
+    return this.signGiftCard(giftCard);
+  }
+
+  public signGiftCard(
+    giftCard: ISidechainApiTypes['GiftCard.create']['args'],
+  ): ISidechainApiTypes['GiftCard.create']['args'] {
+    const address = this.credentials.address;
+    const signatureIndex = giftCard.redeemableWithAddresses.indexOf(address.bech32);
+    if (signatureIndex === -1) {
+      throw new Error(`Address not in allowed recipient list! (${address.bech32})`);
+    }
+
+    const message = sha3(
+      concatAsBuffer(
+        'GiftCard.Create:',
+        giftCard.batchSlug,
+        giftCard.microgons,
+        ...giftCard.redeemableWithAddresses,
+      ),
+    );
+    const identityIndices = Address.getIdentityIndices(address.addressSettings, false);
+    const signature = address.sign(message, identityIndices);
+    giftCard.redeemableAddressSignatures.splice(signatureIndex, 0, signature);
+    return giftCard;
+  }
+
+  public async createGiftCard(
+    microgons: number,
+  ): Promise<ISidechainApiTypes['GiftCard.create']['result'] & { batchSlug: string }> {
+    const giftCardRecord = await this.createUnsavedGiftCard(microgons);
+    return await this.saveGiftCard(giftCardRecord);
+  }
+
+  public async saveGiftCard(
+    giftCard: ISidechainApiTypes['GiftCard.create']['args'],
+  ): Promise<ISidechainApiTypes['GiftCard.create']['result'] & { batchSlug: string }> {
+    const result = await this.runRemote('GiftCard.create', giftCard);
+
+    return {
+      ...result,
+      batchSlug: giftCard.batchSlug,
+    };
+  }
+
+  public async claimGiftCard(giftCardId: string, batchSlug: string): Promise<IMicronoteFund> {
+    const giftCard = await this.runRemote('GiftCard.claim', {
+      batchSlug,
+      address: this.address,
+      giftCardId,
+    });
+    return await this.micronoteBatchFunding.recordGiftCard(batchSlug, giftCard);
+  }
+
   /////// WALLET APIS   ///////////////////////////////////////////////////////////////////////////
 
-  public async register(): Promise<ISidechainApiTypes['Wallet.register']['result']> {
-    return await this.runSignedByWallet('Wallet.register', {
+  public async register(): Promise<ISidechainApiTypes['Address.register']['result']> {
+    return await this.runSignedByAddress('Address.register', {
       address: this.address,
     });
   }
 
   public async getBalance(address?: string): Promise<bigint> {
-    const res = await this.runRemote('Wallet.getBalance', {
+    const res = await this.runRemote('Address.getBalance', {
       address: address || this.address,
     });
     return res.balance;
@@ -346,14 +340,14 @@ export default class SidechainClient implements IPaymentProvider {
   public async refundStake(
     stakedIdentity: string,
   ): Promise<ISidechainApiTypes['Stake.refund']['result']> {
-    return await this.runSignedByWallet('Stake.refund', {
+    return await this.runSignedByAddress('Stake.refund', {
       address: this.address,
       stakedIdentity,
     });
   }
 
   public async getStakeSignature(): Promise<ISidechainApiTypes['Stake.signature']['result']> {
-    return await this.runSignedAsNode('Stake.signature', {
+    return await this.runSignedByIdentity('Stake.signature', {
       stakedIdentity: this.identity,
     });
   }
@@ -391,7 +385,7 @@ export default class SidechainClient implements IPaymentProvider {
 
   /////// HELPERS      /////////////////////////////////////////////////////////////////////////////
 
-  protected async runSignedByWallet<T extends keyof ISidechainApiTypes & string>(
+  protected async runSignedByAddress<T extends keyof ISidechainApiTypes & string>(
     command: T,
     args: Omit<ISidechainApiTypes[T]['args'], 'signature'>,
     retries = 5,
@@ -400,7 +394,7 @@ export default class SidechainClient implements IPaymentProvider {
     const messageHash = hashObject(args, {
       prefix: Buffer.from(command),
     });
-    const signature = this.buildSignature(messageHash, true);
+    const signature = this.createAddressSignature(messageHash, true);
     debugLog(command, {
       args,
       signature,
@@ -417,12 +411,12 @@ export default class SidechainClient implements IPaymentProvider {
     );
   }
 
-  protected async runSignedAsNode<T extends keyof ISidechainApiTypes & string>(
+  protected async runSignedByIdentity<T extends keyof ISidechainApiTypes & string>(
     command: T,
     args: Omit<ISidechainApiTypes[T]['args'], 'signature'>,
     retries = 5,
   ): Promise<ISidechainApiTypes[T]['result']> {
-    assert(!!this.credentials.identity, `${command} api call requires a node keypair`);
+    assert(!!this.credentials.identity, `${command} api call requires an Identity`);
     const messageHash = hashObject(args, {
       prefix: concatAsBuffer(command, this.identity),
     });
@@ -458,7 +452,7 @@ export default class SidechainClient implements IPaymentProvider {
       throw new ClientValidationError(command, errors);
     }
     try {
-      return await this.connectionToCore.sendRequest({ command, args: [args] as any });
+      return await this.sendRequest({ command, args });
     } catch (error) {
       if (retries >= 0 && this.shouldRetryError(error)) {
         const timeoutMillis = 2 ** (5 - retries) * 1e3;
@@ -466,6 +460,7 @@ export default class SidechainClient implements IPaymentProvider {
         await new Promise(resolve => setTimeout(resolve, timeoutMillis));
         return await this.runRemote(command, args, retries - 1);
       }
+
       log.error('Error running remote API', {
         error,
         command,
@@ -476,6 +471,15 @@ export default class SidechainClient implements IPaymentProvider {
     }
   }
 
+  // Method for overriding in tests
+  private sendRequest<T extends keyof ISidechainApiTypes & string>(request: {
+    command: T;
+    args: ISidechainApiTypes[T]['args'];
+  }): Promise<ISidechainApiTypes[T]['result']> {
+    const { command, args } = request;
+    return this.connectionToCore.sendRequest({ command, args: [args] as any });
+  }
+
   private shouldRetryError(error: Error & { code?: string }): boolean {
     if (error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED') return true;
 
@@ -483,45 +487,6 @@ export default class SidechainClient implements IPaymentProvider {
       return error.status === 502 || error.status === 503;
     }
     return false;
-  }
-
-  private isRetryableErrorCode(code: string): boolean {
-    return (
-      code !== 'ERR_NSF' &&
-      code !== 'ERR_VALIDATION' &&
-      code !== 'ERR_SIGNATURE_INVALID' &&
-      !code?.startsWith('ERR_KEY_')
-    );
-  }
-
-  private async recordBatchFunding(
-    result: ISidechainApiTypes['MicronoteBatch.fund']['result'] & { microgonsRemaining: number },
-    batch: IMicronoteBatch,
-  ): Promise<void> {
-    this.getActiveBatchFunds ??= createPromise();
-
-    if (this.getActiveBatchFunds.isResolved) {
-      const value = await this.getActiveBatchFunds.promise;
-      value.microgonsRemaining = result.microgonsRemaining;
-      value.fundsId = result.fundsId;
-    } else {
-      this.getActiveBatchFunds.resolve({
-        ...result,
-        batch,
-      });
-    }
-  }
-
-  private async debitFromActiveBatchFund(microgons: number, retry = false): Promise<void> {
-    const funds = await this.getActiveBatchFunds.promise;
-    funds.microgonsRemaining -= microgons;
-
-    if (funds.microgonsRemaining < 0) {
-      if (retry) throw new Error('Error getting batch funds with funding');
-      const centagons = Math.ceil(microgons / 10e3) * this.batchFundingQueriesToPreload;
-      await this.fundMicronoteBatch(centagons);
-      return this.debitFromActiveBatchFund(microgons, true);
-    }
   }
 
   private buildNote(centagons: number | bigint, toAddress: string, type: NoteType): INote {
@@ -536,44 +501,23 @@ export default class SidechainClient implements IPaymentProvider {
     } as INote;
 
     note.noteHash = hashObject(note, { ignoreProperties: ['noteHash', 'signature'] });
-    note.signature = this.buildSignature(note.noteHash);
+    note.signature = this.createAddressSignature(note.noteHash);
     return note;
   }
 
-  private buildSignature(hash: Buffer, isClaim = false): IAddressSignature {
+  private createAddressSignature(hash: Buffer, isClaim = false): IAddressSignature {
     const indices = Address.getIdentityIndices(this.credentials.address.addressSettings, isClaim);
     return this.credentials.address.sign(hash, indices, isClaim);
   }
 
-  /**
-   * Validate any "new" micronoteBatch to ensure it is signed by the root sidechain key
-   */
-  private verifyBatch(batch: IMicronoteBatch): void {
-    const { batchSlug, sidechainIdentity, sidechainValidationSignature, micronoteBatchIdentity } =
-      batch;
-    if (this.batchSlug !== batchSlug) {
-      const isValid = Identity.verify(
-        sidechainIdentity,
-        sha3(micronoteBatchIdentity),
-        sidechainValidationSignature,
-      );
-      if (isValid === false) {
-        throw new InvalidSignatureError(
-          'The micronoteBatch server does not have a valid sidechain public key validator.',
-        );
-      }
-      this.micronoteBatch = batch;
-    }
-  }
-
   private verifyMicronoteSignature(
-    identity: string,
+    batchIdentity: string,
     microgons: number,
     micronoteResponse: ISidechainApiTypes['Micronote.create']['result'],
   ): void {
     try {
       const isValid = Identity.verify(
-        identity,
+        batchIdentity,
         sha3(concatAsBuffer(micronoteResponse.id, microgons)),
         micronoteResponse.micronoteSignature,
       );
@@ -581,6 +525,8 @@ export default class SidechainClient implements IPaymentProvider {
         throw new InvalidSignatureError('Invalid Micronote signature');
       }
     } catch (error) {
+      if (error instanceof InvalidSignatureError) throw error;
+
       throw new InvalidSignatureError(`Could not parse signature - ${error.message}`);
     }
   }
