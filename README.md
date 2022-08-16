@@ -17,8 +17,8 @@ Identities are bech32 encoded ED25519 key pairs. Their string representations st
 
 ## Denominations
 Ulixee Payments (or tokens) come in the following denominations:
-- *Argon*: ~1USD adjusted for inflation.
-- *Centagon*: ~1 US cent adjusted for inflation. These are the base currency for the Sidechain and Mainchain network.
+- *Argon*: ~1 USD adjusted for inflation.
+- *Centagon*: ~1 hundredth of a USD adjusted for inflation. These are the base currency for the Sidechain and Mainchain network.
 - *Microgon*: ~1 millionth of a USD adjusted for inflation. These are used for micro payments.
 
 NOTE: the naming of the Ulixee currency derives from Ulysses (which Ulixee is a derivation of). Ulysses trusted dog was named Argos. Argon is also the most stable gaseous element, which is an attribute the currency strives to achieve.
