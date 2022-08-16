@@ -5,6 +5,7 @@
   "scripts": {
     "prepare": "husky install",
     "build": "yarn && yarn tsc && cd ./build && yarn",
+    "build:dist": "shx rm -rf build-dist && tsc -b tsconfig.dist.json && yarn copy:dist",
     "copy:build": "ulx-repo-after-build",
     "copy:dist": "ulx-repo-after-build --dist",
     "tsc": "tsc -b -i tsconfig.json && yarn copy:build",

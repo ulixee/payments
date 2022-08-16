@@ -1,6 +1,6 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
-import MainchainClient from '@ulixee/mainchain-client';
+import MainchainClient from '@ulixee/mainchain';
 import BlockManager from '../main/lib/BlockManager';
 import SidechainSecurities from '../main/lib/SidechainSecurities';
 import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';

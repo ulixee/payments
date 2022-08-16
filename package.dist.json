@@ -3,15 +3,6 @@
     "lerna": "^4.0.0"
   },
   "workspaces": {
-    "packages": [
-      "client",
-      "core",
-      "end-to-end",
-      "interfaces",
-      "testing",
-      "timetravel",
-      "plugin-utils",
-      "plugins/*"
-    ]
+    "packages": ["sidechain/*", "mainchain/*"]
   }
 }

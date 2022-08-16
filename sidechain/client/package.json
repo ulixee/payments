@@ -1,6 +1,6 @@
 {
   "name": "@ulixee/sidechain",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.9",
   "description": "",
   "license": "MIT",
   "bin": "./bin/cli.js",
@@ -12,11 +12,10 @@
     "./lib/*": "./lib/*.js"
   },
   "dependencies": {
-    "commander": "^9.4.0",
-    "@ulixee/commons": "2.0.0-alpha.8",
-    "@ulixee/crypto": "2.0.0-alpha.8",
-    "@ulixee/net": "2.0.0-alpha.8",
-    "@ulixee/specification": "2.0.0-alpha.8"
-  },
-  "devDependencies": {}
+    "@ulixee/commons": "2.0.0-alpha.9",
+    "@ulixee/crypto": "2.0.0-alpha.9",
+    "@ulixee/net": "2.0.0-alpha.9",
+    "@ulixee/specification": "2.0.0-alpha.9",
+    "commander": "^9.4.0"
+  }
 }
