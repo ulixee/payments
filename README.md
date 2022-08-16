@@ -1,3 +1,7 @@
+```
+NOTE: this repo is public, but not intended to be run on your own (we don't have 
+documentation for doing so, and we're not ready to actively support running sidechains quite yet).
+```
 # Ulixee Payments
 This repository hosts a per-query payment mechanism for the Ulixee Network. It aims to eventually be a fully decentralized payments system. However, version 1 has the underpinnings of decentralization run from central authorities. As we prove out the model and security, we will open up the network to more running nodes.
 
