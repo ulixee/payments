@@ -2,7 +2,7 @@ import IArithmeticEncoding from '@ulixee/block-utils/interfaces/IArithmeticEncod
 import { createPromise } from '@ulixee/commons/lib/utils';
 import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import Logger from '@ulixee/commons/lib/Logger';
-import MainchainClient from '@ulixee/mainchain-client';
+import MainchainClient from '@ulixee/mainchain';
 import { IBlock, IBlockHeader, ITransaction, TransactionType } from '@ulixee/specification';
 import config from '../../config';
 import RegisteredAddress from '../models/RegisteredAddress';

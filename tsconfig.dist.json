@@ -5,27 +5,15 @@
     "sourceMap": true,
     "inlineSourceMap": false
   },
-  "references": [
-    {
-      "path": "core/injected-scripts/tsconfig.dist.json"
-    },
-    {
-      "path": "timetravel/injected-scripts/tsconfig.dist.json"
-    }
-  ],
   "include": ["./**/*.ts", "**/*.js", "**/*.json"],
   "exclude": [
-    "*jest*",
     "**/tsconfig*.json",
-    "**/test",
     "node_modules",
     "**/node_modules",
     "**/dist",
     "**/build",
     "build",
     "build-dist",
-    "examples",
-    "core/injected-scripts",
-    "timetravel/injected-scripts"
+    "**/*.d.ts"
   ]
 }

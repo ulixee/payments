@@ -1,6 +1,6 @@
 import Constants from '@ulixee/block-utils/lib/Constants';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import MainchainClient from '@ulixee/mainchain-client';
+import MainchainClient from '@ulixee/mainchain';
 import { IBlock, TransactionType } from '@ulixee/specification';
 import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
