@@ -13,7 +13,7 @@ beforeAll(async () => {
   };
 }, 10e3);
 
-test('should allow an wallet to retrieve a balance', async () => {
+test('should allow a client to retrieve a balance', async () => {
   const client = new Client();
   await client.grantCentagons(2523n);
   const balance = await client.getBalance();
@@ -49,7 +49,7 @@ test('should allow you to transfer funds to another wallet', async () => {
   expect(storedNote.centagons).toBe(720n);
 });
 
-test('should allow you to transfer funds to an wallet that does not exist yet', async () => {
+test('should allow you to transfer funds to an address that does not exist yet', async () => {
   const client1 = new Client();
   await client1.register();
   await client1.grantCentagons(317n);
@@ -97,7 +97,7 @@ test('should not allow you to transfer more than your available balance', async 
   expect(failures).toBe(2);
 
   const balance = await client1.getBalance();
-  expect(balance).toBeLessThan(525n);
+  expect(Number(balance)).toBeLessThan(525);
 });
 
 afterAll(async () => {
