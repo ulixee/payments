@@ -3,7 +3,7 @@ import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches, bridgeToMain } from '../index';
 import { InvalidParameterError } from '../../utils/errors';
-import { MicronoteBatchType } from '../../main/models/MicronoteBatch';
+import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 import MicronoteFunds from '../models/MicronoteFunds';
 
 export default new ApiHandler('GiftCard.claim', {

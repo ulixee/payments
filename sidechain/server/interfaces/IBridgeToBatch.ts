@@ -14,4 +14,5 @@ export default interface IBridgeToBatch {
     batchSlug: string,
     onComplete: (noteStream: Duplex) => Promise<void>,
   ): Promise<void>;
+  closeDbs(): Promise<void>;
 }

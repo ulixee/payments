@@ -277,7 +277,7 @@ export default class MicronoteBatchClose {
     });
 
     const promises = this.missingHashes.map(async hash => {
-      const note = await bridgeToMain.getNote(hash, this.logger);
+      const note = await bridgeToMain.getNote(hash, { logger: this.logger });
       await MicronoteFunds.createFromNote(this.client, note);
       // blow up on purpose if we can't get the note back. Something is wrong
     });

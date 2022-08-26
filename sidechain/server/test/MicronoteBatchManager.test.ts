@@ -3,7 +3,8 @@ import Address from '@ulixee/crypto/lib/Address';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { mockGenesisTransfer, setupDb, stop } from './_setup';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
-import MicronoteBatch, { MicronoteBatchType } from '../main/models/MicronoteBatch';
+import MicronoteBatchType from '../interfaces/MicronoteBatchType';
+import MicronoteBatch from '../main/models/MicronoteBatch';
 import MicronoteBatchDb from '../batch/db';
 import mainDb from '../main/db';
 
@@ -24,6 +25,48 @@ test('should create a micronoteBatch db if none exists', async () => {
   const pool = await MicronoteBatchDb.get(batch.slug);
   await pool.shutdown();
   await mainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)}`);
+});
+
+test('should get batches back in order of closing time', async () => {
+  // @ts-ignore
+  MicronoteBatchManager.batchesBySlug.clear();
+  const identity = Identity.createSync();
+  await mainDb.transaction(async client => {
+    // @ts-ignore
+    MicronoteBatchManager.updateCached(
+      new MicronoteBatch(
+        client,
+        {
+          address: 'arg1010',
+          slug: '1010',
+          privateKey: 'private key',
+          type: MicronoteBatchType.Micronote,
+          openTime: moment().add(-5, 'hours').toDate(),
+          plannedClosingTime: moment().add(1, 'hours').toDate(),
+          stopNewNotesTime: moment().add(30, 'minutes').toDate(),
+        },
+        Address.createFromSigningIdentities([identity]),
+      ),
+    );
+    // @ts-ignore
+    MicronoteBatchManager.updateCached(
+      new MicronoteBatch(
+        client,
+        {
+          address: 'arg1011',
+          slug: '1011',
+          privateKey: 'private key',
+          type: MicronoteBatchType.Micronote,
+          openTime: moment().add(-5, 'hours').toDate(),
+          plannedClosingTime: moment().add(4, 'hours').toDate(),
+          stopNewNotesTime: moment().add(3, 'hours').toDate(),
+        },
+        Address.createFromSigningIdentities([identity]),
+      ),
+    );
+  });
+
+  expect(MicronoteBatchManager.getOpenBatches().map(x=>x.slug)).toEqual(['1011', '1010'])
 });
 
 test('should return the micronoteBatch with the most time left', async () => {

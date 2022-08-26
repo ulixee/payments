@@ -14,6 +14,7 @@ beforeAll(async () => {
   await setupDb();
   await mockGenesisTransfer();
 
+  config.stakeSettings.currentCentagons = 100n;
   // @ts-ignore
   BlockManager.settingsLoader = {
     isResolved: true,

@@ -29,8 +29,10 @@ export default async function requestHandler(
           {
             is: 'Ulixee Sidechain',
             version: packageJson.version,
-            activeBatches: MicronoteBatchManager.getOpenBatches().map(batch => batch.toJSON()),
-            giftCardBatch: MicronoteBatchManager.giftCardBatch?.toJSON(),
+            micronoteBatches: MicronoteBatchManager.getOpenBatches().map(batch =>
+              batch.getNoteParams(),
+            ),
+            giftCardBatch: MicronoteBatchManager.giftCardBatch?.getNoteParams(),
             blockSettings: await BlockManager.settings,
           },
           { format: true },

@@ -116,7 +116,7 @@ test('should allow a micronote batch to close', async () => {
     const transactions = await client.list<INoteRecord>('select * from notes', null);
     expect(transactions).toHaveLength(6);
 
-    const mostRecent = await Note.findMostRecentForWallet(client, wallet4.address);
+    const mostRecent = await Note.findMostRecentGuaranteeForAddress(client, wallet4.address);
     expect(mostRecent).toBe(4);
   });
 });

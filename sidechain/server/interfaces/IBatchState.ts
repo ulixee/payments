@@ -1,7 +1,7 @@
 import Address from '@ulixee/crypto/lib/Address';
 import Identity from '@ulixee/crypto/lib/Identity';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
-import { MicronoteBatchType } from '../main/models/MicronoteBatch';
+import MicronoteBatchType from './MicronoteBatchType';
 
 export default interface IBatchState {
   address: string;

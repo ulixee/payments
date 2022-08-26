@@ -4,8 +4,7 @@ import ApiHandler from '../../utils/ApiHandler';
 
 export default new ApiHandler('Address.register', {
   async handler(payload, options) {
-    const { address, signature } = payload;
-    this.validateAddressSignature(address, payload, signature);
+    const { address } = payload;
 
     try {
       await RegisteredAddress.register(address, options.logger);

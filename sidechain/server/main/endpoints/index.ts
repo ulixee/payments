@@ -10,6 +10,7 @@ import StakeRefund from './Stake.refund';
 import StakeSettings from './Stake.settings';
 import StakeSignature from './Stake.signature';
 import SidechainSettings from './Sidechain.settings';
+import SidechainOpenBatches from './Sidechain.openBatches';
 
 export default [
   WalletGetBalance,
@@ -23,5 +24,6 @@ export default [
   StakeRefund,
   StakeSettings,
   StakeSignature,
-  SidechainSettings
+  SidechainSettings,
+  SidechainOpenBatches,
 ];

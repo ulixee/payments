@@ -14,7 +14,12 @@ export default function verifyAddressSignature(
     prefix: Buffer.from(command),
     ignoreProperties: ['signature'] as any,
   });
-  const invalidSignatureReason = AddressSignature.verify(address, signature, messageHash, isClaim);
+  let invalidSignatureReason: string;
+  try {
+    invalidSignatureReason = AddressSignature.verify(address, signature, messageHash, isClaim);
+  } catch (error) {
+    invalidSignatureReason = error.message;
+  }
   if (invalidSignatureReason) {
     throw new PermissionsError(invalidSignatureReason);
   }

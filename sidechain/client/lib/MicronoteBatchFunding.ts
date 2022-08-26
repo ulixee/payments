@@ -6,6 +6,7 @@ import Queue from '@ulixee/commons/lib/Queue';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
+import TimedCache from '@ulixee/commons/lib/TimedCache';
 import SidechainClient from './SidechainClient';
 import { NeedsSidechainBatchFunding } from './errors';
 
@@ -14,11 +15,21 @@ export default class MicronoteBatchFunding {
 
   private queue = new Queue();
 
-  private fundsByIdPerBatch: { [batchSlug: string]: { [fundsId: number]: IMicronoteFund } } = {};
-  private activeFundsId: number;
-  private activeGiftCardFundsPromise: Promise<any>;
+  private fundsByBatchSlug: {
+    [batchSlug: string]: {
+      activeFundsId?: number;
+      fundsById: {
+        [fundsId: number]: IMicronoteFund;
+      };
+    };
+  } = {};
 
-  private activeBatchesPromise?: Resolvable<ISidechainApiTypes['MicronoteBatch.get']['result']>;
+  private activeGiftCardFundsPromise: Promise<any>;
+  private activeMicronoteBatchSlug: string;
+
+  private activeBatchesPromise = new TimedCache<
+    Resolvable<ISidechainApiTypes['Sidechain.openBatches']['result']>
+  >(10 * 60);
 
   constructor(
     readonly client: {
@@ -39,9 +50,9 @@ export default class MicronoteBatchFunding {
     await (this.activeGiftCardFundsPromise ??= this.getActiveFunds(batch));
 
     recipientAddresses ??= [];
-    this.fundsByIdPerBatch[batch.batchSlug] ??= {};
+    this.fundsByBatchSlug[batch.batchSlug] ??= { fundsById: {} };
     const recipientsKey = recipientAddresses.sort().toString();
-    for (const giftCard of Object.values(this.fundsByIdPerBatch[batch.batchSlug])) {
+    for (const giftCard of Object.values(this.fundsByBatchSlug[batch.batchSlug]?.fundsById)) {
       if (
         giftCard.isGiftCardBatch &&
         giftCard.recipientsKey === recipientsKey &&
@@ -57,8 +68,9 @@ export default class MicronoteBatchFunding {
     giftCard: ISidechainApiTypes['GiftCard.claim']['result'],
   ): Promise<IMicronoteFund> {
     await this.activeGiftCardFundsPromise;
-    this.fundsByIdPerBatch[batchSlug] ??= {};
-    this.fundsByIdPerBatch[batchSlug][giftCard.fundsId] = {
+    this.fundsByBatchSlug[batchSlug] ??= { fundsById: {} };
+    // don't overwrite!
+    this.fundsByBatchSlug[batchSlug].fundsById[giftCard.fundsId] ??= {
       batchSlug,
       isGiftCardBatch: true,
       fundsId: giftCard.fundsId,
@@ -66,7 +78,7 @@ export default class MicronoteBatchFunding {
       recipientsKey: giftCard.redeemableWithAddresses.sort().toString(),
       microgonsRemaining: giftCard.microgons,
     };
-    return this.fundsByIdPerBatch[batchSlug][giftCard.fundsId];
+    return this.fundsByBatchSlug[batchSlug].fundsById[giftCard.fundsId];
   }
 
   public async reserveFunds(
@@ -78,7 +90,7 @@ export default class MicronoteBatchFunding {
 
     const batchFund = await this.queue.run<{ fund: IMicronoteFund; batch: IMicronoteBatch }>(
       async () => {
-        const { active, giftCard } = await this.getActiveBatches();
+        const { micronote, giftCard } = await this.getActiveBatches();
         /// CHECK GiftCardS
 
         const giftCardFund = await this.findGiftCardForRecipients(
@@ -92,43 +104,66 @@ export default class MicronoteBatchFunding {
           return { fund: giftCardFund, batch: giftCard };
         }
 
+        let activeBatch = micronote.find(x => x.batchSlug === this.activeMicronoteBatchSlug);
+        let activeBatches = micronote;
+
+        if (activeBatch && activeBatch.stopNewNotesTime.getTime() - Date.now() < 30e3) {
+          this.clearBatch(activeBatch.batchSlug);
+
+          // minimum of 1 hour should be remaining
+          activeBatch = activeBatches.find(
+            x => x.stopNewNotesTime.getTime() - Date.now() > 30 * 60e3,
+          );
+
+          if (!activeBatch) {
+            // clearBatch()) is refreshing activeBatches, so reload now
+            const batches = await this.getActiveBatches();
+            activeBatches = batches.micronote;
+            activeBatch = null;
+          }
+        }
         /// USE REAL BATCH MICRONOTE FUNDS
 
-        if (!this.activeFundsId) {
+        activeBatch ??= activeBatches[0];
+        this.activeMicronoteBatchSlug = activeBatch.batchSlug;
+        this.fundsByBatchSlug[activeBatch.batchSlug] ??= { fundsById: {} };
+        const activeBatchFunds = this.fundsByBatchSlug[activeBatch.batchSlug];
+
+        if (!activeBatchFunds.activeFundsId) {
           try {
-            const response = await this.findBatchFund(active, microgons);
+            const response = await this.findBatchFund(activeBatch, microgons);
             if (response?.fundsId) {
-              this.activeFundsId = response.fundsId;
+              activeBatchFunds.activeFundsId = response.fundsId;
             } else {
               const centagons = Math.ceil((microgons * this.queryFundingToPreload) / 10e3);
-              const fundResponse = await this.fundBatch(active, centagons);
-              this.activeFundsId = fundResponse.fundsId;
+              const fundResponse = await this.fundBatch(activeBatch, centagons);
+              activeBatchFunds.activeFundsId = fundResponse.fundsId;
             }
           } catch (error) {
+            delete activeBatchFunds.activeFundsId;
             // if nsf, don't keep looping and retrying
             if (this.isRetryableErrorCode(error.code) && retries >= 0) {
               shouldRetry = true;
-              this.activeFundsId = null;
-            } else {
-              throw error;
+              return;
             }
+            throw error;
           }
         }
 
         try {
           const fund = this.updateBatchFundsRemaining(
-            active.batchSlug,
-            this.activeFundsId,
+            this.activeMicronoteBatchSlug,
+            activeBatchFunds.activeFundsId,
             microgons,
           );
           if (fund) {
-            return { fund, batch: active };
+            return { fund, batch: activeBatch };
           }
         } catch (error) {
           // if nsf, don't keep looping and retrying
           if (error.code === 'ERR_NEEDS_BATCH_FUNDING' && retries >= 0) {
             shouldRetry = true;
-            this.activeFundsId = null;
+            this.clearActiveFundsId(this.activeMicronoteBatchSlug, activeBatchFunds.activeFundsId);
           } else {
             throw error;
           }
@@ -156,7 +191,10 @@ export default class MicronoteBatchFunding {
     });
     if (!response?.fundsId) return null;
 
-    return this.recordBatchFund(response.fundsId, response.microgonsRemaining, batch);
+    const fund = this.recordBatchFund(response.fundsId, response.microgonsRemaining, batch);
+    // Make sure server we don't overwrite local state!
+    if (fund?.microgonsRemaining >= microgons) return fund;
+    return null;
   }
 
   /**
@@ -189,8 +227,9 @@ export default class MicronoteBatchFunding {
   ): IMicronoteFund {
     allowedRecipientAddresses ??= [];
     const recipientsKey = allowedRecipientAddresses.sort().toString();
-    this.fundsByIdPerBatch[batch.batchSlug] ??= {};
-    this.fundsByIdPerBatch[batch.batchSlug][fundsId] = {
+    this.fundsByBatchSlug[batch.batchSlug] ??= { fundsById: {} };
+    // NOTE: don't overwrite!!
+    this.fundsByBatchSlug[batch.batchSlug].fundsById[fundsId] ??= {
       fundsId,
       microgonsRemaining: microgons,
       isGiftCardBatch: batch.isGiftCardBatch,
@@ -198,7 +237,7 @@ export default class MicronoteBatchFunding {
       allowedRecipientAddresses,
       recipientsKey,
     };
-    return this.fundsByIdPerBatch[batch.batchSlug][fundsId];
+    return this.fundsByBatchSlug[batch.batchSlug].fundsById[fundsId];
   }
 
   public updateBatchFundsRemaining(
@@ -208,8 +247,8 @@ export default class MicronoteBatchFunding {
   ): IMicronoteFund {
     if (!fundsId) return null;
 
-    this.fundsByIdPerBatch[batchSlug] ??= {};
-    const fund = this.fundsByIdPerBatch[batchSlug][fundsId];
+    this.fundsByBatchSlug[batchSlug] ??= { fundsById: {} };
+    const fund = this.fundsByBatchSlug[batchSlug].fundsById[fundsId];
     if (fund) {
       if (fund.microgonsRemaining < microgons) {
         throw new NeedsSidechainBatchFunding('Needs a new batch fund', microgons);
@@ -247,19 +286,24 @@ export default class MicronoteBatchFunding {
     return funds;
   }
 
-  public async getActiveBatches(): Promise<ISidechainApiTypes['MicronoteBatch.get']['result']> {
-    if (this.activeBatchesPromise) return this.activeBatchesPromise.promise;
+  public async getActiveBatches(
+    refresh = false,
+  ): Promise<ISidechainApiTypes['Sidechain.openBatches']['result']> {
+    if (this.activeBatchesPromise.value && !refresh) return this.activeBatchesPromise.value.promise;
 
-    this.activeBatchesPromise = new Resolvable();
-    const promise = this.activeBatchesPromise;
+    this.activeBatchesPromise.value = new Resolvable();
+    const promise = this.activeBatchesPromise.value;
 
     try {
-      const batches = await this.client.runRemote('MicronoteBatch.get', undefined);
-      this.verifyBatch(batches.active);
-      if (batches.giftCard) this.verifyBatch(batches.giftCard);
+      const batches = await this.client.runRemote('Sidechain.openBatches', undefined);
+      for (const batch of batches.micronote.concat([batches.giftCard])) {
+        if (!batch) continue;
+        this.fundsByBatchSlug[batch.batchSlug] ??= { fundsById: {} };
+        this.verifyBatch(batch);
+      }
       promise.resolve(batches);
     } catch (error) {
-      this.activeBatchesPromise = null;
+      this.activeBatchesPromise.value = null;
       promise.reject(error);
     }
 
@@ -267,16 +311,22 @@ export default class MicronoteBatchFunding {
     return promise.promise;
   }
 
-  public clearActiveFundsId(fundsId: number): void {
-    delete this.fundsByIdPerBatch[fundsId];
-    if (this.activeFundsId === fundsId) {
-      delete this.activeFundsId;
+  public clearActiveFundsId(batchSlug: string, fundsId: number): void {
+    if (this.fundsByBatchSlug[batchSlug]?.activeFundsId === fundsId) {
+      delete this.fundsByBatchSlug[batchSlug].activeFundsId;
+    }
+
+    if (this.activeMicronoteBatchSlug === batchSlug) {
+      delete this.activeMicronoteBatchSlug;
     }
   }
 
-  public async clearBatch(batchSlug: string): Promise<void> {
-    const batches = await this.activeBatchesPromise;
-    if (batches.active?.batchSlug === batchSlug) delete this.activeBatchesPromise;
+  public clearBatch(batchSlug: string): void {
+    if (this.activeMicronoteBatchSlug === batchSlug) {
+      delete this.activeMicronoteBatchSlug;
+    }
+
+    this.getActiveBatches(true).catch(() => null);
   }
 
   public shouldRetryFunding(error: Error & any): boolean {

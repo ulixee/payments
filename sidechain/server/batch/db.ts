@@ -19,7 +19,7 @@ export default class BatchDb {
 
   static get(slug: string, doNotCreateNewPool = false): PgPool<DbType.Batch> {
     const db = this.getName(slug);
-    const existing = pools.find(x => x.pool.name === db);
+    const existing = pools.find(x => x.pool.database === db);
     if (existing) {
       existing.accesses += 1;
       return existing.pool;
@@ -36,13 +36,13 @@ export default class BatchDb {
       }
     }
 
-    const pool = new PgPool<DbType.Batch>(db, { ...config.db, database: db });
+    const pool = new PgPool<DbType.Batch>(db, config.db);
     pools.push({
       pool,
       accesses: 1,
     });
     pool.once('close', () => {
-      const index = pools.findIndex(x => x.pool.name === db);
+      const index = pools.findIndex(x => x.pool.database === db);
       if (index >= 0) pools.splice(index, 1);
     });
     return pool;

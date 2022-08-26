@@ -3,7 +3,6 @@ import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import AddressSignature from '@ulixee/crypto/lib/AddressSignature';
 import { IAddressSignature, NoteType } from '@ulixee/specification';
 import Address from '@ulixee/crypto/lib/Address';
-import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import { Duplex } from 'stream';
 import { from } from 'pg-copy-streams';
 import addNoteSignature, { hashNote } from '@ulixee/sidechain/lib/addNoteSignature';
@@ -16,8 +15,9 @@ import {
 } from '../../utils/errors';
 import MainDb from '../db';
 import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
+import { DbType, ITransactionOptions } from '../../utils/PgPool';
 import RegisteredAddress from './RegisteredAddress';
+import config from '../../config';
 
 export default class Note {
   public data: INoteRecord;
@@ -29,7 +29,10 @@ export default class Note {
     this.data = data as any;
   }
 
-  public async save(fundingSourceWallet: RegisteredAddress, guaranteeBlockHeight?: number): Promise<Note> {
+  public async save(
+    fundingSourceWallet: RegisteredAddress,
+    guaranteeBlockHeight?: number,
+  ): Promise<Note> {
     if (this.data.centagons <= 0) {
       throw new InvalidParameterError('Centagons must be greater than 0', 'centagons', {
         centagons: this.data.centagons,
@@ -80,7 +83,7 @@ export default class Note {
     try {
       this.data.guaranteeBlockHeight = guaranteeBlockHeight;
       if (!this.data.guaranteeBlockHeight && this.data.guaranteeBlockHeight !== 0) {
-        this.data.guaranteeBlockHeight = await Note.findMostRecentForWallet(
+        this.data.guaranteeBlockHeight = await Note.findMostRecentGuaranteeForAddress(
           this.client,
           this.data.fromAddress,
         );
@@ -97,7 +100,7 @@ export default class Note {
     return hashNote(this.data);
   }
 
-  public static async findMostRecentForWallet(
+  public static async findMostRecentGuaranteeForAddress(
     client: PgClient<DbType.Main>,
     address: string,
   ): Promise<number> {
@@ -129,26 +132,27 @@ export default class Note {
     });
   }
 
-  public static async load(noteHash: Buffer, logger: IBoundLog): Promise<Note> {
-    return await MainDb.transaction(
-      async client => {
-        const record = await client.queryOne<INoteRecord>(
-          'select * from notes where note_hash = $1',
-          [noteHash],
-        );
+  public static async load(noteHash: Buffer, options: ITransactionOptions): Promise<Note> {
+    return await MainDb.transaction(async client => {
+      const record = await client.queryOne<INoteRecord>(
+        'select * from notes where note_hash = $1',
+        [noteHash],
+      );
 
-        return new Note(client, record);
-      },
-      { logger },
-    );
+      return new Note(client, record);
+    }, options);
   }
 
   public static addSignature(data: Partial<INoteRecord>, address: Address): INoteRecord {
     return addNoteSignature(data, address) as any;
   }
 
-  public static async all(client: PgClient<DbType.Main>, noteHashes: Buffer[]): Promise<Note[]> {
-    return await Promise.all(noteHashes.map(hash => Note.load(hash, client.logger)));
+  public static async loadWithHashes(
+    client: PgClient<DbType.Main>,
+    noteHashes: Buffer[],
+  ): Promise<Note[]> {
+    const opts = { logger: client.logger };
+    return await Promise.all(noteHashes.map(hash => Note.load(hash, opts)));
   }
 }
 

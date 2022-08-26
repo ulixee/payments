@@ -23,18 +23,18 @@ test('should inform the user if the minimum micronoteBatch cannot be created', a
   const client = new Client();
   await client.grantCentagons(100);
   const batches = await client.micronoteBatchFunding.getActiveBatches();
-  expect(batches.active.batchSlug).toBeTruthy();
+  expect(batches.micronote[0].batchSlug).toBeTruthy();
 
-  const funds = await client.micronoteBatchFunding.fundBatch(batches.active, 100);
+  const funds = await client.micronoteBatchFunding.fundBatch(batches.micronote[0], 100);
   await client.runSignedByAddress('Micronote.create', {
-    batchSlug: batches.active.batchSlug,
+    batchSlug: batches.micronote[0].batchSlug,
     address: client.address,
     microgons: 99 * 10e3,
     fundsId: funds.fundsId,
   });
   try {
     const res = await client.runSignedByAddress('Micronote.create', {
-      batchSlug: batches.active.batchSlug,
+      batchSlug: batches.micronote[0].batchSlug,
       address: client.address,
       microgons: 10001,
       fundsId: funds.fundsId,
@@ -51,14 +51,14 @@ test('should be able to fund a micronote batch', async () => {
   await client.grantCentagons(103);
   const batches = await client.micronoteBatchFunding.getActiveBatches();
 
-  const { fundsId } = await client.micronoteBatchFunding.fundBatch(batches.active, 100);
+  const { fundsId } = await client.micronoteBatchFunding.fundBatch(batches.micronote[0], 100);
   expect(fundsId).toBeGreaterThan(0);
 
-  const micronoteBatchDb = await MicronoteBatchDb.get(batches.active.batchSlug);
+  const micronoteBatchDb = await MicronoteBatchDb.get(batches.micronote[0].batchSlug);
   await mainDb.transaction(async dbClient => {
     const note = await dbClient.queryOne<INoteRecord>(
       'select * from notes where from_address = $1 and to_address = $2',
-      [client.address, batches.active.micronoteBatchAddress],
+      [client.address, batches.micronote[0].micronoteBatchAddress],
     );
     expect(note).toBeTruthy();
 
@@ -87,7 +87,7 @@ test('should not allow a consumer to initiate a note if they do not have enough 
   );
 
   try {
-    const funds = await client.micronoteBatchFunding.fundBatch(batches.active, 50);
+    const funds = await client.micronoteBatchFunding.fundBatch(batches.micronote[0], 50);
   } catch (err) {
     expect(err.code).toBe('ERR_NEEDS_BATCH_FUNDING');
   }

@@ -12,9 +12,12 @@ const { log: defaultLogger } = Log(module);
 const jsKeyToDbKey: Record<string, string> = {};
 const dbKeyToJsKey: Record<string, string> = {};
 
+let clientCounter = 1;
+
 export default class PgClient<K extends keyof typeof DbType = DbType.Main> {
   public logger: IBoundLog;
   public type: K;
+  public readonly id;
   private readonly logQueries: boolean = true;
   private shortQueryNameCache: { [query: string]: string } = {};
 
@@ -22,7 +25,11 @@ export default class PgClient<K extends keyof typeof DbType = DbType.Main> {
     if (opts?.logQueries === false) {
       this.logQueries = false;
     }
-    this.logger = opts?.logger ?? defaultLogger;
+    clientCounter += 1;
+    this.id = clientCounter;
+    this.logger = (opts?.logger ?? defaultLogger).createChild(module, {
+      clientId: this.id,
+    });
   }
 
   public queryStream(query: CopyToStreamQuery): CopyToStreamQuery {
@@ -157,8 +164,11 @@ export default class PgClient<K extends keyof typeof DbType = DbType.Main> {
     return records;
   }
 
-  public async insertWithId<T = object>(tableName: string, obj: T): Promise<T & { id: number }> {
-    return await this.insertInternal(tableName, obj, true);
+  public async insertWithId<T = any>(
+    tableName: string,
+    obj: Omit<T, 'id'>,
+  ): Promise<T & { id: number }> {
+    return await this.insertInternal(tableName, obj as any, true);
   }
 
   public async insert<T = any>(
