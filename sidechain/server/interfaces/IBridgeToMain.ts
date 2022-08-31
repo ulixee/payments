@@ -1,6 +1,5 @@
 import { INote } from '@ulixee/specification';
-import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
-import { IHandlerOptions } from '../utils/ApiHandler';
+import { ITransactionOptions } from '../utils/PgPool';
 
 export { IMicronoteBatchOutputRecord } from '../main/models/MicronoteBatchOutput';
 
@@ -9,7 +8,7 @@ export default interface IBridgeToMain {
   saveNote<T>(
     note: INote,
     nestedTx: (noteRecord: INote) => Promise<T>,
-    options: IHandlerOptions,
+    options: ITransactionOptions,
   ): Promise<T>;
-  getNote(hash: Buffer, logger: IBoundLog): Promise<INote>;
+  getNote(hash: Buffer, options: ITransactionOptions): Promise<INote>;
 }

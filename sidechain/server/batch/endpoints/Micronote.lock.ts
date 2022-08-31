@@ -4,7 +4,7 @@ import Micronote from '../models/Micronote';
 import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import MicronoteFunds from '../models/MicronoteFunds';
-import { MicronoteBatchType } from '../../main/models/MicronoteBatch';
+import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 export default new ApiHandler('Micronote.lock', {
   async handler(payload, options) {

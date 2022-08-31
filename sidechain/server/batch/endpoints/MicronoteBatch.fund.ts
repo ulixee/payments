@@ -7,7 +7,7 @@ import { ActiveBatches, bridgeToMain } from '..';
 import MicronoteFunds from '../models/MicronoteFunds';
 import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
-import { MicronoteBatchType } from '../../main/models/MicronoteBatch';
+import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 /**
  * An micronote batch service will register with the central ledger on boot.

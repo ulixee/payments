@@ -17,16 +17,13 @@ const { log: logger } = Log(module);
 
 export async function setupDb() {
   try {
-    await queryWithRootDb(`CREATE DATABASE ${config.db.database}`);
-
-    const migrationClient = new pg.Client(config.db);
+    await queryWithRootDb(`CREATE DATABASE ${config.mainDatabase}`);
+    const migrationClient = new pg.Client({ ...config.db, database: config.mainDatabase });
     await migrationClient.connect();
 
     const migrator = new Postgrator({
-      ...config.db,
-      // or a glob pattern to files
+      database: config.mainDatabase,
       migrationPattern: `${__dirname}/../main/migrations/*.sql`,
-      // Driver: must be pg, mysql, or mssql
       driver: 'pg',
       schemaTable: 'migrations',
       execQuery: query => migrationClient.query(query),
@@ -100,6 +97,7 @@ export async function grantCentagons(centagons: number | bigint, toAddress: stri
 
 export async function stop() {
   try {
+    await TestServer.close();
     await MicronoteBatchManager.stop();
 
     for (const batch of MicronoteBatchManager.getOpenBatches()) {
@@ -115,8 +113,7 @@ export async function stop() {
     }
   }
   await MainDb.shutdown();
-  await queryWithRootDb(`DROP DATABASE ${config.db.database} WITH (FORCE);`);
-  await TestServer.close();
+  await queryWithRootDb(`DROP DATABASE ${config.mainDatabase} WITH (FORCE);`);
 }
 
 export async function queryWithRootDb(sql: string): Promise<any> {
@@ -124,7 +121,6 @@ export async function queryWithRootDb(sql: string): Promise<any> {
     ...config.db,
     user: 'postgres',
     password: 'postgres',
-    database: null,
   });
   try {
     await root.connect();

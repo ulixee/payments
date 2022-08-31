@@ -7,7 +7,7 @@ import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches } from '../index';
 import { InvalidParameterError } from '../../utils/errors';
-import { MicronoteBatchType } from '../../main/models/MicronoteBatch';
+import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 export default new ApiHandler('GiftCard.create', {
   async handler(
@@ -17,7 +17,7 @@ export default new ApiHandler('GiftCard.create', {
     const batch = await ActiveBatches.get(batchSlug);
     if (batch.type !== MicronoteBatchType.GiftCard) {
       throw new InvalidParameterError(
-        "You're trying to create a gift card on a Micronote batch. Refresh the available batches with the MicronoteBatch.get API.",
+        "You're trying to create a gift card on a Micronote batch. Refresh the available batches with the Sidechain.openBatches API.",
       );
     }
 

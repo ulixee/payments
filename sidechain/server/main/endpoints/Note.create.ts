@@ -33,11 +33,11 @@ export default new ApiHandler('Note.create', {
     }
 
     return await MainDb.transaction(async client => {
-      const wallet = new RegisteredAddress(client, fromAddress);
-      await wallet.lock();
-      await wallet.load();
+      const address = new RegisteredAddress(client, fromAddress);
+      await address.lock();
+      await address.load();
 
-      await new Note(client, note).save(wallet);
+      await new Note(client, note).save(address);
       return {
         accepted: true,
       };

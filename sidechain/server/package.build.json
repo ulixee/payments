@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "cli": "node ./cli.js",
+    "dev": "nodemon ./index.js",
+    "migrate": "node ./main/migrations/migrate.js && node ./ramp/migrations/migrate.js",
+    "start": "node ./sidechain/server/index.js",
+    "test": "NODE_ENV=test jest"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.9",
+    "postgrator": "^5.0.1",
+    "commander": "^9.4.0"
+  }
+}

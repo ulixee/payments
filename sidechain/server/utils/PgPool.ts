@@ -18,10 +18,11 @@ export default class PgPool<K extends keyof typeof DbType = DbType.Main> extends
   private config: PoolConfig;
   private shutdownTimeout: NodeJS.Timeout;
 
-  constructor(readonly name: string, conf: PoolConfig) {
+  constructor(readonly database: string, conf: PoolConfig) {
     super();
     const config = {
       ...conf,
+      database,
     };
     if (!config.connectionTimeoutMillis) {
       config.connectionTimeoutMillis = 30e3;
@@ -126,4 +127,5 @@ export interface ITransactionOptions {
 export enum DbType {
   Main = 'Main',
   Batch = 'Batch',
+  Ramp = 'Ramp'
 }

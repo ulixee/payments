@@ -234,6 +234,7 @@ export default class MicronoteFunds {
 export interface IMicronoteFundsRecord {
   id: number;
   address: string;
+  giftCardId?: string;
   noteHash?: Buffer;
   guaranteeBlockHeight: number;
   allowedRecipientAddresses?: string[];

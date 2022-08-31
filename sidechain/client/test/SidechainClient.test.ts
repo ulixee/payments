@@ -5,6 +5,8 @@ import RemoteError from '@ulixee/net/errors/RemoteError';
 import { ConnectionToCore } from '@ulixee/net';
 import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
+import moment = require('moment');
+import ISidechainInfoApis from '@ulixee/specification/sidechain/SidechainInfoApis';
 import SidechainClient from '../lib/SidechainClient';
 import MicronoteBatchFunding from '../lib/MicronoteBatchFunding';
 
@@ -22,6 +24,7 @@ const mock = {
 };
 
 let batchSlug = 'micro_12345123';
+let batchOverrides: ISidechainInfoApis['Sidechain.openBatches']['result']['micronote'];
 let counter = 0;
 beforeAll(() => {
   mock.Identity.verify.mockImplementation(() => true);
@@ -34,15 +37,18 @@ beforeAll(() => {
     if (command === 'MicronoteBatch.findFund') {
       return {};
     }
-    if (command === 'MicronoteBatch.get') {
+    if (command === 'Sidechain.openBatches') {
       return {
-        active: {
-          batchSlug,
-          micronoteBatchIdentity:
-            '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-          sidechainIdentity: sha3('ledgerIdentity'),
-          sidechainValidationSignature: 'batchPubKeySig',
-        },
+        micronote: batchOverrides ?? [
+          {
+            batchSlug,
+            micronoteBatchIdentity:
+              '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
+            sidechainIdentity: sha3('ledgerIdentity'),
+            sidechainValidationSignature: 'batchPubKeySig',
+            stopNewNotesTime: moment().add(1, 'hours').toDate(),
+          },
+        ],
       };
     }
     if (command === 'Micronote.create') {
@@ -69,6 +75,7 @@ beforeEach(() => {
   mock.MicronoteBatchFunding.verifyBatch.mockClear();
   mock.MicronoteBatchFunding.fundBatch.mockClear();
   mock.connectionToCore.sendRequest.mockClear();
+  batchOverrides = null;
 });
 
 test('should fund a micronote batch if needed', async () => {
@@ -103,6 +110,47 @@ test('should reuse a current micronote batch fund if one is set', async () => {
   expect(note2.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345123');
 });
 
+test('should rotate batches when one is stopping accepting notes', async () => {
+  const clientIdentity = await Identity.create();
+  const address = Address.createFromSigningIdentities([clientIdentity]);
+  batchOverrides = [
+    {
+      batchHost: 'http://123.com',
+      isGiftCardBatch: false,
+      micronoteBatchAddress: 'ar1',
+      batchSlug: 'micro_12345125',
+      micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
+      sidechainIdentity: encodeBuffer(sha3('ledgerIdentity'), 'id'),
+      sidechainValidationSignature: Buffer.from('batchPubKeySig'),
+      stopNewNotesTime: moment().add(31, 'minutes').toDate(),
+      plannedClosingTime: moment().add(45, 'minutes').toDate(),
+    },
+    {
+      batchHost: 'http://123.com',
+      isGiftCardBatch: false,
+      micronoteBatchAddress: 'ar1',
+      batchSlug: 'micro_12345126',
+      micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f9',
+      sidechainIdentity: encodeBuffer(sha3('ledgerIdentity2'), 'id'),
+      sidechainValidationSignature: Buffer.from('batchPubKeySig2'),
+      stopNewNotesTime: moment().add(180, 'minutes').toDate(),
+      plannedClosingTime: moment().add(200, 'minutes').toDate(),
+    },
+  ];
+
+  const sidechain = new SidechainClient('https://nobody.nil/', { address });
+  counter = 0;
+  const note = await sidechain.createMicronote(10);
+  expect(note.micronoteBatchUrl).toBe('http://123.com/micro_12345125');
+
+  // @ts-expect-error
+  sidechain.micronoteBatchFunding.activeBatchesPromise.value.resolved.micronote[0].stopNewNotesTime = new Date();
+
+  const note2 = await sidechain.createMicronote(11);
+  // new host path
+  expect(note2.micronoteBatchUrl).toBe('http://123.com/micro_12345126');
+});
+
 test('should handle a failing/shutting down micronoteBatch', async () => {
   const clientIdentity = await Identity.create();
   const address = Address.createFromSigningIdentities([clientIdentity]);
@@ -113,7 +161,7 @@ test('should handle a failing/shutting down micronoteBatch', async () => {
   expect(note.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345123');
 
   counter = 403;
-  const note2 = await sidechain.createMicronote(10);
+  const note2 = await sidechain.createMicronote(11);
   // new host path
   expect(note2.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345126');
 });
@@ -175,6 +223,22 @@ test('should only create a new micronote fund if funds are exhausted', async () 
         micronoteSignature: Buffer.from('noteSig'),
       };
     }
+    if (command === 'Sidechain.openBatches') {
+      return {
+        micronote: [
+          {
+            batchSlug,
+            micronoteBatchIdentity:
+              '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
+            micronoteBatchAddress: encodeBuffer(Buffer.from(sha3('12234')), 'ar'),
+            sidechainIdentity: sha3('ledgerIdentity'),
+            sidechainValidationSignature: 'batchPubKeySig',
+            stopNewNotesTime: moment().add(2, 'hours').toDate(),
+          },
+        ],
+      };
+    }
+
     throw new Error(`unknown request ${command}`);
   });
 
@@ -221,16 +285,19 @@ test('should only get funds one at a time', async () => {
       fundCounter += 1;
       return { fundsId: fundCounter };
     }
-    if (command === 'MicronoteBatch.get') {
+    if (command === 'Sidechain.openBatches') {
       return {
-        active: {
-          batchSlug,
-          micronoteBatchIdentity:
-            '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-          micronoteBatchAddress: encodeBuffer(Buffer.from(sha3('12234')), 'ar'),
-          sidechainIdentity: sha3('ledgerIdentity'),
-          sidechainValidationSignature: 'batchPubKeySig',
-        },
+        micronote: [
+          {
+            batchSlug,
+            micronoteBatchIdentity:
+              '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
+            micronoteBatchAddress: encodeBuffer(Buffer.from(sha3('12234')), 'ar'),
+            sidechainIdentity: sha3('ledgerIdentity'),
+            sidechainValidationSignature: 'batchPubKeySig',
+            stopNewNotesTime: moment().add(2, 'hours').toDate(),
+          },
+        ],
       };
     }
 
@@ -247,6 +314,7 @@ test('should only get funds one at a time', async () => {
 
   const funding = sidechain.micronoteBatchFunding;
   // @ts-expect-error
-  const remaining = funding.fundsByIdPerBatch[batchSlug][funding.activeFundsId];
+  const batchFunds = funding.fundsByBatchSlug[batchSlug];
+  const remaining = batchFunds.fundsById[batchFunds.activeFundsId];
   expect(remaining.microgonsRemaining).toBe(1000);
 }, 10e3);

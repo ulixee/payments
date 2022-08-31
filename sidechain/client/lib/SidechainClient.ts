@@ -163,7 +163,7 @@ export default class SidechainClient implements IPaymentProvider {
       return {
         ...response,
         ...batch,
-        micronoteBatchUrl: new URL(batch.batchSlug, this.host).href,
+        micronoteBatchUrl: new URL(batch.batchSlug, batch.batchHost ?? this.host).href,
       };
     } catch (error) {
       // restore funds
@@ -178,11 +178,11 @@ export default class SidechainClient implements IPaymentProvider {
         error.code === 'ERR_NOT_FOUND'
       ) {
         await this.micronoteBatchFunding.clearBatch(fund.batchSlug);
-        this.micronoteBatchFunding.clearActiveFundsId(fund.fundsId);
+        this.micronoteBatchFunding.clearActiveFundsId(fund.batchSlug, fund.fundsId);
       }
 
       if (error.code === 'ERR_NEEDS_BATCH_FUNDING') {
-        this.micronoteBatchFunding.clearActiveFundsId(fund.fundsId);
+        this.micronoteBatchFunding.clearActiveFundsId(fund.batchSlug, fund.fundsId);
       }
 
       if (!this.micronoteBatchFunding.shouldRetryFunding(error)) {
@@ -293,7 +293,7 @@ export default class SidechainClient implements IPaymentProvider {
   /////// WALLET APIS   ///////////////////////////////////////////////////////////////////////////
 
   public async register(): Promise<ISidechainApiTypes['Address.register']['result']> {
-    return await this.runSignedByAddress('Address.register', {
+    return await this.runRemote('Address.register', {
       address: this.address,
     });
   }
@@ -489,27 +489,6 @@ export default class SidechainClient implements IPaymentProvider {
     return false;
   }
 
-  private buildNote(centagons: number | bigint, toAddress: string, type: NoteType): INote {
-    const note = {
-      toAddress,
-      centagons: BigInt(centagons),
-      fromAddress: this.address,
-      timestamp: new Date(),
-      type,
-      noteHash: null,
-      signature: null,
-    } as INote;
-
-    note.noteHash = hashObject(note, { ignoreProperties: ['noteHash', 'signature'] });
-    note.signature = this.createAddressSignature(note.noteHash);
-    return note;
-  }
-
-  private createAddressSignature(hash: Buffer, isClaim = false): IAddressSignature {
-    const indices = Address.getIdentityIndices(this.credentials.address.addressSettings, isClaim);
-    return this.credentials.address.sign(hash, indices, isClaim);
-  }
-
   private verifyMicronoteSignature(
     batchIdentity: string,
     microgons: number,
@@ -529,5 +508,43 @@ export default class SidechainClient implements IPaymentProvider {
 
       throw new InvalidSignatureError(`Could not parse signature - ${error.message}`);
     }
+  }
+
+  private buildNote(centagons: number | bigint, toAddress: string, type: NoteType): INote {
+    return SidechainClient.buildNote(this.credentials.address, centagons, toAddress, type);
+  }
+
+  private createAddressSignature(hash: Buffer, isClaim = false): IAddressSignature {
+    return SidechainClient.createAddressSignature(this.credentials.address, hash, isClaim);
+  }
+
+  public static buildNote(
+    address: Address,
+    centagons: number | bigint,
+    toAddress: string,
+    type: NoteType,
+  ): INote {
+    const note = {
+      toAddress,
+      centagons: BigInt(centagons),
+      fromAddress: address.bech32,
+      timestamp: new Date(),
+      type,
+      noteHash: null,
+      signature: null,
+    } as INote;
+
+    note.noteHash = hashObject(note, { ignoreProperties: ['noteHash', 'signature'] });
+    note.signature = this.createAddressSignature(address, note.noteHash);
+    return note;
+  }
+
+  public static createAddressSignature(
+    address: Address,
+    hash: Buffer,
+    isClaim = false,
+  ): IAddressSignature {
+    const indices = Address.getIdentityIndices(address.addressSettings, isClaim);
+    return address.sign(hash, indices, isClaim);
   }
 }

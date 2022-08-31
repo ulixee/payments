@@ -3,7 +3,7 @@ import Micronote from '../models/Micronote';
 import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches } from '../index';
-import { MicronoteBatchType } from '../../main/models/MicronoteBatch';
+import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 import MicronoteFunds from '../models/MicronoteFunds';
 
 /**

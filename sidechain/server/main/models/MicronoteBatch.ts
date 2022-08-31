@@ -9,6 +9,7 @@ import config from '../../config';
 import PgClient from '../../utils/PgClient';
 import { DbType } from '../../utils/PgPool';
 import IBatchState from '../../interfaces/IBatchState';
+import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 const batchOpenMinutes = config.micronoteBatch.openMinutes;
 const stopNotesMinsBeforeClose = config.micronoteBatch.stopNewNotesMinsBeforeClose;
@@ -94,8 +95,11 @@ export default class MicronoteBatch implements IBatchState {
       this.sidechainValidationSignature = config.rootIdentity.sign(identityHash);
     }
     return {
+      batchHost: config.baseUrl,
       batchSlug: this.slug,
       isGiftCardBatch: this.data.type === MicronoteBatchType.GiftCard,
+      plannedClosingTime: this.plannedClosingTime,
+      stopNewNotesTime: this.data.stopNewNotesTime,
       micronoteBatchIdentity: this.identity,
       micronoteBatchAddress: this.address,
       sidechainIdentity: this.sidechainIdentity,
@@ -207,11 +211,6 @@ export default class MicronoteBatch implements IBatchState {
       claimSignatureSettings: 1,
     });
   }
-}
-
-export enum MicronoteBatchType {
-  GiftCard = 'GiftCard',
-  Micronote = 'Micronote',
 }
 
 export interface IMicronoteBatchRecord {

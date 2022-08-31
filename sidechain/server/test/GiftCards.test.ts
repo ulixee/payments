@@ -49,7 +49,7 @@ test('should not be able to create a giftCard on a micronote batch', async () =>
   await client.grantCentagons(51);
   const batches = await client.micronoteBatchFunding.getActiveBatches();
   jest.spyOn(client.micronoteBatchFunding, 'getActiveBatches').mockImplementationOnce(async () => {
-    return { giftCard: batches.active, active: batches.giftCard };
+    return { giftCard: batches.micronote[0], micronote: [batches.giftCard] };
   });
 
   await expect(client.createGiftCard(50e3)).rejects.toThrowError('trying to create a gift card on a Micronote batch');

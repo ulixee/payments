@@ -1,14 +1,14 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 const Postgrator = require('postgrator');
-const config = require('config');
 const pg = require('pg');
+const config = require('../../config');
 
-const client = new pg.Client(config.get('db'));
+const client = new pg.Client({ ...config.db, database: config.mainDatabase });
 
 const postgrator = new Postgrator({
   migrationPattern: `${__dirname}/*.sql`,
   driver: 'pg',
-  database: config.get('db.database'),
+  database: config.mainDatabase,
   schemaTable: 'migrations',
   execQuery: query => client.query(query),
 });

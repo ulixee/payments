@@ -2,14 +2,15 @@ import Log from '@ulixee/commons/lib/Logger';
 import * as moment from 'moment';
 import config from '../../config';
 import RegisteredAddress from '../models/RegisteredAddress';
-import MicronoteBatch, { MicronoteBatchType } from '../models/MicronoteBatch';
+import MicronoteBatch from '../models/MicronoteBatch';
 import BatchDb from '../../batch/db';
 import MainDb from '../db';
 import { InsufficientFundsError, NotFoundError } from '../../utils/errors';
 import Note from '../models/Note';
 import MicronoteBatchOutput from '../models/MicronoteBatchOutput';
-import { bridgeToBatch } from '../../batch';
+import { BridgeToBatch } from '../../bridges';
 import { ITransactionOptions } from '../../utils/PgPool';
+import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 const { log } = Log(module);
 
@@ -21,7 +22,12 @@ export default class MicronoteBatchManager {
   private static refreshInterval: NodeJS.Timeout;
 
   public static getOpenBatches(): MicronoteBatch[] {
-    return [...this.batchesBySlug.values()].filter(x => x.isAllowingNewNotes);
+    return [...this.batchesBySlug.values()]
+      .filter(x => x.isAllowingNewNotes)
+      .sort((a, b) => {
+        // newest first
+        return b.plannedClosingTime.getTime() - a.plannedClosingTime.getTime();
+      });
   }
 
   public static async stop(): Promise<void> {
@@ -29,7 +35,7 @@ export default class MicronoteBatchManager {
       clearInterval(this.refreshInterval);
       this.refreshInterval = null;
     }
-    await BatchDb.close();
+    await BridgeToBatch.closeDbs();
   }
 
   public static async refresh(): Promise<void> {
@@ -174,7 +180,7 @@ export default class MicronoteBatchManager {
       }
       const batchBalance = await RegisteredAddress.getBalance(client, batch.address);
       const noteHashes = await RegisteredAddress.getNoteHashes(client, batch.address);
-      await bridgeToBatch.closeBatch(batch.slug, batchBalance, noteHashes, transactionOptions);
+      await BridgeToBatch.closeBatch(batch.slug, batchBalance, noteHashes, transactionOptions);
       await batch.recordStateTime('closedTime');
     }, transactionOptions);
   }
@@ -201,8 +207,8 @@ export default class MicronoteBatchManager {
       const wallet = new RegisteredAddress(client, batch.address);
       await wallet.lock();
 
-      const batchOutput = await bridgeToBatch.getBatchSummary(batch.slug);
-      await bridgeToBatch.getBatchOutputStream(batch.slug, async noteStream => {
+      const batchOutput = await BridgeToBatch.getBatchSummary(batch.slug);
+      await BridgeToBatch.getBatchOutputStream(batch.slug, async noteStream => {
         this.logger.info('IMPORTING: Reading input stream into note logs', {
           micronoteBatch: batch.slug,
         });

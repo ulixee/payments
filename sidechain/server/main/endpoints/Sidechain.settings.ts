@@ -20,6 +20,7 @@ export default new ApiHandler('Sidechain.settings', {
       rootIdentities: [config.rootIdentity.bech32],
       identityProofSignatures: [identityProofSignature],
       latestBlockSettings: blockSettings,
+      usdToArgonConversionRate: 1,
       batchDurationMinutes: config.micronoteBatch.openMinutes,
       settlementFeeMicrogons: config.micronoteBatch.settlementFeeMicrogons,
       version,

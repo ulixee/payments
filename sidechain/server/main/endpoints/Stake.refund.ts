@@ -17,7 +17,7 @@ export default new ApiHandler('Stake.refund', {
         throw new NotFoundError('No open stake found to refund');
       }
 
-      const originalTx = await Note.load(stake.data.noteHash, options.logger);
+      const originalTx = await Note.load(stake.data.noteHash, options);
 
       // create refund note
       const noteData = Note.addSignature(
