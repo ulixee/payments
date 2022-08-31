@@ -11,4 +11,7 @@ export default interface IBridgeToMain {
     options: ITransactionOptions,
   ): Promise<T>;
   getNote(hash: Buffer, options: ITransactionOptions): Promise<INote>;
+  lookupBalance(address: string, options: ITransactionOptions): Promise<bigint>;
+  getUsdToArgonConversionRate(): Promise<number>;
+  totalCentagonsInCirculation(options: ITransactionOptions): Promise<bigint>;
 }

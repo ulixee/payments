@@ -9,6 +9,7 @@ const { log } = Log(module);
 
 types.setTypeParser(types.builtins.JSON, x => TypeSerializer.parse(x));
 types.setTypeParser(types.builtins.INT8, BigInt);
+types.setTypeParser(types.builtins.NUMERIC, 'text', parseFloat);
 
 export default class PgPool<K extends keyof typeof DbType = DbType.Main> extends TypedEventEmitter<{
   close: void;

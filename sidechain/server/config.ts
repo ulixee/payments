@@ -2,7 +2,10 @@ import Identity from '@ulixee/crypto/lib/Identity';
 import Address from '@ulixee/crypto/lib/Address';
 import { loadEnv, parseEnvBigint, parseEnvInt, parseEnvList } from '@ulixee/commons/lib/envUtils';
 import { nanoid } from 'nanoid';
+import moment = require('moment');
 import { InvalidParameterError } from './utils/errors';
+import EthereumHDWallet from './ramps/lib/EthereumHDWallet';
+import { IEthereumProviderConfig } from './ramps/lib/USDCApi';
 
 loadEnv(__dirname);
 const env = process.env;
@@ -15,14 +18,30 @@ const baseUrl = env.SIDECHAIN_HOST
   ? new URL(env.SIDECHAIN_HOST)
   : { port: 0, href: 'http://localhost:' };
 
+const prng = nanoid(5).toLowerCase().replace(/[-]/g, '_');
+
+const ethereumApis: IEthereumProviderConfig = {
+  contractAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // mainstead address
+  alchemyApiToken: env.ALCHEMY_API_TOKEN,
+  etherscanApiToken: env.ETHERSCAN_API_TOKEN,
+  infuraApiKey: env.INFURA_API_KEY,
+  pocketApplicationId: env.POCKET_APPLICATION_ID,
+  pocketApplicationSecret: env.POCKET_APPLICATION_SECRET,
+  ankrApiKey: env.ANKR_API_KEY,
+};
+
 const settings = {
-  port: env.LISTEN_PORT ?? baseUrl.port,
+  port: env.SIDECHAIN_LISTEN_PORT ?? baseUrl.port,
   baseUrl: baseUrl.href,
   db: {
     host: env.PGHOST,
     port: parseEnvInt(env.PGPORT) || undefined,
     user: env.PGUSER,
     password: env.PGPASSWORD,
+  },
+  cpiBaseline: {
+    date: moment(env.CPI_BASELINE_DATE, 'YYYY-MM').format('YYYY-MM-DD'),
+    value: parseEnvInt(env.CPI_BASELINE_VALUE),
   },
   mainDatabase: replacePRNG(env.MAIN_DB),
   rootIdentity,
@@ -48,6 +67,20 @@ const settings = {
     currentCentagons: 0n, // X days of expected earnings
   },
   stakeAddress: readAddress(env.STAKE_ADDRESS),
+  ramp: {
+    database: replacePRNG(env.RAMP_DB),
+    transferInAddressExpirationHours: 24,
+    sidechainAddressesForReserves: parseEnvList(env.RAMP_ULX_ADDRESS_PATHS_FOR_RESERVES).map(
+      readAddress,
+    ),
+    neuteredHDWalletsForReserves: parseEnvList(env.RAMP_RESERVES_NEUTERED_WALLET_KEYS).map(
+      readNeuteredHDWallet,
+    ),
+    neuteredHDWalletsForSales: parseEnvList(env.RAMP_SALES_NEUTERED_WALLET_KEYS).map(
+      readNeuteredHDWallet,
+    ),
+    ethereumApis,
+  },
 };
 validate();
 export default settings;
@@ -101,7 +134,7 @@ function validate(): void {
 
 function replacePRNG(envvar: string): string {
   if (!envvar?.includes('<PRNG>')) return envvar;
-  return envvar.replace('<PRNG>', nanoid(5).toLowerCase().replace(/[-]/g, '_'));
+  return envvar.replace('<PRNG>', prng);
 }
 
 function readAddress(address: string | any): Address {
@@ -109,4 +142,9 @@ function readAddress(address: string | any): Address {
     return Address.readFromPath(address, __dirname);
   }
   return Address.fromStored(address);
+}
+
+function readNeuteredHDWallet(neuteredPath: string): EthereumHDWallet<any> {
+  if (!neuteredPath) return null;
+  return EthereumHDWallet.loadNeutered(neuteredPath);
 }

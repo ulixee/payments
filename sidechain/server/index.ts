@@ -5,9 +5,8 @@ import * as http from 'http';
 import { AddressInfo } from 'net';
 import config from './config';
 import app from './app';
-import MicronoteBatchManager from './main/lib/MicronoteBatchManager';
-import BlockManager from './main/lib/BlockManager';
-import MainDb from './main/db';
+import Main from './main';
+import Ramp from './ramps';
 
 const { log } = Log(module);
 
@@ -16,8 +15,8 @@ const port = config.port;
 
 // make sure Batches are booted before starting server
 (async function start() {
-  await BlockManager.start();
-  await MicronoteBatchManager.start();
+  await Main.start();
+  await Ramp.start();
 
   const server = createTerminus(http.createServer(app), {
     timeout: 10000,
@@ -29,7 +28,7 @@ const port = config.port;
     healthChecks: {
       async db() {
         try {
-          await MainDb.healthCheck();
+          await Main.healthCheck();
         } catch (err) {
           throw new HealthCheckError('Health check failed', [err.toString()]);
         }
@@ -37,9 +36,8 @@ const port = config.port;
     },
     async onSignal() {
       log.info('SERVER EVENT: server is starting cleanup');
-      await MicronoteBatchManager.stop();
-      await BlockManager.stop();
-      return await MainDb.shutdown();
+      await Ramp.stop();
+      await Main.stop();
     },
   });
   server.listen(port, () => {

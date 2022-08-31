@@ -21,6 +21,11 @@ beforeAll(async () => {
   userAddress = new TestClient();
 });
 
+afterAll(async () => {
+  await stop();
+});
+
+
 test('should spend outputs on "transfer out"', async () => {
   const existingTxHash = sha3('should store an outbound hash');
   await MainDb.transaction(async client => {
@@ -129,8 +134,4 @@ test('should spend outputs on "transfer out"', async () => {
     );
     expect(funds.data.spentOnTransactionHash).toEqual(mainchainSecurities[0].data.transactionHash);
   });
-});
-
-afterAll(async () => {
-  await stop();
 });

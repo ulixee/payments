@@ -5,6 +5,7 @@ import ApiRegistry from './utils/ApiRegistry';
 import MainDb from './main/db';
 import batchEndpoints from './batch/endpoints';
 import mainEndpoints from './main/endpoints';
+import rampEndpoints from './ramps/endpoints';
 import MicronoteBatchManager from './main/lib/MicronoteBatchManager';
 import BlockManager from './main/lib/BlockManager';
 
@@ -14,6 +15,7 @@ const { log } = Log(module);
 
 ApiRegistry.registerEndpoints(...mainEndpoints);
 ApiRegistry.registerEndpoints(...batchEndpoints);
+ApiRegistry.registerEndpoints(...rampEndpoints);
 
 export default async function requestHandler(
   req: IncomingMessage,

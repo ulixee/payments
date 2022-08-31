@@ -17,7 +17,6 @@ import MainDb from '../db';
 import PgClient from '../../utils/PgClient';
 import { DbType, ITransactionOptions } from '../../utils/PgPool';
 import RegisteredAddress from './RegisteredAddress';
-import config from '../../config';
 
 export default class Note {
   public data: INoteRecord;
@@ -145,6 +144,20 @@ export default class Note {
 
   public static addSignature(data: Partial<INoteRecord>, address: Address): INoteRecord {
     return addNoteSignature(data, address) as any;
+  }
+
+  public static async totalCirculation(client: PgClient<DbType.Main>): Promise<bigint> {
+    const { rows } = await client.preparedQuery<{ balance: bigint }>({
+      text: `select
+  (SELECT COALESCE(SUM(centagons),0)::bigint FROM notes where type = ANY($1)) -
+  (SELECT COALESCE(SUM(centagons),0)::bigint FROM notes where type = ANY($2))  as balance`,
+      name: 'circulation_query',
+      values: [[NoteType.transferIn], [NoteType.burn, NoteType.transferOut]],
+    });
+    if (rows.length) {
+      return rows[0].balance ?? 0n;
+    }
+    return 0n;
   }
 
   public static async loadWithHashes(

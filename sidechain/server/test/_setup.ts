@@ -1,6 +1,5 @@
 import Log from '@ulixee/commons/lib/Logger';
 import { NoteType } from '@ulixee/specification';
-import * as Postgrator from 'postgrator';
 import * as pg from 'pg';
 import config from '../config';
 import { NotFoundError } from '../utils/errors';
@@ -9,29 +8,24 @@ import Note from '../main/models/Note';
 import MainDb from '../main/db';
 import * as TestServer from './_TestServer';
 import MicronoteBatchDb from '../batch/db';
+import RampDb from '../ramps/db';
+import migrate from '../utils/migrate';
+import SidechainMain from '../main';
 
 const sidechainAddressCredentials = config.mainchain.addresses[0];
 const sidechainAddress = sidechainAddressCredentials.bech32;
 const nullAddress = config.nullAddress;
 const { log: logger } = Log(module);
 
+async function createAndMigrate(database: string, migrationsPath: string): Promise<void> {
+  await queryWithRootDb(`CREATE DATABASE ${database}`);
+  await migrate(database, migrationsPath);
+}
+
 export async function setupDb() {
   try {
-    await queryWithRootDb(`CREATE DATABASE ${config.mainDatabase}`);
-    const migrationClient = new pg.Client({ ...config.db, database: config.mainDatabase });
-    await migrationClient.connect();
-
-    const migrator = new Postgrator({
-      database: config.mainDatabase,
-      migrationPattern: `${__dirname}/../main/migrations/*.sql`,
-      driver: 'pg',
-      schemaTable: 'migrations',
-      execQuery: query => migrationClient.query(query),
-    });
-
-    await migrator.migrate();
-    await migrationClient.end();
-
+    await createAndMigrate(config.mainDatabase, `${__dirname}/../main/migrations`);
+    await createAndMigrate(config.ramp.database, `${__dirname}/../ramps/migrations`);
     await MainDb.transaction(async client => {
       await client.insert('addresses', { address: sidechainAddress });
     });
@@ -98,7 +92,7 @@ export async function grantCentagons(centagons: number | bigint, toAddress: stri
 export async function stop() {
   try {
     await TestServer.close();
-    await MicronoteBatchManager.stop();
+    await SidechainMain.stop();
 
     for (const batch of MicronoteBatchManager.getOpenBatches()) {
       await MainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
@@ -113,7 +107,9 @@ export async function stop() {
     }
   }
   await MainDb.shutdown();
+  await RampDb.shutdown();
   await queryWithRootDb(`DROP DATABASE ${config.mainDatabase} WITH (FORCE);`);
+  await queryWithRootDb(`DROP DATABASE ${config.ramp.database} WITH (FORCE);`);
 }
 
 export async function queryWithRootDb(sql: string): Promise<any> {
