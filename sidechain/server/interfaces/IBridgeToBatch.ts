@@ -1,6 +1,6 @@
 import { Duplex } from 'stream';
+import { ITransactionOptions } from '@ulixee/payment-utils/pg/PgPool';
 import { IMicronoteBatchOutputRecord } from '../main/models/MicronoteBatchOutput';
-import { ITransactionOptions } from '../utils/PgPool';
 
 export default interface IBridgeToBatch {
   closeBatch(

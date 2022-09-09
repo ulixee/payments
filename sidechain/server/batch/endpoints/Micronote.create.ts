@@ -1,9 +1,9 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
-import { NewNotesNotBeingAcceptedError } from '../../utils/errors';
+import { NewNotesNotBeingAcceptedError } from '@ulixee/payment-utils/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import Micronote from '../models/Micronote';
 import MicronoteFunds from '../models/MicronoteFunds';
-import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches, bridgeToMain } from '../index';
 

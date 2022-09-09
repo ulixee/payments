@@ -1,7 +1,7 @@
 import { ITransaction } from '@ulixee/specification';
 import TypeSerializer from '@ulixee/commons/lib/TypeSerializer';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 
 export default class MainchainTransaction {
   public get transaction(): ITransaction {

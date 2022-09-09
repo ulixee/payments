@@ -2,13 +2,15 @@ import { INote, NoteType } from '@ulixee/specification';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import Address from '@ulixee/crypto/lib/Address';
 import addNoteSignature from '@ulixee/sidechain/lib/addNoteSignature';
-import config from '../../config';
+import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
+import { ConflictError } from '@ulixee/payment-utils/lib/errors';
 import MicronoteFunds from './MicronoteFunds';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
-import { ConflictError } from '../../utils/errors';
+import config from '../../config';
 import { IMicronoteRecord } from './Micronote';
 import { bridgeToMain } from '../index';
+import { BridgeToMain } from '../../bridges';
 
 type IPartialMicronote = Pick<
   IMicronoteRecord,
@@ -114,13 +116,13 @@ export default class MicronoteBatchClose {
       config.micronoteBatch.settlementFeeMicrogons * Number(claims || 0);
 
     // only make a penny if you pass the centagon mark
-    const feeCentagons = Math.floor(this.settlementFeeMicrogons / 10e3);
+    const feeCentagons = ArgonUtils.microgonsToCentagons(this.settlementFeeMicrogons);
     if (feeCentagons <= 0) {
       return null;
     }
     const settlementFeeNote = this.signLedgerOutputs(
       NoteType.settlementFees,
-      config.micronoteBatch.payoutAddress,
+      config.micronoteBatch.settlementFeePaymentAddress,
       BigInt(feeCentagons),
       this.guaranteeBlockHeight,
     );
@@ -143,23 +145,25 @@ export default class MicronoteBatchClose {
         JOIN micronote_funds e on e.id = n.funds_id
       GROUP BY np.address`);
 
+    const blockSettings = await BridgeToMain.blockSettings();
+    const unburnedFundsPercent = (100 - blockSettings.minimumMicronoteBurnPercent) / 100;
     // calculate final payment after burn
     for (const record of payments) {
       if (record.guaranteeBlockHeight > this.guaranteeBlockHeight) {
         this.guaranteeBlockHeight = record.guaranteeBlockHeight;
       }
-      // take out burnt argons
-      const microgonsAfterBurn = Math.floor(Number(record.microgons) * 0.8);
-      // only make a penny if you pass the centagon mark
-      const centagonsAfterBurn = Math.floor(microgonsAfterBurn / 10e3);
-      if (centagonsAfterBurn <= 0) {
+      // take out burnt argons (NOTE: BigInt floors, microgons / 1e4 = centagons)
+      const centagonsAfterBurn = ArgonUtils.microgonsToCentagons(
+        Number(record.microgons) * unburnedFundsPercent,
+      );
+      if (centagonsAfterBurn <= 0n) {
         continue;
       }
 
       const payment = this.signLedgerOutputs(
         NoteType.revenue,
         record.toAddress,
-        BigInt(centagonsAfterBurn),
+        centagonsAfterBurn,
         record.guaranteeBlockHeight,
       );
       this.noteOutputs.push(payment);
@@ -181,7 +185,7 @@ export default class MicronoteBatchClose {
      GROUP BY address`);
 
     for (const refund of refunds) {
-      const centagons = Math.floor(Number(refund.microgons) / 10e3);
+      const centagons = ArgonUtils.microgonsToCentagons(refund.microgons);
       if (centagons > 0) {
         const record = this.signLedgerOutputs(
           NoteType.micronoteBatchRefund,
@@ -204,7 +208,7 @@ export default class MicronoteBatchClose {
       payouts += note.centagons;
     }
 
-    const burn = bankerDivide(BigInt(totalFunding), 10000n) - payouts;
+    const burn = bankerDivide(totalFunding, 10000n) - payouts;
 
     if (burn > 0) {
       // burn the required funds

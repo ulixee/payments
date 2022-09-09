@@ -1,10 +1,12 @@
 import { NoteType } from '@ulixee/specification';
+import { InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import config from '../../config';
-import { InvalidParameterError } from '../../utils/errors';
 import RegisteredAddress from '../models/RegisteredAddress';
 import Note from '../models/Note';
 import MainDb from '../db';
-import ApiHandler from '../../utils/ApiHandler';
+
+;
 
 export default new ApiHandler('Note.create', {
   async handler({ note }, options) {

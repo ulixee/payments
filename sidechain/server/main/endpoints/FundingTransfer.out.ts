@@ -1,11 +1,11 @@
 import { NoteType } from '@ulixee/specification';
+import { InvalidParameterError , InvalidRecipientError } from '@ulixee/payment-utils/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import config from '../../config';
 import BlockManager from '../lib/BlockManager';
-import { InvalidParameterError, InvalidRecipientError } from '../../utils/errors';
 import RegisteredAddress from '../models/RegisteredAddress';
 import FundingTransferOut from '../models/FundingTransferOut';
 import MainDb from '../db';
-import ApiHandler from '../../utils/ApiHandler';
 import Note from '../models/Note';
 
 export default new ApiHandler('FundingTransfer.out', {

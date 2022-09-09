@@ -1,8 +1,8 @@
+import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import BlockManager from '../lib/BlockManager';
-import { NotFoundError } from '../../utils/errors';
 import FundingTransferOut from '../models/FundingTransferOut';
 import MainDb from '../db';
-import ApiHandler from '../../utils/ApiHandler';
 import SecurityMainchainBlock, {
   ISecurityMainchainBlockRecord,
 } from '../models/SecurityMainchainBlock';

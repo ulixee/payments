@@ -1,5 +1,5 @@
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import Note from '../models/Note';
-import ApiHandler from '../../utils/ApiHandler';
 
 export default new ApiHandler('Note.get', {
   async handler({ noteHash }, options) {

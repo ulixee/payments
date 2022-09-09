@@ -1,7 +1,6 @@
 import MainDb from './db';
 import MicronoteBatchManager from './lib/MicronoteBatchManager';
 import BlockManager from './lib/BlockManager';
-import ConsumerPriceIndexMonitor from './lib/ConsumerPriceIndexMonitor';
 
 export default class SidechainMain {
   static async healthCheck(): Promise<void> {
@@ -12,13 +11,19 @@ export default class SidechainMain {
     await MainDb.healthCheck();
     await BlockManager.start();
     await MicronoteBatchManager.start();
-    await ConsumerPriceIndexMonitor.start();
+  }
+
+  static async info(): Promise<any> {
+    return {
+      micronoteBatches: MicronoteBatchManager.getOpenBatches().map(batch => batch.getNoteParams()),
+      giftCardBatch: MicronoteBatchManager.giftCardBatch?.getNoteParams(),
+      blockSettings: await BlockManager.settings,
+    };
   }
 
   static async stop(): Promise<void> {
     await MicronoteBatchManager.stop();
     await BlockManager.stop();
-    await ConsumerPriceIndexMonitor.stop();
     await MainDb.shutdown();
   }
 }

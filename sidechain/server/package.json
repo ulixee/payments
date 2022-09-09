@@ -5,50 +5,32 @@
   "description": "This server runs a Ulixee Payments batched-settlement Sidechain",
   "main": "index.js",
   "scripts": {
-    "cli": "node ../../build/sidechain/server/cli.js",
     "dev": "nodemon index.ts",
-    "migrate": "node ../../build/sidechain/server/scripts/migrate-dbs.js",
+    "migrate": "node ../../build/sidechain/server/scripts/migrate.js",
     "start": "node ../../build/sidechain/server/index.js",
     "test": "NODE_ENV=test jest"
   },
   "license": "MIT",
   "devDependencies": {
-    "@ethersproject/abi": "^5.7.0",
-    "@ethersproject/providers": "^5.7.0",
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
-    "@nomicfoundation/hardhat-toolbox": "^1.0.2",
-    "@nomiclabs/hardhat-ethers": "^2.1.1",
-    "@nomiclabs/hardhat-etherscan": "^3.1.0",
-    "@openzeppelin/contracts": "^4.7.3",
-    "@types/jest": "^24.0.11",
-    "@types/pg": "^8.6.5",
-    "@types/pg-copy-streams": "^1.2.1",
-    "chai": "^4.3.6",
-    "commander": "^9.4.0",
-    "ethers": "^5.7.0",
-    "hardhat": "^2.10.2",
-    "hardhat-gas-reporter": "^1.0.8",
     "nodemon": "^1.18.9",
-    "postgrator": "^5.0.1"
+    "@ulixee/mainchain-server": "2.0.0-alpha.11",
+    "@types/pg-copy-streams": "^1.2.1"
   },
   "dependencies": {
-    "@godaddy/terminus": "^4.1.0",
     "@ulixee/block-utils": "2.0.0-alpha.11",
     "@ulixee/commons": "2.0.0-alpha.11",
     "@ulixee/crypto": "2.0.0-alpha.11",
     "@ulixee/mainchain": "2.0.0-alpha.11",
     "@ulixee/net": "2.0.0-alpha.11",
     "@ulixee/sidechain": "2.0.0-alpha.11",
+    "@ulixee/payment-utils": "2.0.0-alpha.11",
     "@ulixee/specification": "2.0.0-alpha.11",
     "@ulixee/wallet": "2.0.0-alpha.11",
-    "camelcase": "^6.3.0",
-    "decamelize": "^5.0.1",
-    "ethers": "^5.6.9",
     "moment": "^2.29.4",
     "nanoid": "^3.1.30",
+    "decamelize": "^5.0.1",
+    "zod": "^3.17.3",
     "pg": "^8.7.3",
-    "pg-copy-streams": "^6.0.2",
-    "pg-types": "^4.0.0",
-    "zod": "^3.17.3"
+    "pg-copy-streams": "^6.0.2"
   }
 }

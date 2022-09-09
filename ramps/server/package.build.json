@@ -1,0 +1,25 @@
+{
+  "scripts": {
+    "cli": "node ./cli.js",
+    "dev": "nodemon ./index.js",
+    "migrate": "node ./migrations/migrate.js",
+    "start": "node ./index.js",
+    "build:usdc": "hardhat compile",
+    "test": "NODE_ENV=test jest"
+  },
+  "devDependencies": {
+    "@ethersproject/abi": "^5.7.0",
+    "@ethersproject/providers": "^5.7.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
+    "@nomicfoundation/hardhat-toolbox": "^1.0.2",
+    "@nomiclabs/hardhat-ethers": "^2.1.1",
+    "@nomiclabs/hardhat-etherscan": "^3.1.0",
+    "@openzeppelin/contracts": "^4.7.3",
+    "commander": "^9.4.0",
+    "ethers": "^5.7.0",
+    "hardhat": "^2.10.2",
+    "hardhat-gas-reporter": "^1.0.8",
+    "nodemon": "^1.18.9",
+    "postgrator": "^5.0.1"
+  }
+}

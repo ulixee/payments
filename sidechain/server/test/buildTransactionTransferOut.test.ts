@@ -6,7 +6,7 @@ import MainchainBlock from '../main/models/MainchainBlock';
 import Note from '../main/models/Note';
 import Security from '../main/models/Security';
 import MainDb from '../main/db';
-import { setupDb, stop } from './_setup';
+import { start, stop } from './_setup';
 import TestClient from './_TestClient';
 
 const mainchainAddressSigner = config.mainchain.addresses[0];
@@ -16,7 +16,7 @@ let userAddress: TestClient;
 let sidechainFunds: Security;
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   userAddress2 = new TestClient();
   userAddress = new TestClient();
 });

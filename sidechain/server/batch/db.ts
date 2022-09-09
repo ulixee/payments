@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
+import PgPool, { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../config';
-import PgPool, { DbType } from '../utils/PgPool';
 
 const pools: {
   pool: PgPool<any>;

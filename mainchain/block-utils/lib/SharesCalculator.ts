@@ -67,20 +67,18 @@ export default class SharesCalculator {
   }
 
   /**
-   * Determine how many centagons this ownership has rights to
+   * Determine how many centagons this ownership has rights to.
+   *
+   * NOTE: Returns a BigNumber so we can round after all portions added up.
    */
-  public static getSharePortion(coinage: ICoinage, shareCentagonsOwned: bigint): bigint {
+  public static getSharePortion(coinage: ICoinage, shareCentagonsOwned: bigint): BigNumber {
     const totalCoinageCentagonsAtHeight = SharesCalculator.getTotalSharesAtHeight(
       coinage.blockHeight,
     );
 
     // figure out share of centagons
-    // NOTE: BigInts always round down
-    const tokenShare = new BigNumber(
-      (shareCentagonsOwned * coinage.centagons).toString(),
-    ).dividedBy(totalCoinageCentagonsAtHeight.toString());
-
-    // return shares times the number coinage
-    return BigInt(tokenShare.toString(10));
+    return new BigNumber((shareCentagonsOwned * coinage.centagons).toString()).dividedBy(
+      totalCoinageCentagonsAtHeight.toString(),
+    );
   }
 }

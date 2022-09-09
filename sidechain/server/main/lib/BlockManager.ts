@@ -1,16 +1,21 @@
-import IArithmeticEncoding from '@ulixee/block-utils/interfaces/IArithmeticEncoding';
 import { createPromise } from '@ulixee/commons/lib/utils';
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
 import Logger from '@ulixee/commons/lib/Logger';
 import MainchainClient from '@ulixee/mainchain';
-import { IBlock, IBlockHeader, ITransaction, TransactionType } from '@ulixee/specification';
+import {
+  IBlock,
+  IBlockHeader,
+  IBlockSettings,
+  ITransaction,
+  TransactionType,
+} from '@ulixee/specification';
+import IArithmeticEncoding from '@ulixee/specification/types/IArithmeticEncoding';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
 import RegisteredAddress from '../models/RegisteredAddress';
 import MainchainBlock, { IMainchainBlockRecord } from '../models/MainchainBlock';
 import Security from '../models/Security';
 import MainDb from '../db';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
 import SecurityMainchainBlock from '../models/SecurityMainchainBlock';
 
 const { log } = Logger(module);
@@ -27,9 +32,7 @@ export default class BlockManager {
     return this.settingsLoader.promise;
   }
 
-  private static logger = log.createChild(module, {
-    action: 'BlockManager.processNewLongestChainBlock',
-  });
+  private static logger = log.createChild(module);
 
   private static settingsLoader = createPromise<IBlockSettings>();
   private static interval: NodeJS.Timer;
@@ -39,11 +42,11 @@ export default class BlockManager {
   private static client: MainchainClient;
 
   public static async currentBlockHeight(): Promise<number> {
-    return (await BlockManager.settings).height;
+    return (await this.settings).height;
   }
 
   public static async currentBlockHash(): Promise<Buffer> {
-    return (await BlockManager.settings).blockHash;
+    return (await this.settings).blockHash;
   }
 
   public static async getStableBlock(): Promise<IMainchainBlockRecord> {
@@ -51,12 +54,12 @@ export default class BlockManager {
   }
 
   public static async getBlocks(...hashes: Buffer[]): Promise<IBlock[]> {
-    const { blocks } = await BlockManager.client.getBlocks([], hashes);
+    const { blocks } = await this.client.getBlocks([], hashes);
     return blocks;
   }
 
   public static async getBlockHeader(hash: Buffer): Promise<IMainchainBlockRecord> {
-    const last4 = await BlockManager.last4Blocks;
+    const last4 = await this.last4Blocks;
     for (const block of last4) {
       if (block.blockHash.equals(hash)) {
         return block;
@@ -68,7 +71,7 @@ export default class BlockManager {
       return storedBlock;
     }
 
-    const { header } = await BlockManager.client.getBlockHeader(hash);
+    const { header } = await this.client.getBlockHeader(hash);
     if (header) {
       return {
         nextLinkTarget: header.nextLinkTarget as IArithmeticEncoding,
@@ -85,22 +88,26 @@ export default class BlockManager {
       this.logger.warn('No mainchain configured. Setting block height to 0');
       this.settingsLoader.resolve({
         height: 0,
+        minimumMicronoteBurnPercent: 20,
         sidechains: [{ rootIdentity: config.rootIdentity.bech32, url: config.baseUrl }],
       } as IBlockSettings);
       return;
     }
 
-    BlockManager.client = new MainchainClient(config.mainchain.host);
-    BlockManager.last4Blocks = MainchainBlock.getLatest4Blocks();
-    await BlockManager.loadSettings();
-    BlockManager.interval = setInterval(BlockManager.loadSettings, 2 * 60e3).unref();
+    this.client = new MainchainClient(config.mainchain.host);
+    this.last4Blocks = MainchainBlock.getLatest4Blocks();
+    await this.loadSettings();
+    this.interval = setInterval(this.loadSettings, 2 * 60e3).unref();
   }
 
   public static stop(): void {
-    BlockManager.isStopping = true;
-    if (BlockManager.interval) {
-      clearInterval(BlockManager.interval);
-      BlockManager.interval = null;
+    this.client = null;
+    this.isStopping = true;
+    this.last4Blocks = null;
+    this.settingsLoader = createPromise();
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
     }
   }
 
@@ -110,13 +117,14 @@ export default class BlockManager {
   } {
     const transfersIn: ITransferInSource[] = [];
     const transfersOut: ITransferRecorded[] = [];
-    transactions.forEach((transaction, i) => {
+    for (let i = 0; i < transactions.length; i += 1) {
+      const transaction = transactions[i];
       if (
         transaction.type !== TransactionType.TRANSFER &&
         transaction.type !== TransactionType.COINBASE &&
         transaction.type !== TransactionType.COINAGE_CLAIM
       ) {
-        return;
+        continue;
       }
 
       const isFromSidechain = transaction.sources.find(x =>
@@ -125,7 +133,7 @@ export default class BlockManager {
 
       if (isFromSidechain) {
         transfersOut.push({ transactionHash: transaction.transactionHash, index: i });
-        return;
+        continue;
       }
 
       transaction.outputs.forEach((output, outputIndex) => {
@@ -149,7 +157,7 @@ export default class BlockManager {
           transactionOutputIndex: outputIndex,
         });
       });
-    });
+    }
     return { transfersIn, transfersOut };
   }
 
@@ -182,7 +190,7 @@ export default class BlockManager {
         // make sure we have the last block before starting a transaction
         const prev = await MainchainBlock.getBlock(block.header.prevBlockHash);
         if (!prev) {
-          const [prevBlock] = await BlockManager.getBlocks(block.header.prevBlockHash);
+          const [prevBlock] = await this.getBlocks(block.header.prevBlockHash);
           await this.processNewLongestChainBlock(prevBlock);
         }
       }
@@ -200,21 +208,28 @@ export default class BlockManager {
           // first lock the block before updating
           await latestBlock.lockForCreate();
 
-          const last4Blocks = await BlockManager.last4Blocks;
-          if (!last4Blocks.some(x => x.blockHash.equals(block.header.prevBlockHash))) {
+          const last4Blocks = await this.last4Blocks;
+          if (!block.header.prevBlockHash) {
+            if (!config.mainchain.acceptNewGenesisBlocks) {
+              throw new Error('New genesis block proposed, but not accepting new genesis blocks');
+            }
+
+            // this is new longest!
+            await client.query('update mainchain_blocks set is_longest_chain = false');
+          } else if (!last4Blocks.some(x => x.blockHash.equals(block.header.prevBlockHash))) {
             await MainchainBlock.setLongestChain(client, block.header.prevBlockHash);
           }
 
           await latestBlock.save();
 
-          const transfers = BlockManager.findTransfersToSidechainWallet(block.stableLedger);
+          const transfers = this.findTransfersToSidechainWallet(block.stableLedger);
 
           const inPromises = transfers.transfersIn.map(transfer =>
-            BlockManager.saveFundingTransferIn(client, transfer, block.header),
+            this.saveFundingTransferIn(client, transfer, block.header),
           );
           await Promise.all(inPromises);
 
-          const settings = await BlockManager.settings;
+          const settings = await this.settings;
           await Security.recordConfirmedSecurities(client, settings.height);
 
           const outPromises = transfers.transfersOut.map(transfer =>
@@ -232,14 +247,17 @@ export default class BlockManager {
         { logger: this.logger },
       );
     } catch (error) {
-      this.logger.error(`Error saving new block: ${block.header.height} -> ${block.header.hash}`, {
-        error,
-      });
+      this.logger.error(
+        `Error saving new block: ${block.header.height} -> 0x${block.header.hash.toString('hex')}`,
+        {
+          error,
+        },
+      );
     }
   }
 
   private static async ensureBlockchainExists(latestBlock: IBlock): Promise<void> {
-    const last4Blocks = await BlockManager.last4Blocks;
+    const last4Blocks = await this.last4Blocks;
     if (latestBlock.header.height === 0) return;
     // make sure we have the last block
     if (!last4Blocks.some(x => x.blockHash.equals(latestBlock.header.prevBlockHash))) {
@@ -249,26 +267,26 @@ export default class BlockManager {
         latestBlock.header.prevBlockHash,
       );
       if (missingHeights.length) {
-        const missingResponse = await BlockManager.client.getBlocks(missingHeights, []);
+        const missingResponse = await this.client.getBlocks(missingHeights, []);
         const missingBlocks = missingResponse.blocks.filter(Boolean).sort((a, b) => {
           return a.header.height - b.header.height;
         });
         for (const block of missingBlocks) {
-          await BlockManager.processNewLongestChainBlock(block);
+          await this.processNewLongestChainBlock(block);
         }
       }
     }
   }
 
   private static async loadSettings(): Promise<void> {
-    const settings = await BlockManager.getBlockSettings();
+    const settings = await this.getBlockSettings();
     await MainDb.transaction(async client => {
       // lock so multi-server setups don't create conflicting batches
       await new RegisteredAddress(client, config.nullAddress).lock();
 
-      BlockManager.last4Blocks = MainchainBlock.getLatest4Blocks();
+      this.last4Blocks = MainchainBlock.getLatest4Blocks();
 
-      const last4Blocks = await BlockManager.last4Blocks;
+      const last4Blocks = await this.last4Blocks;
       if (last4Blocks.some(x => x.blockHash.equals(settings.blockHash))) {
         return;
       }
@@ -279,38 +297,32 @@ export default class BlockManager {
       }
 
       // process missing block
-      const { blocks } = await BlockManager.client.getBlocks([], [settings.blockHash]);
+      const { blocks } = await this.client.getBlocks([], [settings.blockHash]);
 
       const [latestBlock] = blocks;
-      await BlockManager.ensureBlockchainExists(latestBlock);
-      await BlockManager.processNewLongestChainBlock(latestBlock);
-      BlockManager.last4Blocks = MainchainBlock.getLatest4Blocks();
+      await this.ensureBlockchainExists(latestBlock);
+      await this.processNewLongestChainBlock(latestBlock);
+      this.last4Blocks = MainchainBlock.getLatest4Blocks();
     });
   }
 
   private static async getBlockSettings(): Promise<IBlockSettings> {
-    if (BlockManager.settingsLoader.isResolved) {
-      BlockManager.settingsLoader = createPromise<IBlockSettings>();
+    if (this.settingsLoader.isResolved) {
+      this.settingsLoader = createPromise<IBlockSettings>();
     }
 
-    BlockManager.client
+    this.client
       .getBlockSettings()
-      .then(settings => {
-        return BlockManager.settingsLoader.resolve({
-          ...settings,
-          isSidechainApproved: identity =>
-            Promise.resolve(settings.sidechains.some(x => x.rootIdentity === identity)),
-        } as IBlockSettings);
-      })
+      .then(this.settingsLoader.resolve)
       .catch(async error => {
         this.logger.warn('Mainchain client not available. Retrying in 10 seconds', { error });
         await new Promise(resolve => setTimeout(resolve, 10e3));
-        if (!BlockManager.isStopping) {
-          return await BlockManager.getBlockSettings();
+        if (!this.isStopping) {
+          return await this.getBlockSettings();
         }
       });
 
-    return await BlockManager.settings;
+    return await this.settings;
   }
 }
 

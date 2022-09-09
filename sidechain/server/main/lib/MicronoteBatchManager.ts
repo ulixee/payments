@@ -1,15 +1,15 @@
 import Log from '@ulixee/commons/lib/Logger';
 import * as moment from 'moment';
+import { NotFoundError , InsufficientFundsError } from '@ulixee/payment-utils/lib/errors';
+import { ITransactionOptions } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
 import RegisteredAddress from '../models/RegisteredAddress';
 import MicronoteBatch from '../models/MicronoteBatch';
 import BatchDb from '../../batch/db';
 import MainDb from '../db';
-import { InsufficientFundsError, NotFoundError } from '../../utils/errors';
 import Note from '../models/Note';
 import MicronoteBatchOutput from '../models/MicronoteBatchOutput';
 import { BridgeToBatch } from '../../bridges';
-import { ITransactionOptions } from '../../utils/PgPool';
 import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 const { log } = Log(module);

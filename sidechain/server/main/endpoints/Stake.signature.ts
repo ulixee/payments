@@ -1,8 +1,8 @@
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import config from '../../config';
 import BlockManager from '../lib/BlockManager';
 import Stake from '../models/Stake';
 import MainDb from '../db';
-import ApiHandler from '../../utils/ApiHandler';
 
 export default new ApiHandler('Stake.signature', {
   async handler(payload, options) {

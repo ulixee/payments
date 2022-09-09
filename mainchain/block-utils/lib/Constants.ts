@@ -1,13 +1,10 @@
 import BigNumber from 'bignumber.js';
+import IArithmeticEncoding from '@ulixee/specification/types/IArithmeticEncoding';
 
 const daySecs = 24 * 60 * 60;
 
 export default class Constants {
   public static bondStrikePriceMultiplier = new BigNumber(0.95); // cast to a BigNumber so we don't round down on accident.
-
-  public static foundingMinerGrantCentagons = BigInt(1100124 * 100); // 1.03M stable coins (1.180M - 150k founding miners) to seed market
-  public static marketingGrantCentagons = BigInt(1100124 * 100);
-  public static phase1FoundingMinerStableCentagons = BigInt(18018 * 100); // 30k stable coins for found miners
 
   public static miningRewardsBaseShareCentagons = BigInt(80e2);
   public static miningRewardsDayInterval = 118;
@@ -20,9 +17,9 @@ export default class Constants {
   public static miningRewardsEndHeight = 614286;
   public static totalShareCentagons = BigInt(10e8);
 
-  public static easiestMiningDifficulty = {
+  public static easiestMiningDifficulty = <IArithmeticEncoding>{
     powerOf2: 256 - 7,
-    multiplierInThousandths: 1000,
+    multiplierE6: 1e6,
   };
 
   public static blockTargetMeasurementInterval = 12 * 6; // 12 hours worth of blocks (6 blocks per minute)

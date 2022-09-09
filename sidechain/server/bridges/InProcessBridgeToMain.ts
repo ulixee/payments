@@ -4,12 +4,13 @@ import BlockManager from '../main/lib/BlockManager';
 import MainDb from '../main/db';
 import RegisteredAddress from '../main/models/RegisteredAddress';
 import Note from '../main/models/Note';
-import ConsumerPriceIndexMonitor from '../main/lib/ConsumerPriceIndexMonitor';
-import ConsumerPriceIndex from '../main/models/ConsumerPriceIndex';
-import { ITransactionOptions } from '../utils/PgPool';
 
 // Bridges are meant to be a place holder for batch <-> main comms so we can eventually swap for apis if need be
 const InProcessBridgeToMain = <IBridgeToMain>{
+  async blockSettings() {
+    return await BlockManager.settings;
+  },
+
   async currentBlock() {
     return {
       hash: await BlockManager.currentBlockHash(),
@@ -33,16 +34,6 @@ const InProcessBridgeToMain = <IBridgeToMain>{
   },
   async lookupBalance(address: string, opts): Promise<bigint> {
     return await MainDb.transaction(client => RegisteredAddress.getBalance(client, address), opts);
-  },
-  async getUsdToArgonConversionRate(): Promise<number> {
-    await ConsumerPriceIndexMonitor.start();
-    const latest = await ConsumerPriceIndex.getLatest();
-    return latest.conversionRate;
-  },
-  totalCentagonsInCirculation(opts: ITransactionOptions): Promise<bigint> {
-    return MainDb.transaction(async client => {
-      return await Note.totalCirculation(client);
-    }, opts);
   },
 };
 

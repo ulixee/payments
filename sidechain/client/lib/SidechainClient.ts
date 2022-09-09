@@ -100,6 +100,10 @@ export default class SidechainClient implements IPaymentProvider {
     return this.settingsPromise;
   }
 
+  public getAudit(): Promise<ISidechainApiTypes['Sidechain.audit']['result']> {
+    return this.runRemote('Sidechain.audit', undefined);
+  }
+
   public async createMicroPayment(
     options: Pick<
       IDataboxApiTypes['Databox.meta']['result'],
@@ -385,6 +389,40 @@ export default class SidechainClient implements IPaymentProvider {
 
   /////// HELPERS      /////////////////////////////////////////////////////////////////////////////
 
+  public async runRemote<T extends keyof ISidechainApiTypes & string>(
+    command: T,
+    args: ISidechainApiTypes[T]['args'],
+    retries = 5,
+    validate = true,
+  ): Promise<ISidechainApiTypes[T]['result']> {
+    try {
+      if (validate) {
+        args = await SidechainApiSchema[command].args.parseAsync(args);
+      }
+    } catch (error) {
+      const errors = error.issues.map(x => `"${x.path.join('.')}": ${x.message}`);
+      throw new ClientValidationError(command, errors);
+    }
+    try {
+      return await this.sendRequest({ command, args });
+    } catch (error) {
+      if (retries >= 0 && this.shouldRetryError(error)) {
+        const timeoutMillis = 2 ** (5 - retries) * 1e3;
+        log.warn('RemoteEncounteredError, retrying', { error, timeoutMillis, sessionId: null });
+        await new Promise(resolve => setTimeout(resolve, timeoutMillis));
+        return await this.runRemote(command, args, retries - 1);
+      }
+
+      log.error('Error running remote API', {
+        error,
+        command,
+        attempts: 5 - retries,
+        sessionId: null,
+      });
+      throw error;
+    }
+  }
+
   protected async runSignedByAddress<T extends keyof ISidechainApiTypes & string>(
     command: T,
     args: Omit<ISidechainApiTypes[T]['args'], 'signature'>,
@@ -435,40 +473,6 @@ export default class SidechainClient implements IPaymentProvider {
       },
       retries,
     );
-  }
-
-  protected async runRemote<T extends keyof ISidechainApiTypes & string>(
-    command: T,
-    args: ISidechainApiTypes[T]['args'],
-    retries = 5,
-    validate = true,
-  ): Promise<ISidechainApiTypes[T]['result']> {
-    try {
-      if (validate) {
-        args = await SidechainApiSchema[command].args.parseAsync(args);
-      }
-    } catch (error) {
-      const errors = error.issues.map(x => `"${x.path.join('.')}": ${x.message}`);
-      throw new ClientValidationError(command, errors);
-    }
-    try {
-      return await this.sendRequest({ command, args });
-    } catch (error) {
-      if (retries >= 0 && this.shouldRetryError(error)) {
-        const timeoutMillis = 2 ** (5 - retries) * 1e3;
-        log.warn('RemoteEncounteredError, retrying', { error, timeoutMillis, sessionId: null });
-        await new Promise(resolve => setTimeout(resolve, timeoutMillis));
-        return await this.runRemote(command, args, retries - 1);
-      }
-
-      log.error('Error running remote API', {
-        error,
-        command,
-        attempts: 5 - retries,
-        sessionId: null,
-      });
-      throw error;
-    }
   }
 
   // Method for overriding in tests

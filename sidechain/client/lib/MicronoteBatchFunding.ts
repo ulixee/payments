@@ -9,6 +9,7 @@ import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import TimedCache from '@ulixee/commons/lib/TimedCache';
 import SidechainClient from './SidechainClient';
 import { NeedsSidechainBatchFunding } from './errors';
+import ArgonUtils from './ArgonUtils';
 
 export default class MicronoteBatchFunding {
   public queryFundingToPreload = 100;
@@ -135,7 +136,15 @@ export default class MicronoteBatchFunding {
             if (response?.fundsId) {
               activeBatchFunds.activeFundsId = response.fundsId;
             } else {
-              const centagons = Math.ceil((microgons * this.queryFundingToPreload) / 10e3);
+              let centagons = ArgonUtils.microgonsToCentagons(
+                microgons * this.queryFundingToPreload,
+                false,
+              );
+
+              if (centagons < activeBatch.minimumFundingCentagons) {
+                centagons = activeBatch.minimumFundingCentagons;
+              }
+
               const fundResponse = await this.fundBatch(activeBatch, centagons);
               activeBatchFunds.activeFundsId = fundResponse.fundsId;
             }
@@ -203,7 +212,10 @@ export default class MicronoteBatchFunding {
    *
    * NOTE: this should ONLY be done for a trusted micronoteBatch service (see verifyMicronoteBatchUrl above)
    */
-  public async fundBatch(batch: IMicronoteBatch, centagons: number): Promise<IMicronoteFund> {
+  public async fundBatch(
+    batch: IMicronoteBatch,
+    centagons: number | bigint,
+  ): Promise<IMicronoteFund> {
     const { batchSlug } = batch;
     const note = await this.client.buildNote(
       centagons,
@@ -216,7 +228,7 @@ export default class MicronoteBatchFunding {
       batchSlug,
     });
 
-    return this.recordBatchFund(fundsId, Number(centagons) * 10e3, batch);
+    return this.recordBatchFund(fundsId, ArgonUtils.centagonsToMicrogons(centagons), batch);
   }
 
   public recordBatchFund(

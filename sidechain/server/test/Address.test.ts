@@ -1,10 +1,10 @@
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings } from '@ulixee/specification';
 import BlockManager from '../main/lib/BlockManager';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
   // @ts-ignore
   BlockManager.settingsLoader = {

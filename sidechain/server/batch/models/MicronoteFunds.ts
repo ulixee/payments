@@ -1,17 +1,16 @@
 import { INote, NoteType } from '@ulixee/specification';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
-import config from '../../config';
+import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
 import {
-  ConflictError,
   InvalidParameterError,
+  ConflictError,
   MicronoteFundsNeededError,
   NotFoundError,
-} from '../../utils/errors';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
+} from '@ulixee/payment-utils/lib/errors';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
+import config from '../../config';
 import { IGiftCardRecord } from './GiftCard';
-
-const minFunding = config.micronoteBatch.minimumFundingCentagons;
 
 export default class MicronoteFunds {
   public id: number;
@@ -59,7 +58,10 @@ export default class MicronoteFunds {
     if (rowCount !== 1) {
       throw new MicronoteFundsNeededError(
         'No current micronoteBatch funding found. Please fund a new micronoteBatch.',
-        Math.max(Number(minFunding), Math.ceil(microgons / 10e3)),
+        Math.max(
+          Number(config.micronoteBatch.minimumFundingCentagons),
+          Number(ArgonUtils.microgonsToCentagons(microgons, false)),
+        ),
       );
     }
     return await this.client.queryOne<{
@@ -149,9 +151,10 @@ export default class MicronoteFunds {
       );
     }
 
-    if (Number(centagons) * 10e3 < minFunding) {
+    const minFunding = config.micronoteBatch.minimumFundingCentagons;
+    if (centagons < minFunding) {
       throw new InvalidParameterError(
-        `The minimum batch allowed requires ${minFunding} microgons`,
+        `The minimum funding for a batch is ${minFunding} centagons.`,
         'centagons',
         { centagons, minFunding },
       );
@@ -170,7 +173,7 @@ export default class MicronoteFunds {
     return await client.insertWithId('micronote_funds', {
       address: fromAddress,
       noteHash,
-      microgons: Number(centagons) * 10e3,
+      microgons: ArgonUtils.centagonsToMicrogons(centagons),
       microgonsAllocated: 0,
       createdTime: timestamp,
       lastUpdatedTime: new Date(),

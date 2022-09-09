@@ -6,16 +6,16 @@ import Address from '@ulixee/crypto/lib/Address';
 import { Duplex } from 'stream';
 import { from } from 'pg-copy-streams';
 import addNoteSignature, { hashNote } from '@ulixee/sidechain/lib/addNoteSignature';
-import BlockManager from '../lib/BlockManager';
 import {
   ConflictError,
+  InvalidParameterError,
   InsufficientFundsError,
   InvalidNoteHashError,
-  InvalidParameterError,
-} from '../../utils/errors';
+} from '@ulixee/payment-utils/lib/errors';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType, ITransactionOptions } from '@ulixee/payment-utils/pg/PgPool';
 import MainDb from '../db';
-import PgClient from '../../utils/PgClient';
-import { DbType, ITransactionOptions } from '../../utils/PgPool';
+import BlockManager from '../lib/BlockManager';
 import RegisteredAddress from './RegisteredAddress';
 
 export default class Note {
@@ -158,6 +158,20 @@ export default class Note {
       return rows[0].balance ?? 0n;
     }
     return 0n;
+  }
+
+  public static async burnedCentagonsFrom(
+    client: PgClient<DbType.Main>,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<bigint> {
+    const { rows } = await client.preparedQuery<{ burnedCentagons: bigint }>({
+      text: `select COALESCE(SUM(centagons),0)::bigint as burned_centagons FROM notes 
+    where type = $1 and timestamp >= $2 and timestamp < $3`,
+      name: 'burnedCentagons',
+      values: [NoteType.burn, startDate, endDate],
+    });
+    return rows?.[0]?.burnedCentagons ?? 0n;
   }
 
   public static async loadWithHashes(

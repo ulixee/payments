@@ -1,11 +1,11 @@
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings } from '@ulixee/specification';
+import PgPool, { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import Micronote from '../batch/models/Micronote';
 import MicronoteBatch from '../main/models/MicronoteBatch';
-import PgPool, { DbType } from '../utils/PgPool';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 import MicronoteBatchDb from '../batch/db';
 import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
@@ -14,7 +14,7 @@ let micronoteBatchDb: PgPool<DbType.Batch>;
 let micronoteBatch: MicronoteBatch;
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
   await MicronoteBatchManager.createNewBatches();
   // @ts-ignore

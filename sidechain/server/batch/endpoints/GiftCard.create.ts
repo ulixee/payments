@@ -2,12 +2,14 @@ import Address from '@ulixee/crypto/lib/Address';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
+import { InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
 import GiftCard from '../models/GiftCard';
-import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches } from '../index';
-import { InvalidParameterError } from '../../utils/errors';
 import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
+
+;
 
 export default new ApiHandler('GiftCard.create', {
   async handler(

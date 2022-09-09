@@ -1,7 +1,7 @@
-import IArithmeticEncoding from '@ulixee/block-utils/interfaces/IArithmeticEncoding';
+import IArithmeticEncoding from '@ulixee/specification/types/IArithmeticEncoding';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import MainDb from '../db';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
 
 export default class MainchainBlock {
   public data: IMainchainBlockRecord;
@@ -165,7 +165,6 @@ export default class MainchainBlock {
     ]);
 
     const newLongChainBlocks = blockchain.filter(x => x.height > lastBlockInChainOnLongestPath);
-
 
     if (newLongChainBlocks.length) {
       const params = newLongChainBlocks.map((_, i) => `$${i + 1}`).join(',');

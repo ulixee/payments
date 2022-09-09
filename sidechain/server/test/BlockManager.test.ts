@@ -1,12 +1,18 @@
-import Constants from '@ulixee/block-utils/lib/Constants';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import MainchainClient from '@ulixee/mainchain';
 import { IBlock, TransactionType } from '@ulixee/specification';
+import { createServer } from '@ulixee/mainchain-server/endpoints';
+import BlockLookup from '@ulixee/mainchain-server/lib/BlockLookup';
+import buildGenesisBlock from '@ulixee/mainchain-server/lib/buildGenesisBlock';
+import MainchainConfig from '@ulixee/mainchain-server/config';
+import Address from '@ulixee/crypto/lib/Address';
+import Identity from '@ulixee/crypto/lib/Identity';
+import moment = require('moment');
 import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
 import Security, { ISecurityRecord } from '../main/models/Security';
 import MainDb from '../main/db';
-import { setupDb, stop } from './_setup';
+import { cleanDb, start, stop } from './_setup';
 import TestClient from './_TestClient';
 import { INoteRecord } from '../main/models/Note';
 import { IMainchainBlockRecord } from '../main/models/MainchainBlock';
@@ -15,12 +21,31 @@ import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 const mainchainAddress = config.mainchain.addresses[0].bech32;
 let userClient: TestClient;
 let userSidechainClient: TestClient;
+const reservesAddress = Address.createFromSigningIdentities([Identity.createSync()]);
+const needsClosing: { close: () => Promise<any> }[] = [];
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   userClient = new TestClient();
   userSidechainClient = new TestClient();
-  config.mainchain.host = 'ws://127.0.0.1:2344';
+  MainchainConfig.genesisSettings.authorizedSidechains = [
+    {
+      url: config.baseUrl,
+      rootIdentity: config.rootIdentity.bech32,
+      transferInAddress: config.mainchain.addresses[0].bech32,
+    },
+  ];
+});
+
+beforeEach(async () => {
+  config.mainchain.host = 'http://127.0.0.1:2344';
+});
+
+afterEach(async () => {
+  for (const closer of needsClosing) {
+    await closer.close();
+  }
+  needsClosing.length = 0;
 });
 
 afterAll(async () => {
@@ -28,38 +53,122 @@ afterAll(async () => {
   await stop();
 });
 
-// eslint-disable-next-line jest/no-disabled-tests
-test.skip('should synchronize with the mainchain on bootup', async () => {
-  // const bitKernel = await launchMiningBit();
+test('should synchronize with the mainchain on bootup', async () => {
+  MainchainConfig.genesisSettings.bootstrappedReserves = [
+    {
+      address: reservesAddress.bech32,
+      centagons: BigInt(10000e2),
+      time: moment('2022-01-01', 'YYYY-MM-DD').toDate(),
+    },
+  ];
+  const blockLookup = new BlockLookup();
+  const mainchain = createServer(blockLookup);
+  needsClosing.push(mainchain);
+  const mainchainPort = await mainchain.start(0);
+  config.mainchain.host = `http://localhost:${mainchainPort.port}`;
 
-  // @ts-ignore
-  // config.mainchain.host = `127.0.0.1:${bitKernel.publicPort}`;
   await BlockManager.start();
   // @ts-ignore
   const [genesis] = await BlockManager.last4Blocks;
   expect(genesis.height).toBe(0);
   expect(genesis.isLongestChain).toBe(true);
 
+  const genesisTransactions = 1;
+
   await MainDb.transaction(async client => {
     const transactions = await client.list<INoteRecord>('select * from notes');
-    expect(transactions).toHaveLength(10);
-    expect(
-      transactions.filter(x => x.fromAddress === config.mainchain.addresses[0].bech32),
-    ).toHaveLength(10);
-
-    expect(
-      transactions.filter(x => x.centagons === Constants.phase1FoundingMinerStableCentagons),
-    ).toHaveLength(10);
+    expect(transactions).toHaveLength(genesisTransactions);
+    expect(transactions.filter(x => x.toAddress === reservesAddress.bech32)).toHaveLength(
+      genesisTransactions,
+    );
 
     const transfersIn = await client.list<ISecurityRecord>('select * from securities');
-    expect(transfersIn).toHaveLength(10);
-    expect(
-      transfersIn.filter(x => x.centagons === Constants.phase1FoundingMinerStableCentagons),
-    ).toHaveLength(10);
+    expect(transfersIn).toHaveLength(genesisTransactions);
+  });
+});
+
+test('should synchronize new versions of the genesis block', async () => {
+  await cleanDb();
+  MainchainConfig.genesisSettings.bootstrappedReserves = [
+    {
+      address: reservesAddress.bech32,
+      centagons: BigInt(10000e2),
+      time: moment('2022-01-01', 'YYYY-MM-DD').toDate(),
+    },
+  ];
+  const blockLookup = new BlockLookup();
+  const blockHash1 = blockLookup.genesisBlock.header.hash;
+
+  const tx1Hash = blockLookup.genesisBlock.stableLedger[0].transactionHash;
+  const mainchain = createServer(blockLookup);
+  needsClosing.push(mainchain);
+  const mainchainPort = await mainchain.start(0);
+  config.mainchain.host = `http://localhost:${mainchainPort.port}`;
+
+  await BlockManager.start();
+
+  await MainDb.transaction(async client => {
+    const transactions = await client.list<INoteRecord>('select * from notes');
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0].toAddress).toBe(reservesAddress.bech32);
+    expect(transactions[0].centagons).toBe(BigInt(10000e2));
+
+    const transfersIn = await client.list<ISecurityRecord>('select * from securities');
+    expect(transfersIn).toHaveLength(1);
+    expect(transfersIn[0].transactionHash).toEqual(tx1Hash);
+
+    const blocks = await SecurityMainchainBlock.getRecordedBlocks(client, tx1Hash);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].blockHash).toEqual(blockHash1);
+  });
+
+  MainchainConfig.genesisSettings.bootstrappedReserves.push({
+    address: reservesAddress.bech32,
+    centagons: BigInt(10001e2),
+    time: moment('2022-02-01', 'YYYY-MM-DD').toDate(),
+  });
+  blockLookup.genesisBlock = buildGenesisBlock();
+  blockLookup.blockchain = [blockLookup.genesisBlock];
+  await BlockManager.start();
+  const blockHash2 = blockLookup.genesisBlock.header.hash;
+  expect(blockHash2).not.toEqual(blockHash1);
+  const tx2Hash = blockLookup.genesisBlock.stableLedger.find(
+    x => !x.transactionHash.equals(tx1Hash),
+  ).transactionHash;
+
+  expect(blockLookup.genesisBlock.stableLedger).toHaveLength(2);
+  expect(
+    blockLookup.genesisBlock.stableLedger.filter(x => x.transactionHash.equals(tx1Hash)),
+  ).toHaveLength(1);
+
+  await MainDb.transaction(async client => {
+    const transactions = await client.list<INoteRecord>('select * from notes');
+    expect(transactions).toHaveLength(2);
+    expect(transactions.filter(x => x.toAddress === reservesAddress.bech32)).toHaveLength(2);
+    expect(transactions.filter(x => x.centagons === BigInt(10001e2))).toHaveLength(1);
+
+    const transfersIn = await client.list<ISecurityRecord>('select * from securities');
+    expect(transfersIn).toHaveLength(2);
+    expect(transfersIn.filter(x => x.transactionHash.equals(tx1Hash))).toHaveLength(1);
+
+    const blocks = await client.list<IMainchainBlockRecord>('select * from mainchain_blocks');
+    expect(blocks).toHaveLength(2);
+    expect(blocks.filter(x => x.blockHash.equals(blockHash1))).toHaveLength(1);
+    expect(blocks.filter(x => x.blockHash.equals(blockHash2))).toHaveLength(1);
+
+    const tx1Blocks = await SecurityMainchainBlock.getRecordedBlocks(client, tx1Hash);
+    expect(tx1Blocks).toHaveLength(2);
+    expect(tx1Blocks[0].blockHash).toEqual(blockHash1);
+    expect(tx1Blocks[1].blockHash).toEqual(blockHash2);
+
+    const tx2Blocks = await SecurityMainchainBlock.getRecordedBlocks(client, tx2Hash);
+    expect(tx2Blocks).toHaveLength(1);
+    expect(tx2Blocks[0].blockHash).toEqual(blockHash2);
   });
 });
 
 test('should keep the last 4 blocks in memory', async () => {
+  await cleanDb();
   await BlockManager.stop();
   const settingsSpy = jest.spyOn(MainchainClient.prototype, 'getBlockSettings');
   const blocksSpy = jest.spyOn(MainchainClient.prototype, 'getBlocks');
@@ -212,7 +321,7 @@ describe('block sync', () => {
 
   test('should record block hashes onto outputs once transactions are committed to blocks', async () => {
     // now record to a "block" and make sure we update
-    blocksSpy.mockImplementationOnce(async (blockHeights: number[], blockHashes: Buffer[]) => {
+    blocksSpy.mockImplementation(async (blockHeights: number[], blockHashes: Buffer[]) => {
       expect(blockHashes[0]).toEqual(Buffer.from('6'));
       return {
         blocks: [

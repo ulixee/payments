@@ -26,12 +26,6 @@ CREATE INDEX idx_note_lookup_from on notes (from_address);
 CREATE INDEX idx_note_lookup_to on notes (to_address);
 CREATE INDEX idx_note_types on notes (type);
 
-CREATE TABLE consumer_price_index (
-  date date PRIMARY KEY,
-  value numeric NOT NULL,
-  conversion_rate numeric NOT NULL
-);
-
 CREATE TABLE mainchain_blocks (
   block_hash bytea NOT NULL PRIMARY KEY,
   height integer NOT NULL,

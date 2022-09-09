@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 
 export default class GiftCard {
   constructor(

@@ -2,12 +2,12 @@ import { CopyToStreamQuery, to } from 'pg-copy-streams';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import { INote, NoteType } from '@ulixee/specification';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
+import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
 import { IMicronoteBatchOutputRecord } from '../../interfaces/IBridgeToMain';
 import { ActiveBatches } from '../index';
 import BatchDb from '../db';
-import { NotFoundError } from '../../utils/errors';
 
 export default class MicronoteBatchSettle {
   public batchOutput: IMicronoteBatchOutputRecord;

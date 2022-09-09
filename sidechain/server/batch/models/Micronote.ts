@@ -1,10 +1,10 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer, encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { nanoid } from 'nanoid';
+import { ConflictError, InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
-import { ConflictError, InvalidParameterError } from '../../utils/errors';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
 import MicronoteFunds from './MicronoteFunds';
 
 export default class Micronote {
