@@ -5,9 +5,9 @@ import Identity from '@ulixee/crypto/lib/Identity';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
 import * as decamelize from 'decamelize';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
 import IBatchState from '../../interfaces/IBatchState';
 import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
@@ -100,6 +100,7 @@ export default class MicronoteBatch implements IBatchState {
       isGiftCardBatch: this.data.type === MicronoteBatchType.GiftCard,
       plannedClosingTime: this.plannedClosingTime,
       stopNewNotesTime: this.data.stopNewNotesTime,
+      minimumFundingCentagons: config.micronoteBatch.minimumFundingCentagons,
       micronoteBatchIdentity: this.identity,
       micronoteBatchAddress: this.address,
       sidechainIdentity: this.sidechainIdentity,

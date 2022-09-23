@@ -1,7 +1,7 @@
 import * as moment from 'moment';
 import Address from '@ulixee/crypto/lib/Address';
 import Identity from '@ulixee/crypto/lib/Identity';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import MicronoteBatchType from '../interfaces/MicronoteBatchType';
 import MicronoteBatch from '../main/models/MicronoteBatch';
@@ -9,7 +9,7 @@ import MicronoteBatchDb from '../batch/db';
 import mainDb from '../main/db';
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
 });
 

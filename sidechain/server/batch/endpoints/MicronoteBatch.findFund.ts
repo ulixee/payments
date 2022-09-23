@@ -1,6 +1,6 @@
-import { MicronoteBatchClosedError } from '../../utils/errors';
+import { MicronoteBatchClosedError } from '@ulixee/payment-utils/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import MicronoteFunds from '../models/MicronoteFunds';
-import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches } from '../index';
 

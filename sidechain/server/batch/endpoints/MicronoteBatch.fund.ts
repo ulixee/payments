@@ -1,11 +1,7 @@
-import {
-  InvalidParameterError,
-  MicronoteBatchClosedError,
-  NewNotesNotBeingAcceptedError,
-} from '../../utils/errors';
+import { MicronoteBatchClosedError, NewNotesNotBeingAcceptedError , InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import { ActiveBatches, bridgeToMain } from '..';
 import MicronoteFunds from '../models/MicronoteFunds';
-import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 

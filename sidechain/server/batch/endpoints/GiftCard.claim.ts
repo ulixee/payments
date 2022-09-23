@@ -1,10 +1,12 @@
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
+import { InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
 import GiftCard from '../models/GiftCard';
-import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 import { ActiveBatches, bridgeToMain } from '../index';
-import { InvalidParameterError } from '../../utils/errors';
 import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 import MicronoteFunds from '../models/MicronoteFunds';
+
+;
 
 export default new ApiHandler('GiftCard.claim', {
   async handler({ batchSlug, giftCardId, address }, options) {

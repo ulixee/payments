@@ -1,7 +1,8 @@
 import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
-import { NoteType } from '@ulixee/specification';
+import { IBlockSettings , NoteType } from '@ulixee/specification';
 import { nanoid } from 'nanoid';
+import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
+import PgPool, { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import RegisteredAddress from '../main/models/RegisteredAddress';
@@ -9,8 +10,7 @@ import MicronoteBatch from '../main/models/MicronoteBatch';
 import MicronoteBatchOutput from '../main/models/MicronoteBatchOutput';
 import Note, { INoteRecord } from '../main/models/Note';
 import MainDb from '../main/db';
-import PgPool, { DbType } from '../utils/PgPool';
-import { cleanDb, mockGenesisTransfer, setupDb, stop } from './_setup';
+import { cleanDb, mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
 import { IMicronoteRecipientsRecord, IMicronoteRecord } from '../batch/models/Micronote';
@@ -20,7 +20,7 @@ let batchDb: PgPool<DbType.Batch>;
 let batch: MicronoteBatch;
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
 });
 
 beforeEach(async () => {
@@ -80,7 +80,9 @@ test('should not allow a micronote batch to submit a close request that would re
 }, 10000);
 
 test('should allow a micronote batch to close', async () => {
-  const startBalance = await MainDb.transaction(c => RegisteredAddress.getBalance(c, batch.data.address));
+  const startBalance = await MainDb.transaction(c =>
+    RegisteredAddress.getBalance(c, batch.data.address),
+  );
   expect(startBalance.toString()).toBe('0');
 
   const batchClient = new Client(batch.credentials.identity);
@@ -148,13 +150,13 @@ const createLedgerOutput = (wallet: Client, centagons, guaranteeBlockHeight = 0)
       clientAddress: wallet.address,
       fundsId: 1,
       nonce: Buffer.from('nonce'),
-      microgonsAllocated: Math.ceil(Number(centagons * 10e3) / 0.8),
+      microgonsAllocated: Math.ceil(ArgonUtils.centagonsToMicrogons(centagons) / 0.8),
       isAuditable: true,
       id,
     });
     await x.insert<IMicronoteRecipientsRecord>('micronote_recipients', {
       createdTime: new Date(),
-      microgonsEarned: Math.ceil(Number(centagons * 10e3) / 0.8) - 10,
+      microgonsEarned: Math.ceil(ArgonUtils.centagonsToMicrogons(centagons) / 0.8) - 10,
       micronoteId: id,
       address: wallet.address,
     });

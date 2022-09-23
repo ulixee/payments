@@ -1,6 +1,6 @@
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings, NoteType } from '@ulixee/specification';
 import Log from '@ulixee/commons/lib/Logger';
-import { NoteType } from '@ulixee/specification';
+import PgPool, { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchClose from '../batch/models/MicronoteBatch.close';
@@ -9,8 +9,7 @@ import RegisteredAddress from '../main/models/RegisteredAddress';
 import MicronoteBatch from '../main/models/MicronoteBatch';
 import Note, { INoteRecord } from '../main/models/Note';
 import mainDb from '../main/db';
-import PgPool, { DbType } from '../utils/PgPool';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 import { IMicronoteRecord } from '../batch/models/Micronote';
 import MicronoteBatchDb from '../batch/db';
@@ -27,7 +26,7 @@ let batchDb: PgPool<DbType.Batch>;
 let batch: MicronoteBatch;
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
   await MicronoteBatchManager.createNewBatches();
   batch = await MicronoteBatchManager.get();
@@ -36,8 +35,14 @@ beforeAll(async () => {
   // @ts-ignore
   BlockManager.settingsLoader = {
     isResolved: true,
-    promise: Promise.resolve({ height: 5, hash: '1' } as unknown as IBlockSettings),
+    promise: Promise.resolve({
+      height: 5,
+      hash: '1',
+      minimumMicronoteBurnPercent: 20,
+    } as unknown as IBlockSettings),
   };
+
+  config.micronoteBatch.minimumFundingCentagons = 1n;
 
   batchDb = await MicronoteBatchDb.get(batch.slug);
   // eslint-disable-next-line jest/no-standalone-expect
@@ -282,7 +287,7 @@ test('should properly create payouts', async () => {
         const revenue = outputs.filter(x => x.type === NoteType.revenue);
         expect(revenue).toHaveLength(miningBits.length + 1);
 
-        const settled = outputs.reduce((total, x) => total + x.centagons, 0n) * BigInt(10e3);
+        const settled = outputs.reduce((total, x) => total + x.centagons, 0n) * BigInt(1e4);
 
         // make sure generated transactions can be saved correctly
         const [firstOutput] = outputs;
@@ -293,7 +298,7 @@ test('should properly create payouts', async () => {
         // payout should all go back out minus fees
         const fundsMinusSettled = Number(batchSettle.batchOutput.fundingMicrogons - settled);
         expect(fundsMinusSettled).toBeLessThan(
-          [coordinator, ...miningBits, ...clients].length * 10e3,
+          [coordinator, ...miningBits, ...clients].length * 1e4,
         );
         const burn = outputs.find(x => x.type === NoteType.burn);
         expect(burn.centagons).toEqual(batchSettle.batchOutput.burnedCentagons);
@@ -360,9 +365,9 @@ test('should burn 20% plus change', async () => {
         defaultNoteHashes,
       );
       const payments = [
-        { toAddress: '1', guaranteeBlockHeight: 1, microgons: 10000005 },
-        { toAddress: '2', guaranteeBlockHeight: 1, microgons: 12000005 },
-        { toAddress: '3', guaranteeBlockHeight: 1, microgons: 13009999 },
+        { toAddress: '1', guaranteeBlockHeight: 1, microgons: 10000005n },
+        { toAddress: '2', guaranteeBlockHeight: 1, microgons: 12000005n },
+        { toAddress: '3', guaranteeBlockHeight: 1, microgons: 13009999n },
       ];
       // mock loadMicronotePayments
       listMock.mockImplementationOnce(async () => payments);
@@ -379,10 +384,10 @@ test('should burn 20% plus change', async () => {
       expect(noteOutputs.find(x => x.toAddress === '3').centagons).toBe(1040n); // 1300 before burn
 
       const microgonFunding = [
-        { toAddress: '4', microgons: 20e4, guaranteeBlockHeight: 1 },
-        { toAddress: '5', microgons: 1e4, guaranteeBlockHeight: 1 },
-        { toAddress: '6', microgons: 9e3, guaranteeBlockHeight: 1 },
-        { toAddress: '7', microgons: 19999, guaranteeBlockHeight: 1 },
+        { toAddress: '4', microgons: BigInt(20e4), guaranteeBlockHeight: 1 },
+        { toAddress: '5', microgons: BigInt(1e4), guaranteeBlockHeight: 1 },
+        { toAddress: '6', microgons: BigInt(9e3), guaranteeBlockHeight: 1 },
+        { toAddress: '7', microgons: BigInt(19.999e3), guaranteeBlockHeight: 1 },
       ];
       // mock loadMicronotePayments
       listMock.mockImplementationOnce(async () => microgonFunding);
@@ -398,7 +403,7 @@ test('should burn 20% plus change', async () => {
       // mock loadMicronotePayments
       jest.spyOn(client, 'queryOne').mockImplementationOnce(async () => {
         return {
-          totalFunding: 36e6,
+          totalFunding: BigInt(36e6),
         };
       });
       // @ts-ignore
@@ -422,10 +427,10 @@ test('should burn all money if no one exceeds 1 centagon', async () => {
         defaultNoteHashes,
       );
       const payments = [
-        { toAddress: '1', guaranteeBlockHeight: 1, microgons: 100 },
-        { toAddress: '2', guaranteeBlockHeight: 1, microgons: 100 },
-        { toAddress: '3', guaranteeBlockHeight: 1, microgons: 100 },
-        { toAddress: '4', guaranteeBlockHeight: 1, microgons: 100 },
+        { toAddress: '1', guaranteeBlockHeight: 1, microgons: 100n },
+        { toAddress: '2', guaranteeBlockHeight: 1, microgons: 100n },
+        { toAddress: '3', guaranteeBlockHeight: 1, microgons: 100n },
+        { toAddress: '4', guaranteeBlockHeight: 1, microgons: 100n },
       ];
       // mock loadMicronotePayments
       listMock.mockImplementationOnce(async () => payments);
@@ -436,7 +441,9 @@ test('should burn all money if no one exceeds 1 centagon', async () => {
       const noteOutputs = batchClose.noteOutputs;
       expect(noteOutputs).toHaveLength(0);
 
-      const microgonFunding = [{ toAddress: '5', microgons: 9.6e3, guaranteeBlockHeight: 1 }];
+      const microgonFunding = [
+        { toAddress: '5', microgons: BigInt(9.6e3), guaranteeBlockHeight: 1 },
+      ];
       // mock loadMicronotePayments
       listMock.mockImplementationOnce(async () => microgonFunding);
       // @ts-ignore
@@ -447,7 +454,7 @@ test('should burn all money if no one exceeds 1 centagon', async () => {
       // mock loadMicronotePayments
       jest.spyOn(client, 'queryOne').mockImplementationOnce(async () => {
         return {
-          totalFunding: 1e4,
+          totalFunding: BigInt(1e4),
         };
       });
       // @ts-ignore

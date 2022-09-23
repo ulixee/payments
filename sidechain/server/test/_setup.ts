@@ -1,44 +1,37 @@
 import Log from '@ulixee/commons/lib/Logger';
 import { NoteType } from '@ulixee/specification';
-import * as Postgrator from 'postgrator';
 import * as pg from 'pg';
+import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
+import migrate from '@ulixee/payment-utils/pg/migrate';
 import config from '../config';
-import { NotFoundError } from '../utils/errors';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import Note from '../main/models/Note';
 import MainDb from '../main/db';
 import * as TestServer from './_TestServer';
 import MicronoteBatchDb from '../batch/db';
+import SidechainMain from '../main';
+import RegisteredAddress from '../main/models/RegisteredAddress';
 
 const sidechainAddressCredentials = config.mainchain.addresses[0];
 const sidechainAddress = sidechainAddressCredentials.bech32;
 const nullAddress = config.nullAddress;
 const { log: logger } = Log(module);
 
-export async function setupDb() {
+async function createAndMigrate(database: string, migrationsPath: string): Promise<void> {
+  await queryWithRootDb(`CREATE DATABASE ${database}`);
+  await migrate({ ...config.db, database }, migrationsPath);
+}
+
+export async function start(): Promise<number> {
   try {
-    await queryWithRootDb(`CREATE DATABASE ${config.mainDatabase}`);
-    const migrationClient = new pg.Client({ ...config.db, database: config.mainDatabase });
-    await migrationClient.connect();
-
-    const migrator = new Postgrator({
-      database: config.mainDatabase,
-      migrationPattern: `${__dirname}/../main/migrations/*.sql`,
-      driver: 'pg',
-      schemaTable: 'migrations',
-      execQuery: query => migrationClient.query(query),
-    });
-
-    await migrator.migrate();
-    await migrationClient.end();
-
+    await createAndMigrate(config.mainDatabase, `${__dirname}/../main/migrations`);
     await MainDb.transaction(async client => {
-      await client.insert('addresses', { address: sidechainAddress });
+      await new RegisteredAddress(client, sidechainAddress).create();
     });
 
     await MicronoteBatchManager.start();
-    await TestServer.start();
-    return TestServer.serverPort();
+    const address = await TestServer.start();
+    return address.port;
   } catch (err) {
     console.log('error ', err);
     throw err;
@@ -53,9 +46,8 @@ export async function cleanDb() {
       await client.query(
         'TRUNCATE addresses, notes, micronote_batch_outputs, micronote_batches, mainchain_blocks, securities, stakes, stake_history, security_mainchain_blocks, funding_transfers_out, mainchain_transactions CASCADE',
       );
-      await client.insert('addresses', { address: sidechainAddress });
+      await new RegisteredAddress(client, sidechainAddress).create();
     });
-    return TestServer.serverPort();
   } catch (err) {
     console.log('error ', err);
     throw err;
@@ -98,14 +90,18 @@ export async function grantCentagons(centagons: number | bigint, toAddress: stri
 export async function stop() {
   try {
     await TestServer.close();
-    await MicronoteBatchManager.stop();
+    await SidechainMain.stop();
+    await MicronoteBatchDb.close();
 
-    for (const batch of MicronoteBatchManager.getOpenBatches()) {
-      await MainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
+    // @ts-expect-error
+    for (const batch of MicronoteBatchManager.batchesBySlug.values()) {
+      await queryWithRootDb(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
     }
     const giftCardSlug = MicronoteBatchManager.giftCardBatch?.slug;
     if (giftCardSlug) {
-      await MainDb.query(`DROP DATABASE ${MicronoteBatchDb.getName(giftCardSlug)} WITH (FORCE);`);
+      await queryWithRootDb(
+        `DROP DATABASE ${MicronoteBatchDb.getName(giftCardSlug)} WITH (FORCE);`,
+      );
     }
   } catch (err) {
     if (!(err instanceof NotFoundError)) {

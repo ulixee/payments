@@ -1,7 +1,8 @@
+import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
+import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
 import MicronoteFunds from '../models/MicronoteFunds';
-import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
-import { NotFoundError } from '../../utils/errors';
 import { ActiveBatches } from '../index';
 
 /**
@@ -23,8 +24,8 @@ export default new ApiHandler('MicronoteBatch.getFundSettlement', {
       settledTime: batch.settledTime,
       settlements: funds.map(x => ({
         fundsId: x.id,
-        fundedCentagons: BigInt(Math.ceil(x.microgons / 10e3)),
-        settledCentagons: BigInt(Math.ceil(x.microgonsAllocated / 10e3)),
+        fundedCentagons: ArgonUtils.microgonsToCentagons(x.microgons, false),
+        settledCentagons: ArgonUtils.microgonsToCentagons(x.microgonsAllocated, false),
       })),
     };
   },

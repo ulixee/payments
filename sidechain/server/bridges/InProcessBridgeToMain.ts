@@ -7,6 +7,10 @@ import Note from '../main/models/Note';
 
 // Bridges are meant to be a place holder for batch <-> main comms so we can eventually swap for apis if need be
 const InProcessBridgeToMain = <IBridgeToMain>{
+  async blockSettings() {
+    return await BlockManager.settings;
+  },
+
   async currentBlock() {
     return {
       hash: await BlockManager.currentBlockHash(),
@@ -27,6 +31,9 @@ const InProcessBridgeToMain = <IBridgeToMain>{
   },
   getNote(hash, options): Promise<INote> {
     return Note.load(hash, options).then(x => x.data);
+  },
+  async lookupBalance(address: string, opts): Promise<bigint> {
+    return await MainDb.transaction(client => RegisteredAddress.getBalance(client, address), opts);
   },
 };
 

@@ -1,6 +1,6 @@
-import { WalletAlreadyRegisteredError, DuplicateError } from '../../utils/errors';
+import { DuplicateError } from '@ulixee/payment-utils/lib/errors'
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import RegisteredAddress from '../models/RegisteredAddress';
-import ApiHandler from '../../utils/ApiHandler';
 
 export default new ApiHandler('Address.register', {
   async handler(payload, options) {
@@ -10,7 +10,7 @@ export default new ApiHandler('Address.register', {
       await RegisteredAddress.register(address, options.logger);
     } catch (err) {
       if (err instanceof DuplicateError) {
-        throw new WalletAlreadyRegisteredError();
+        return { success: true };
       }
       throw err;
     }

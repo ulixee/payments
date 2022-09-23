@@ -5,7 +5,7 @@ import { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { CopyToStreamQuery } from 'pg-copy-streams';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import TypeSerializer from '@ulixee/commons/lib/TypeSerializer';
-import { ConflictError, DuplicateError, InvalidParameterError, NotFoundError } from './errors';
+import { ConflictError, DuplicateError, InvalidParameterError, NotFoundError } from '../lib/errors';
 import { DbType } from './PgPool';
 
 const { log: defaultLogger } = Log(module);
@@ -41,11 +41,11 @@ export default class PgClient<K extends keyof typeof DbType = DbType.Main> {
       const timer = process.hrtime();
       query.values = (query.values || []).map(prepareParam);
       const returnVal = await this.client.query<T>(query);
-      const jsRows = (returnVal.rows || []).map(toJsObject);
+      returnVal.rows = (returnVal.rows || []).map(toJsObject);
       if (this.logQueries) {
         this.logger.info(`PreparedQuery (${query.name})`, {
           params: query.values,
-          results: jsRows,
+          results: returnVal.rows,
           queryMs: timeElapsed(timer),
           sessionId: null,
         });

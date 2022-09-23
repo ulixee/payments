@@ -1,5 +1,5 @@
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import RegisteredAddress from '../models/RegisteredAddress';
-import ApiHandler from '../../utils/ApiHandler';
 import MainDb from '../db';
 
 export default new ApiHandler('Address.getBalance', {

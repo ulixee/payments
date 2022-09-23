@@ -1,6 +1,7 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
-import { NoteType } from '@ulixee/specification';
+import { IBlockSettings , NoteType } from '@ulixee/specification';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../config';
 import FundingTransferOutApi from '../main/endpoints/FundingTransfer.out';
 import BlockManager from '../main/lib/BlockManager';
@@ -14,9 +15,7 @@ import MicronoteBatchOutput from '../main/models/MicronoteBatchOutput';
 import Note from '../main/models/Note';
 import Security, { ISecurityRecord } from '../main/models/Security';
 import MainDb from '../main/db';
-import PgClient from '../utils/PgClient';
-import { DbType } from '../utils/PgPool';
-import { setupDb, stop } from './_setup';
+import { start, stop } from './_setup';
 import TestClient from './_TestClient';
 import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 
@@ -50,7 +49,7 @@ async function getBlock(client: PgClient<DbType.Main>, hash: string) {
 }
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   client1 = new TestClient();
   client2 = new TestClient();
   foundingMiner = new TestClient();

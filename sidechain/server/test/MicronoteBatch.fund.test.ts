@@ -1,15 +1,16 @@
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings } from '@ulixee/specification';
+import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 import MicronoteBatchDb from '../batch/db';
 import mainDb from '../main/db';
 import { INoteRecord } from '../main/models/Note';
-import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
+import config from '../config';
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
   await MicronoteBatchManager.createNewBatches();
   // @ts-ignore
@@ -29,7 +30,7 @@ test('should inform the user if the minimum micronoteBatch cannot be created', a
   await client.runSignedByAddress('Micronote.create', {
     batchSlug: batches.micronote[0].batchSlug,
     address: client.address,
-    microgons: 99 * 10e3,
+    microgons: ArgonUtils.parseUnits('99c', 'microgons'),
     fundsId: funds.fundsId,
   });
   try {
@@ -68,7 +69,7 @@ test('should be able to fund a micronote batch', async () => {
     const [batch] = rows;
     expect(batch.address).toEqual(client.address);
     expect(batch.note_hash).toEqual(note.noteHash);
-    expect(Number(note.centagons) * 10e3).toBe(batch.microgons);
+    expect(ArgonUtils.centagonsToMicrogons(note.centagons)).toBe(batch.microgons);
     expect(Number(batch.microgons_allocated)).toBe(0);
   });
 });
@@ -76,6 +77,7 @@ test('should be able to fund a micronote batch', async () => {
 test('should not allow a consumer to initiate a note if they do not have enough microgons available', async () => {
   // have a partial micronoteBatch remaining and a ledger amount that add to less than required
   const client = new Client();
+  config.micronoteBatch.minimumFundingCentagons = 50n;
   await client.grantCentagons(50);
   const batches = await client.micronoteBatchFunding.getActiveBatches();
   const batch = await MicronoteBatchManager.get();

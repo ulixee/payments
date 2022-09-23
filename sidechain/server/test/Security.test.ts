@@ -1,7 +1,6 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings , LedgerType, NoteType, TransactionType } from '@ulixee/specification';
 import TransactionBuilder from '@ulixee/wallet/lib/TransactionBuilder';
-import { LedgerType, NoteType, TransactionType } from '@ulixee/specification';
 import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
 import RegisteredAddress from '../main/models/RegisteredAddress';
@@ -9,7 +8,7 @@ import MainchainBlock from '../main/models/MainchainBlock';
 import Note from '../main/models/Note';
 import Security, { ISecurityRecord } from '../main/models/Security';
 import MainDb from '../main/db';
-import { cleanDb, grantCentagons, mockGenesisTransfer, setupDb, stop } from './_setup';
+import { cleanDb, grantCentagons, mockGenesisTransfer, start, stop } from './_setup';
 import TestClient from './_TestClient';
 import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 
@@ -18,7 +17,7 @@ const sidechainAddress = config.mainchain.addresses[0].bech32;
 let clientAddress: string;
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
 
   client1 = new TestClient();

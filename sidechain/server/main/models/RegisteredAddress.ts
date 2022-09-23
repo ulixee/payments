@@ -1,10 +1,10 @@
 import { NoteType } from '@ulixee/specification';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
-import config from '../../config';
-import { NotFoundError } from '../../utils/errors';
+import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import MainDb from '../db';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
+import config from '../../config';
 import { INoteRecord } from './Note';
 import BlockManager from '../lib/BlockManager';
 

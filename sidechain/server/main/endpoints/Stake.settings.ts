@@ -1,5 +1,5 @@
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import config from '../../config';
-import ApiHandler from '../../utils/ApiHandler';
 import BlockManager from '../lib/BlockManager';
 
 export default new ApiHandler('Stake.settings', {

@@ -6,18 +6,17 @@ import Address from '@ulixee/crypto/lib/Address';
 import { Duplex } from 'stream';
 import { from } from 'pg-copy-streams';
 import addNoteSignature, { hashNote } from '@ulixee/sidechain/lib/addNoteSignature';
-import BlockManager from '../lib/BlockManager';
 import {
   ConflictError,
+  InvalidParameterError,
   InsufficientFundsError,
   InvalidNoteHashError,
-  InvalidParameterError,
-} from '../../utils/errors';
+} from '@ulixee/payment-utils/lib/errors';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType, ITransactionOptions } from '@ulixee/payment-utils/pg/PgPool';
 import MainDb from '../db';
-import PgClient from '../../utils/PgClient';
-import { DbType, ITransactionOptions } from '../../utils/PgPool';
+import BlockManager from '../lib/BlockManager';
 import RegisteredAddress from './RegisteredAddress';
-import config from '../../config';
 
 export default class Note {
   public data: INoteRecord;
@@ -145,6 +144,34 @@ export default class Note {
 
   public static addSignature(data: Partial<INoteRecord>, address: Address): INoteRecord {
     return addNoteSignature(data, address) as any;
+  }
+
+  public static async totalCirculation(client: PgClient<DbType.Main>): Promise<bigint> {
+    const { rows } = await client.preparedQuery<{ balance: bigint }>({
+      text: `select
+  (SELECT COALESCE(SUM(centagons),0)::bigint FROM notes where type = ANY($1)) -
+  (SELECT COALESCE(SUM(centagons),0)::bigint FROM notes where type = ANY($2))  as balance`,
+      name: 'circulation_query',
+      values: [[NoteType.transferIn], [NoteType.burn, NoteType.transferOut]],
+    });
+    if (rows.length) {
+      return rows[0].balance ?? 0n;
+    }
+    return 0n;
+  }
+
+  public static async burnedCentagonsFrom(
+    client: PgClient<DbType.Main>,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<bigint> {
+    const { rows } = await client.preparedQuery<{ burnedCentagons: bigint }>({
+      text: `select COALESCE(SUM(centagons),0)::bigint as burned_centagons FROM notes 
+    where type = $1 and timestamp >= $2 and timestamp < $3`,
+      name: 'burnedCentagons',
+      values: [NoteType.burn, startDate, endDate],
+    });
+    return rows?.[0]?.burnedCentagons ?? 0n;
   }
 
   public static async loadWithHashes(

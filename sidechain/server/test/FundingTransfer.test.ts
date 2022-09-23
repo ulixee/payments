@@ -1,18 +1,18 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings } from '@ulixee/specification';
 import MainchainClient from '@ulixee/mainchain';
 import BlockManager from '../main/lib/BlockManager';
 import SidechainSecurities from '../main/lib/SidechainSecurities';
 import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
 import MainchainTransaction from '../main/models/MainchainTransaction';
 import MainDb from '../main/db';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 import SecurityMainchainBlock from '../main/models/SecurityMainchainBlock';
 
 let client: Client;
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
 
   // @ts-ignore

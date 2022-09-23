@@ -1,12 +1,12 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
 import MainDb from '../main/db';
-import PgClient from '../utils/PgClient';
-import { DbType } from '../utils/PgPool';
-import { setupDb, stop } from './_setup';
+import { start, stop } from './_setup';
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
 });
 
 async function createBlock(

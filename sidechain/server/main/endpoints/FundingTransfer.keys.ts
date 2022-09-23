@@ -1,5 +1,5 @@
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import config from '../../config';
-import ApiHandler from '../../utils/ApiHandler';
 
 export default new ApiHandler('FundingTransfer.keys', {
   handler() {

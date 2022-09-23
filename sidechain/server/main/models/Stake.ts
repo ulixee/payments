@@ -1,9 +1,9 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
+import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import BlockManager from '../lib/BlockManager';
-import { NotFoundError } from '../../utils/errors';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
 
 export default class Stake {
   public get identity(): string {

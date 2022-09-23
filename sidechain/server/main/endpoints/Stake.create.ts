@@ -1,11 +1,11 @@
+import { InvalidParameterError , InvalidStakeTransactionRecipientError } from '@ulixee/payment-utils/lib/errors';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import config from '../../config';
 import BlockManager from '../lib/BlockManager';
-import { InvalidParameterError, InvalidStakeTransactionRecipientError } from '../../utils/errors';
 import RegisteredAddress from '../models/RegisteredAddress';
 import Note from '../models/Note';
 import Stake from '../models/Stake';
 import MainDb from '../db';
-import ApiHandler from '../../utils/ApiHandler';
 
 export default new ApiHandler('Stake.create', {
   async handler({ note, stakedIdentity }, options) {

@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import Address from '@ulixee/crypto/lib/Address';
 import SidechainClient from '../lib/SidechainClient';
 import { sidechainHostOption, addressPathOption, requiredOptionWithEnv } from './common';
+import ArgonUtils from '../lib/ArgonUtils';
 
 export default function giftCardsCli(): Command {
   const cli = new Command('gift-card');
@@ -25,8 +26,7 @@ export default function giftCardsCli(): Command {
     .action(async ({ amount, host, addressPath }) => {
       const address = Address.readFromPath(addressPath);
       const client = new SidechainClient(host, { address });
-      let microgons = Number(amount.substring(0, amount.length - 1));
-      if (amount.endsWith('c')) microgons *= 10e3;
+      const microgons = ArgonUtils.parseUnits(amount, 'microgons');
       const giftCard = await client.createGiftCard(microgons);
       // eslint-disable-next-line no-console
       console.log(
@@ -49,10 +49,7 @@ export default function giftCardsCli(): Command {
       const address = Address.readFromPath(addressPath, process.cwd());
       const client = new SidechainClient(host, { address });
       const fund = await client.claimGiftCard(giftCardId, batchSlug);
-      let amount = `${fund.microgonsRemaining}m`;
-      if (fund.microgonsRemaining % 10e3 === 0) {
-        amount = `${fund.microgonsRemaining / 10e3}c`;
-      }
+      const amount = ArgonUtils.format(fund.microgonsRemaining, 'microgons');
       // eslint-disable-next-line no-console
       console.log(
         `You've claimed a gift card worth ${amount} that can be spent on the following Gift Card Addresses (${fund.allowedRecipientAddresses.join(
@@ -78,8 +75,7 @@ export default function giftCardsCli(): Command {
       const { giftCard } = await client.micronoteBatchFunding.getActiveBatches();
       const funds = await client.micronoteBatchFunding.getActiveFunds(giftCard);
       const fundPrintouts = funds.map(fund => {
-        let amount = `${fund.microgonsRemaining}m`;
-        if (fund.microgonsRemaining % 10e3 === 0) amount = `${fund.microgonsRemaining / 10e3}c`;
+        const amount = ArgonUtils.format(fund.microgonsRemaining, 'microgons');
         return ` - [#${
           fund.fundsId
         }]: ${amount} redeemable with addresses (${fund.allowedRecipientAddresses.toString()})`;

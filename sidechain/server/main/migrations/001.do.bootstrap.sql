@@ -1,7 +1,11 @@
 CREATE TABLE addresses (
   address varchar(64) PRIMARY KEY,
   created_at timestamp NOT NULL DEFAULT NOW()
- ) WITH (autovacuum_enabled=false);
+);
+
+CREATE TABLE locks (
+  id varchar(64) PRIMARY KEY
+);
 
 CREATE TABLE notes (
   note_hash bytea PRIMARY KEY,
@@ -20,6 +24,7 @@ CREATE TABLE notes (
 
 CREATE INDEX idx_note_lookup_from on notes (from_address);
 CREATE INDEX idx_note_lookup_to on notes (to_address);
+CREATE INDEX idx_note_types on notes (type);
 
 CREATE TABLE mainchain_blocks (
   block_hash bytea NOT NULL PRIMARY KEY,
@@ -119,7 +124,7 @@ CREATE TABLE micronote_batch_outputs (
   settlement_fee_centagons bigint NOT NULL,
   burn_note_hash bytea NULL references notes (note_hash),
   burn_security_transaction_hash bytea NULL
-) WITH (autovacuum_enabled=false);
+);
 
 CREATE INDEX idx_micronote_batch_outputs_security on micronote_batch_outputs (burn_security_transaction_hash);
 

@@ -1,12 +1,12 @@
 import { LedgerType, TransactionType, ITransaction } from '@ulixee/specification';
 import TransactionBuilder from '@ulixee/wallet/lib/TransactionBuilder';
 import Address from '@ulixee/crypto/lib/Address';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
+import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
 import config from '../../config';
 import MainchainTransaction from '../models/MainchainTransaction';
 import Security, { IPayout } from '../models/Security';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
-import { NotFoundError } from '../../utils/errors';
 
 export default async function buildTransactionTransferOut(
   client: PgClient<DbType.Main>,

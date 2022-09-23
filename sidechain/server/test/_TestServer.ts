@@ -1,27 +1,24 @@
 import { AddressInfo } from 'net';
-import * as http from 'http';
+import GracefulServer from '@ulixee/payment-utils/api/GracefulServer';
 import app from '../app';
 
-let server: http.Server;
-
-export function start(): Promise<any> {
-  if (server) {
-    server.close();
-  }
-  server = http.createServer(app);
-  const started = new Promise(resolve => server.once('listening', resolve));
-  server.listen(0);
-  return started;
-}
+let server: GracefulServer;
+let port: number;
 
 export function serverPort(): number {
-  return (server.address() as AddressInfo).port;
+  return port;
 }
 
-export async function close(): Promise<void> {
-  if (!server) return;
-  await new Promise(resolve => {
-    server.close(() => setTimeout(resolve, 1));
-    server = null;
-  });
+export async function start(): Promise<AddressInfo> {
+  if (server) {
+    await server.close();
+  }
+  server = app;
+  const address = await server.start(0);
+  port = address.port;
+  return address;
+}
+
+export function close(): Promise<void> {
+  return server?.close();
 }

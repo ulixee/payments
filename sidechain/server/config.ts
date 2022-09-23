@@ -2,7 +2,7 @@ import Identity from '@ulixee/crypto/lib/Identity';
 import Address from '@ulixee/crypto/lib/Address';
 import { loadEnv, parseEnvBigint, parseEnvInt, parseEnvList } from '@ulixee/commons/lib/envUtils';
 import { nanoid } from 'nanoid';
-import { InvalidParameterError } from './utils/errors';
+import { InvalidParameterError } from '@ulixee/payment-utils//lib/errors';
 
 loadEnv(__dirname);
 const env = process.env;
@@ -15,8 +15,10 @@ const baseUrl = env.SIDECHAIN_HOST
   ? new URL(env.SIDECHAIN_HOST)
   : { port: 0, href: 'http://localhost:' };
 
+const prng = nanoid(5).toLowerCase().replace(/[-]/g, '_');
+
 const settings = {
-  port: env.LISTEN_PORT ?? baseUrl.port,
+  port: env.SIDECHAIN_LISTEN_PORT ?? baseUrl.port,
   baseUrl: baseUrl.href,
   db: {
     host: env.PGHOST,
@@ -28,16 +30,17 @@ const settings = {
   rootIdentity,
   nullAddress: `ar1${Array(58).fill(0).join('')}`,
   micronoteBatch: {
+    prefix: replacePRNG(env.MICRONOTE_BATCH_DB_PREFIX),
     openMinutes: parseEnvInt(env.MICRONOTE_BATCH_MINS_OPEN),
     stopNewNotesMinsBeforeClose: parseEnvInt(env.MICRONOTE_BATCH_NEW_NOTE_STOP_MINS),
-    payoutAddress: env.MICRONOTE_BATCH_PAYOUT_ADDRESS,
-    prefix: replacePRNG(env.MICRONOTE_BATCH_DB_PREFIX),
     minimumFundingCentagons: parseEnvBigint(env.MICRONOTE_BATCH_MIN_FUNDING_CENTAGONS),
     minimumOpen: parseEnvInt(env.MICRONOTE_BATCH_MIN_OPEN),
+    settlementFeePaymentAddress: env.MICRONOTE_BATCH_FEE_PAYOUT_ADDRESS,
     settlementFeeMicrogons: parseEnvInt(env.MICRONOTE_BATCH_SETTLEMENT_FEE),
   },
   mainchain: {
     fundingHoldBlocks: parseEnvInt(env.MAINCHAIN_HOLD_BLOCKS),
+    acceptNewGenesisBlocks: true,
     addresses: parseEnvList(env.MAINCHAIN_ADDRESSES).map(readAddress),
     addressesByBech32: {} as { [bech32: string]: Address }, // NOTE: populated below
     host: env.MAINCHAIN_HOST,
@@ -76,12 +79,12 @@ function validate(): void {
   }
 
   // payout the default address if we didn't specify another
-  if (!settings.micronoteBatch.payoutAddress) {
+  if (!settings.micronoteBatch.settlementFeePaymentAddress) {
     console.warn(
-      'Setting Batch Payouts to the Mainchain Root address!! Set env.MICRONOTE_BATCH_PAYOUT_ADDRESS to change',
+      'Setting Batch Payouts to the Mainchain Root address!! Set env.MICRONOTE_BATCH_FEE_PAYOUT_ADDRESS to change',
       settings.mainchain.addresses[0].bech32,
     );
-    settings.micronoteBatch.payoutAddress = settings.mainchain.addresses[0].bech32;
+    settings.micronoteBatch.settlementFeePaymentAddress = settings.mainchain.addresses[0].bech32;
   }
 
   if (
@@ -101,7 +104,7 @@ function validate(): void {
 
 function replacePRNG(envvar: string): string {
   if (!envvar?.includes('<PRNG>')) return envvar;
-  return envvar.replace('<PRNG>', nanoid(5).toLowerCase().replace(/[-]/g, '_'));
+  return envvar.replace('<PRNG>', prng);
 }
 
 function readAddress(address: string | any): Address {

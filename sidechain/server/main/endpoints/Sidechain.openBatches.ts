@@ -1,4 +1,4 @@
-import ApiHandler from '../../utils/ApiHandler';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import MicronoteBatchManager from '../lib/MicronoteBatchManager';
 
 export default new ApiHandler('Sidechain.openBatches', {

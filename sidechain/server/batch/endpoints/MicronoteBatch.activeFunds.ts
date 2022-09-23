@@ -1,6 +1,6 @@
 import { ISidechainApiTypes } from '@ulixee/specification/sidechain';
+import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import MicronoteFunds from '../models/MicronoteFunds';
-import ApiHandler from '../../utils/ApiHandler';
 import BatchDb from '../db';
 
 export default new ApiHandler('MicronoteBatch.activeFunds', {

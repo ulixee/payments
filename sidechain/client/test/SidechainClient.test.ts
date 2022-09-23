@@ -9,6 +9,7 @@ import moment = require('moment');
 import ISidechainInfoApis from '@ulixee/specification/sidechain/SidechainInfoApis';
 import SidechainClient from '../lib/SidechainClient';
 import MicronoteBatchFunding from '../lib/MicronoteBatchFunding';
+import ArgonUtils from '../lib/ArgonUtils';
 
 const mock = {
   connectionToCore: {
@@ -30,7 +31,7 @@ beforeAll(() => {
   mock.Identity.verify.mockImplementation(() => true);
 
   mock.MicronoteBatchFunding.fundBatch.mockImplementation(async function (batch, centagons) {
-    return this.recordBatchFund(1, centagons * 10e3, batch);
+    return this.recordBatchFund(1, ArgonUtils.centagonsToMicrogons(centagons), batch);
   });
 
   mock.connectionToCore.sendRequest.mockImplementation(async ({ command }) => {
@@ -45,6 +46,7 @@ beforeAll(() => {
             micronoteBatchIdentity:
               '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
             sidechainIdentity: sha3('ledgerIdentity'),
+            minimumFundingCentagons: 100n,
             sidechainValidationSignature: 'batchPubKeySig',
             stopNewNotesTime: moment().add(1, 'hours').toDate(),
           },
@@ -119,6 +121,7 @@ test('should rotate batches when one is stopping accepting notes', async () => {
       isGiftCardBatch: false,
       micronoteBatchAddress: 'ar1',
       batchSlug: 'micro_12345125',
+      minimumFundingCentagons: 100n,
       micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
       sidechainIdentity: encodeBuffer(sha3('ledgerIdentity'), 'id'),
       sidechainValidationSignature: Buffer.from('batchPubKeySig'),
@@ -130,6 +133,7 @@ test('should rotate batches when one is stopping accepting notes', async () => {
       isGiftCardBatch: false,
       micronoteBatchAddress: 'ar1',
       batchSlug: 'micro_12345126',
+      minimumFundingCentagons: 100n,
       micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f9',
       sidechainIdentity: encodeBuffer(sha3('ledgerIdentity2'), 'id'),
       sidechainValidationSignature: Buffer.from('batchPubKeySig2'),
@@ -144,7 +148,8 @@ test('should rotate batches when one is stopping accepting notes', async () => {
   expect(note.micronoteBatchUrl).toBe('http://123.com/micro_12345125');
 
   // @ts-expect-error
-  sidechain.micronoteBatchFunding.activeBatchesPromise.value.resolved.micronote[0].stopNewNotesTime = new Date();
+  sidechain.micronoteBatchFunding.activeBatchesPromise.value.resolved.micronote[0].stopNewNotesTime =
+    new Date();
 
   const note2 = await sidechain.createMicronote(11);
   // new host path
@@ -185,8 +190,8 @@ test('should only create a new micronote fund if funds are exhausted', async () 
     isGiftCardBatch: false,
   } as IMicronoteBatch;
   mock.MicronoteBatchFunding.fundBatch.mockImplementation(async function (_, centagons) {
-    microgonsRemaining = centagons * 10e3;
-    await this.recordBatchFund(counter, centagons * 10e3, batch);
+    microgonsRemaining = ArgonUtils.centagonsToMicrogons(centagons);
+    await this.recordBatchFund(counter, ArgonUtils.centagonsToMicrogons(centagons), batch);
     await new Promise(resolve => setTimeout(resolve, 200));
     return { fundsId: counter, batchSlug, microgonsRemaining };
   });

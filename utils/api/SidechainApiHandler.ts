@@ -1,6 +1,6 @@
 import SidechainApiSchema, { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
-import ApiHandler from '@ulixee/specification/utils/ApiHandler';
+import ValidatingApiHandler from '@ulixee/specification/utils/ValidatingApiHandler';
 import { IAddressSignature } from '@ulixee/specification';
 import verifyIdentitySignature from '@ulixee/sidechain/lib/verifyIdentitySignature';
 import verifyAddressSignature from '@ulixee/sidechain/lib/verifyAddressSignature';
@@ -11,7 +11,7 @@ export interface IHandlerOptions {
 
 export default class SidechainApiHandler<
   Command extends keyof ISidechainApiTypes & string,
-> extends ApiHandler<
+> extends ValidatingApiHandler<
   typeof SidechainApiSchema,
   Command,
   ISidechainApiTypes,

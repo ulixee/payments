@@ -1,17 +1,17 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings } from '@ulixee/specification';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import config from '../config';
 import BlockManager from '../main/lib/BlockManager';
 import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
 import MainDb from '../main/db';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 
 let client: Client;
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
 
   config.stakeSettings.currentCentagons = 100n;

@@ -11,6 +11,7 @@ import StakeSettings from './Stake.settings';
 import StakeSignature from './Stake.signature';
 import SidechainSettings from './Sidechain.settings';
 import SidechainOpenBatches from './Sidechain.openBatches';
+import SidechainAudit from './Sidechain.audit';
 
 export default [
   WalletGetBalance,
@@ -25,5 +26,6 @@ export default [
   StakeSettings,
   StakeSignature,
   SidechainSettings,
+  SidechainAudit,
   SidechainOpenBatches,
 ];

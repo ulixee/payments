@@ -1,8 +1,8 @@
 import { ITransaction, NoteType } from '@ulixee/specification';
+import { InsufficientFundsError } from '@ulixee/payment-utils/lib/errors';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
-import { InsufficientFundsError } from '../../utils/errors';
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
 import Note from './Note';
 import SecurityMainchainBlock, { ISecurityMainchainBlockRecord } from './SecurityMainchainBlock';
 import { IMainchainBlockRecord } from './MainchainBlock';

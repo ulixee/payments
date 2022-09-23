@@ -1,5 +1,5 @@
-import PgClient from '../../utils/PgClient';
-import { DbType } from '../../utils/PgPool';
+import PgClient from '@ulixee/payment-utils/pg/PgClient';
+import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import { ISecurityRecord } from './Security';
 
 export default class SecurityMainchainBlock {

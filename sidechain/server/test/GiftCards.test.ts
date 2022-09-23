@@ -1,9 +1,9 @@
-import IBlockSettings from '@ulixee/block-utils/interfaces/IBlockSettings';
+import { IBlockSettings } from '@ulixee/specification';
+import PgPool, { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import MicronoteBatch from '../main/models/MicronoteBatch';
-import PgPool, { DbType } from '../utils/PgPool';
-import { mockGenesisTransfer, setupDb, stop } from './_setup';
+import { mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 import MicronoteBatchDb from '../batch/db';
 
@@ -11,7 +11,7 @@ let micronoteBatchDb: PgPool<DbType.Batch>;
 let micronoteBatch: MicronoteBatch;
 
 beforeAll(async () => {
-  await setupDb();
+  await start();
   await mockGenesisTransfer();
   await MicronoteBatchManager.createNewBatches();
   // @ts-ignore
@@ -155,7 +155,7 @@ test('should switch to paid batches once depleted', async () => {
   const giftCard = await dboxAuthor.createGiftCard(500);
 
   const dev = new Client();
-  await dev.grantCentagons(10);
+  await dev.grantCentagons(101);
   const fund = await dev.claimGiftCard(giftCard.giftCardId, giftCard.batchSlug);
   expect(fund.microgonsRemaining).toBe(500);
 
