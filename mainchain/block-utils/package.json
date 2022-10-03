@@ -3,8 +3,8 @@
   "version": "2.0.0-alpha.11",
   "description": "Ulixee block closing utilities",
   "dependencies": {
-    "@ulixee/commons": "2.0.0-alpha.11",
-    "@ulixee/specification": "2.0.0-alpha.11",
+    "@ulixee/commons": "2.0.0-alpha.12",
+    "@ulixee/specification": "2.0.0-alpha.12",
     "bignumber.js": "^9.0.2"
   },
   "keywords": []

@@ -2506,10 +2506,10 @@
     "@typescript-eslint/types" "5.30.6"
     eslint-visitor-keys "^3.3.0"
 
-"@ulixee/repo-tools@^1.0.15":
-  version "1.0.15"
-  resolved "https://registry.yarnpkg.com/@ulixee/repo-tools/-/repo-tools-1.0.15.tgz#3f59b118b7ae864779d99f0ca6580b99a61722f4"
-  integrity sha512-SIg8FN4HlOdK5hMg8+BqwQJ45dLYt017jQDYJttDGpJeph4DnAv/xcYliNty9P88cLjNU425DKhpl7EHpYmgWA==
+"@ulixee/repo-tools@^1.0.20":
+  version "1.0.20"
+  resolved "https://registry.yarnpkg.com/@ulixee/repo-tools/-/repo-tools-1.0.20.tgz#7b784eb6295f30dc8865175bc8e2784ae9bca412"
+  integrity sha512-j1dBE5DlwE25YR7G1qHQruY3qygJ/eUK8U/uqYskzFAgtMHFytzvEJX8KbbjHUicSK1g4E0sO0O2NeBwyCJmJg==
   dependencies:
     "@typescript-eslint/eslint-plugin" "^5.27.1"
     "@typescript-eslint/parser" "^5.27.1"
