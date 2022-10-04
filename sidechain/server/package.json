@@ -1,6 +1,6 @@
 {
   "name": "@ulixee/sidechain-server",
-  "version": "2.0.0-alpha.11",
+  "version": "2.0.0-alpha.12",
   "private": true,
   "description": "This server runs a Ulixee Payments batched-settlement Sidechain",
   "main": "index.js",
@@ -12,25 +12,25 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "nodemon": "^1.18.9",
-    "@ulixee/mainchain-server": "2.0.0-alpha.11",
-    "@types/pg-copy-streams": "^1.2.1"
+    "@types/pg-copy-streams": "^1.2.1",
+    "@ulixee/mainchain-server": "2.0.0-alpha.12",
+    "nodemon": "^1.18.9"
   },
   "dependencies": {
-    "@ulixee/block-utils": "2.0.0-alpha.11",
+    "@ulixee/block-utils": "2.0.0-alpha.12",
     "@ulixee/commons": "2.0.0-alpha.12",
     "@ulixee/crypto": "2.0.0-alpha.12",
-    "@ulixee/mainchain": "2.0.0-alpha.11",
+    "@ulixee/mainchain": "2.0.0-alpha.12",
     "@ulixee/net": "2.0.0-alpha.12",
-    "@ulixee/sidechain": "2.0.0-alpha.11",
-    "@ulixee/payment-utils": "2.0.0-alpha.11",
+    "@ulixee/payment-utils": "2.0.0-alpha.12",
+    "@ulixee/sidechain": "2.0.0-alpha.12",
     "@ulixee/specification": "2.0.0-alpha.12",
-    "@ulixee/wallet": "2.0.0-alpha.11",
+    "@ulixee/wallet": "2.0.0-alpha.12",
+    "decamelize": "^5.0.1",
     "moment": "^2.29.4",
     "nanoid": "^3.1.30",
-    "decamelize": "^5.0.1",
-    "zod": "^3.17.3",
     "pg": "^8.7.3",
-    "pg-copy-streams": "^6.0.2"
+    "pg-copy-streams": "^6.0.2",
+    "zod": "^3.17.3"
   }
 }

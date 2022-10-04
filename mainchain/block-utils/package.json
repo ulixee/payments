@@ -1,6 +1,6 @@
 {
   "name": "@ulixee/block-utils",
-  "version": "2.0.0-alpha.11",
+  "version": "2.0.0-alpha.12",
   "description": "Ulixee block closing utilities",
   "dependencies": {
     "@ulixee/commons": "2.0.0-alpha.12",

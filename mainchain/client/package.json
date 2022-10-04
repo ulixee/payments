@@ -1,6 +1,6 @@
 {
   "name": "@ulixee/mainchain",
-  "version": "2.0.0-alpha.11",
+  "version": "2.0.0-alpha.12",
   "description": "Client for the Ulixee Mainchain APIs",
   "exports": {
     ".": {
@@ -14,6 +14,6 @@
     "@ulixee/crypto": "2.0.0-alpha.12",
     "@ulixee/net": "2.0.0-alpha.12",
     "@ulixee/specification": "2.0.0-alpha.12",
-    "@ulixee/wallet": "2.0.0-alpha.11"
+    "@ulixee/wallet": "2.0.0-alpha.12"
   }
 }

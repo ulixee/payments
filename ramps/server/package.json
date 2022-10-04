@@ -1,6 +1,6 @@
 {
   "name": "@ulixee/ramps-server",
-  "version": "2.0.0-alpha.11",
+  "version": "2.0.0-alpha.12",
   "private": true,
   "description": "This server runs a Ulixee Payments Ramp",
   "main": "index.js",
@@ -20,7 +20,7 @@
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
     "@openzeppelin/contracts": "^4.7.3",
-    "@ulixee/sidechain-server": "2.0.0-alpha.11",
+    "@ulixee/sidechain-server": "2.0.0-alpha.12",
     "chai": "^4.3.6",
     "commander": "^9.4.0",
     "ethers": "^5.7.0",
@@ -30,19 +30,19 @@
   },
   "dependencies": {
     "@godaddy/terminus": "^4.1.0",
-    "@ulixee/block-utils": "2.0.0-alpha.11",
+    "@ulixee/block-utils": "2.0.0-alpha.12",
     "@ulixee/commons": "2.0.0-alpha.12",
     "@ulixee/crypto": "2.0.0-alpha.12",
-    "@ulixee/mainchain": "2.0.0-alpha.11",
+    "@ulixee/mainchain": "2.0.0-alpha.12",
     "@ulixee/net": "2.0.0-alpha.12",
-    "@ulixee/sidechain": "2.0.0-alpha.11",
+    "@ulixee/payment-utils": "2.0.0-alpha.12",
+    "@ulixee/sidechain": "2.0.0-alpha.12",
     "@ulixee/specification": "2.0.0-alpha.12",
-    "@ulixee/wallet": "2.0.0-alpha.11",
-    "@ulixee/payment-utils": "2.0.0-alpha.11",
+    "@ulixee/wallet": "2.0.0-alpha.12",
     "ethers": "^5.6.9",
     "moment": "^2.29.4",
     "nanoid": "^3.1.30",
-    "zod": "^3.17.3",
-    "pg": "^8.7.3"
+    "pg": "^8.7.3",
+    "zod": "^3.17.3"
   }
 }
