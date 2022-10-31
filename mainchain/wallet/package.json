@@ -1,13 +1,13 @@
 {
   "name": "@ulixee/wallet",
-  "version": "2.0.0-alpha.12",
+  "version": "2.0.0-alpha.13",
   "description": "Wallet holdings for the mainchain",
   "dependencies": {
-    "@ulixee/block-utils": "2.0.0-alpha.12",
-    "@ulixee/commons": "2.0.0-alpha.12",
-    "@ulixee/crypto": "2.0.0-alpha.12",
-    "@ulixee/mainchain": "2.0.0-alpha.12",
-    "@ulixee/specification": "2.0.0-alpha.12",
+    "@ulixee/block-utils": "2.0.0-alpha.13",
+    "@ulixee/commons": "2.0.0-alpha.13",
+    "@ulixee/crypto": "2.0.0-alpha.13",
+    "@ulixee/mainchain": "2.0.0-alpha.13",
+    "@ulixee/specification": "2.0.0-alpha.13",
     "bignumber.js": "^9.0.2",
     "commander": "^9.3.0"
   }

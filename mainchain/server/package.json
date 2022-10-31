@@ -1,6 +1,6 @@
 {
   "name": "@ulixee/mainchain-server",
-  "version": "2.0.0-alpha.12",
+  "version": "2.0.0-alpha.13",
   "description": "Ulixee mainchain server",
   "private": true,
   "scripts": {
@@ -8,11 +8,11 @@
     "test": "NODE_ENV=test jest"
   },
   "dependencies": {
-    "@ulixee/block-utils": "2.0.0-alpha.12",
-    "@ulixee/commons": "2.0.0-alpha.12",
-    "@ulixee/crypto": "2.0.0-alpha.12",
-    "@ulixee/payment-utils": "2.0.0-alpha.12",
-    "@ulixee/specification": "2.0.0-alpha.12",
+    "@ulixee/block-utils": "2.0.0-alpha.13",
+    "@ulixee/commons": "2.0.0-alpha.13",
+    "@ulixee/crypto": "2.0.0-alpha.13",
+    "@ulixee/payment-utils": "2.0.0-alpha.13",
+    "@ulixee/specification": "2.0.0-alpha.13",
     "bignumber.js": "^9.0.2"
   },
   "keywords": []
