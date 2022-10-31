@@ -40,7 +40,7 @@ Sidechains have the following attributes:
 - *Deflationary*: sidechains are required to burn a percent of micro transactions to reduce the supply of currency.
 - *USDC-backed*: sidechains are (at least in phase 1) completely backed by USDC holdings.
 - *Multisig support*: supporting the same multisig properties as the Mainchain.
-- *Gift card support*: sidechains support a version of a "testnet" used by Ulixee Databoxes that allow an Address holder to create "payments" that will not settle back to real currency. A Databox and/or Ulixee server must opt into allowing gift cards.
+- *Gift card support*: sidechains support a version of a "testnet" used by Ulixee Databoxes that allow an Address holder to create "payments" that will not settle back to real currency. A Databox and/or Ulixee miner must opt into allowing gift cards.
 
 ### Sidechain Concepts
 - *Address*: a holding location for currency
