@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.0.0-alpha.14](https://github.com/ulixee/payments/compare/v2.0.0-alpha.12...v2.0.0-alpha.14) (2022-11-02)
+
+**Note:** Version bump only for package @ulixee/sidechain
+
+
+
+
+
 # [2.0.0-alpha.13](https://github.com/ulixee/payments/compare/v2.0.0-alpha.12...v2.0.0-alpha.13) (2022-10-31)
 
 **Note:** Version bump only for package @ulixee/sidechain
