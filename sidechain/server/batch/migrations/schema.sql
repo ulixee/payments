@@ -7,7 +7,6 @@ CREATE TABLE micronote_funds (
   address varchar(64) NOT NULL,
   guarantee_block_height integer NOT NULL,
   note_hash bytea NULL,
-  gift_card_id varchar(32) NULL,
   allowed_recipient_addresses varchar(64) ARRAY NULL,
   microgons integer NOT NULL
       CHECK (microgons > 0), --immutable stored once
@@ -16,20 +15,6 @@ CREATE TABLE micronote_funds (
   last_updated_time timestamp NOT NULL DEFAULT NOW(),
   created_time timestamp NOT NULL DEFAULT NOW()
 );
-
-CREATE TABLE gift_cards (
-  id varchar(32) PRIMARY KEY,
-  microgons integer NOT NULL CHECK (microgons > 0),
-  redeemable_with_addresses varchar(64) ARRAY NOT NULL,
-  redeemable_address_signatures json ARRAY NOT NULL,
-  claim_address varchar(64) NULL,
-  claimed_time timestamp NULL,
-  funds_id integer NULL REFERENCES micronote_funds (id),
-  funded_time timestamp NULL,
-  last_updated_time timestamp NOT NULL DEFAULT NOW(),
-  created_time timestamp NOT NULL DEFAULT NOW()
-);
-
 CREATE INDEX idx_micronote_funds_address on micronote_funds (address);
 
 CREATE TABLE micronotes (
@@ -71,5 +56,26 @@ CREATE TABLE note_outputs (
   effective_block_height integer NULL,
   type integer NOT NULL,
   signature json NOT NULL,
-    guarantee_block_height integer NOT NULL
+  guarantee_block_height integer NOT NULL
 );
+
+CREATE TABLE gift_cards (
+  id varchar(12) PRIMARY KEY,
+  issued_microgons integer NOT NULL CHECK (issued_microgons > 0),
+  redemption_key varchar(64) NOT NULL,
+  issuer_identities varchar(64) ARRAY NOT NULL,
+  issuer_signatures BYTEA ARRAY NOT NULL,
+  last_updated_time timestamp NOT NULL DEFAULT NOW(),
+  created_time timestamp NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE gift_card_transactions (
+  id varchar(32) PRIMARY KEY,
+  gift_card_id varchar(12) REFERENCES gift_cards(id),
+  microgons_debited integer NOT NULL,
+  hold_time timestamp NULL,
+  canceled_time timestamp NULL,
+  settle_time timestamp NULL,
+  created_time timestamp NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_gift_card_transaction_card_id on gift_card_transactions (gift_card_id);

@@ -13,4 +13,7 @@ const port = config.port;
   if (!port) {
     config.baseUrl = `http://localhost:${address.port}`;
   }
+
+  // eslint-disable-next-line no-console
+  console.log('Sidechain started at %s', config.baseUrl);
 })().catch(console.error);

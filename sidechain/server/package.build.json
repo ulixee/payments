@@ -2,7 +2,7 @@
   "scripts": {
     "cli": "node ./cli.js",
     "dev": "nodemon ./index.js",
-    "migrate": "node ./main/migrations/migrate.js",
+    "migrate": "node ./scripts/migrate.js",
     "start": "node ./main/server/index.js",
     "test": "NODE_ENV=test jest"
   },

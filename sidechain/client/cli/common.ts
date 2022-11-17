@@ -1,10 +1,11 @@
 import { Option } from 'commander';
+import env from '../env';
 
 export const sidechainHostOption = new Option(
   '-h, --host <host>',
-  'Sidechain server you wish to connect to.',
+  'Sidechain server you wish to connect to (if not the default).',
 );
-sidechainHostOption.default('https://greased-argon.com', 'The Ulixee sponsored Sidechain.');
+sidechainHostOption.default(env.sidechainHost, 'The Ulixee sponsored Sidechain.');
 
 export const identityPrivateKeyPathOption = new Option(
   '-i, --identity-path <path>',
@@ -26,9 +27,10 @@ export const addressPathOption = new Option(
   'A path to a Ulixee Address (created using "@ulixee/crypto address").',
 ).env('ULX_ADDRESS');
 
-export function requiredOptionWithEnv(flags: string, description: string, env: string): Option {
+export function requiredOptionWithEnv(flags: string, description: string, envVar: string): Option {
   const option = new Option(flags, description);
   option.required = true;
-  option.env(env);
+  option.mandatory = true;
+  option.env(envVar);
   return option;
 }

@@ -4,6 +4,7 @@ import { loadEnv, parseEnvBigint, parseEnvInt, parseEnvList } from '@ulixee/comm
 import { nanoid } from 'nanoid';
 import { InvalidParameterError } from '@ulixee/payment-utils//lib/errors';
 
+loadEnv(process.cwd());
 loadEnv(__dirname);
 const env = process.env;
 
