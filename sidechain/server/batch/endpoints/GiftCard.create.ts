@@ -1,21 +1,16 @@
-import Address from '@ulixee/crypto/lib/Address';
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import { InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
+import Identity from '@ulixee/crypto/lib/Identity';
 import GiftCard from '../models/GiftCard';
 import BatchDb from '../db';
 import { ActiveBatches } from '../index';
 import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
-;
-
 export default new ApiHandler('GiftCard.create', {
-  async handler(
-    { batchSlug, microgons, redeemableWithAddresses, redeemableAddressSignatures },
-    options,
-  ) {
+  async handler({ batchSlug, microgons, issuerIdentities, issuerSignatures }, options) {
     const batch = await ActiveBatches.get(batchSlug);
     if (batch.type !== MicronoteBatchType.GiftCard) {
       throw new InvalidParameterError(
@@ -24,23 +19,23 @@ export default new ApiHandler('GiftCard.create', {
     }
 
     const message = sha3(
-      concatAsBuffer('GiftCard.Create:', batchSlug, microgons, ...redeemableWithAddresses),
+      concatAsBuffer(this.command, ':', batchSlug, microgons, ...issuerIdentities),
     );
 
-    for (let i = 0; i < redeemableWithAddresses.length; i += 1) {
-      const address = redeemableWithAddresses[i];
-      const signature = redeemableAddressSignatures[i];
+    for (let i = 0; i < issuerIdentities.length; i += 1) {
+      const identity = issuerIdentities[i];
+      const signature = issuerSignatures[i];
       if (!signature) {
         throw new InvalidParameterError(
-          'An address is missing from the signatures list. All parties must sign this gift card.',
+          'An identity is missing from the signatures list. All parties must sign this gift card.',
           `signatures[${i}]`,
         );
       }
 
-      if (!Address.verify(address, message, signature))
+      if (!Identity.verify(identity, message, signature))
         throw new InvalidSignatureError(
-          'This gift card was not correctly signed by all the addresses',
-          `addresses[${i}]`,
+          'This gift card was not correctly signed by all the identities',
+          `identities[${i}]`,
         );
     }
 
@@ -49,16 +44,14 @@ export default new ApiHandler('GiftCard.create', {
       const giftCard = new GiftCard(client);
 
       const result = await giftCard.create({
-        microgons,
-        redeemableWithAddresses,
-        redeemableAddressSignatures,
+        issuedMicrogons: microgons,
+        issuerIdentities,
+        issuerSignatures,
       });
 
-      const batchDetails = batch.getNoteParams();
       return {
         giftCardId: result.data.id,
-        sidechainIdentity: batchDetails.sidechainIdentity,
-        sidechainValidationSignature: batchDetails.sidechainValidationSignature,
+        redemptionKey: result.data.redemptionKey,
       };
     }, options);
   },

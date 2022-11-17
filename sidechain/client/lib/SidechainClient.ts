@@ -19,8 +19,10 @@ import { bindFunctions } from '@ulixee/commons/lib/utils';
 import IPaymentProvider from '../interfaces/IPaymentProvider';
 import { ClientValidationError } from './errors';
 import ConnectionToSidechainCore from './ConnectionToSidechainCore';
-import MicronoteBatchFunding, { IMicronoteFund } from './MicronoteBatchFunding';
+import MicronoteBatchFunding from './MicronoteBatchFunding';
 import IMicronote from '../interfaces/IMicronote';
+import GiftCards from './GiftCards';
+import env from '../env';
 
 const isDebug = process.env.ULX_DEBUG ?? false;
 
@@ -44,13 +46,16 @@ export default class SidechainClient implements IPaymentProvider {
     return this.credentials.identity ? this.credentials.identity.bech32 : null;
   }
 
+  public readonly host: string;
+
   public readonly micronoteBatchFunding: MicronoteBatchFunding;
+  public readonly giftCards: GiftCards;
 
   protected readonly connectionToCore: ConnectionToSidechainCore;
   private settingsPromise: Promise<ISidechainApiTypes['Sidechain.settings']['result']>;
 
   constructor(
-    readonly host: string,
+    host: string,
     readonly credentials: {
       address?: Address;
       identity?: Identity;
@@ -58,12 +63,16 @@ export default class SidechainClient implements IPaymentProvider {
     keepAliveRemoteConnections = false,
   ) {
     bindFunctions(this);
+    host ||= env.sidechainHost;
+    if (!host.startsWith('http')) host = `http://${host}`;
+    this.host = host;
     if (keepAliveRemoteConnections) {
       sidechainRemotePool[host] ??= ConnectionToSidechainCore.remote(host);
       this.connectionToCore = sidechainRemotePool[host];
     } else {
       this.connectionToCore = ConnectionToSidechainCore.remote(host);
     }
+    this.giftCards = new GiftCards(this);
     this.micronoteBatchFunding = new MicronoteBatchFunding({
       address: this.address,
       buildNote: this.buildNote.bind(this),
@@ -109,31 +118,50 @@ export default class SidechainClient implements IPaymentProvider {
       IDataboxApiTypes['Databox.meta']['result'],
       | 'basePricePerQuery'
       | 'computePricePerKb'
-      | 'giftCardPaymentAddresses'
       | 'averageBytesPerQuery'
+      | 'giftCardIssuerIdentities'
     >,
-  ): Promise<IPayment> {
+  ): Promise<IPayment & { onFinalized(result: { microgons: number; bytes: number }): void }> {
     options.averageBytesPerQuery ??= 256;
     options.computePricePerKb ??= 0;
-    const { basePricePerQuery, computePricePerKb, averageBytesPerQuery, giftCardPaymentAddresses } =
-      options;
+    const { basePricePerQuery, computePricePerKb, averageBytesPerQuery } = options;
 
     const settings = await this.getSettings(true);
 
-    if (!basePricePerQuery) return null;
+    if (!basePricePerQuery) return { onFinalized() {} };
 
     let microgons = basePricePerQuery + averageBytesPerQuery * 1.2 * computePricePerKb;
     if (settings.settlementFeeMicrogons) microgons += settings.settlementFeeMicrogons;
 
-    const { id: micronoteId, ...micronote } = await this.createMicronote(
+    const giftCard = await this.giftCards.find(
       microgons,
-      giftCardPaymentAddresses,
+      options.giftCardIssuerIdentities,
     );
+    if (giftCard) {
+      const finalize = this.giftCards.recordSpend.bind(this.giftCards, giftCard.giftCardId);
+      return {
+        giftCard: {
+          id: giftCard.giftCardId,
+          redemptionKey: giftCard.redemptionKey,
+        },
+        onFinalized: finalize,
+      };
+    }
+
+    const { id: micronoteId, ...micronote } = await this.createMicronote(microgons);
 
     return {
-      ...micronote,
-      micronoteId,
-      microgons,
+      micronote: {
+        ...micronote,
+        micronoteId,
+        microgons,
+      },
+      onFinalized: this.micronoteBatchFunding.finalizePayment.bind(
+        this.micronoteBatchFunding,
+        micronote.batchSlug,
+        micronote.fundsId,
+        microgons,
+      ),
     };
   }
 
@@ -221,77 +249,6 @@ export default class SidechainClient implements IPaymentProvider {
       tokenAllocation,
       identity: this.identity,
     });
-  }
-
-  /////// GiftCard APIS   ///////////////////////////////////////////////////////////////////////////
-
-  public async createUnsavedGiftCard(
-    microgons: number,
-    addresses?: string[],
-  ): Promise<ISidechainApiTypes['GiftCard.create']['args']> {
-    const { giftCard: giftCardBatch } = await this.micronoteBatchFunding.getActiveBatches();
-    if (!giftCardBatch) throw new Error('This Sidechain does not support gift cards.');
-
-    const giftCard: ISidechainApiTypes['GiftCard.create']['args'] = {
-      microgons,
-      batchSlug: giftCardBatch.batchSlug,
-      redeemableAddressSignatures: [],
-      redeemableWithAddresses: addresses ?? [],
-    };
-    if (!giftCard.redeemableWithAddresses.includes(this.address)) {
-      giftCard.redeemableWithAddresses.push(this.address);
-    }
-    return this.signGiftCard(giftCard);
-  }
-
-  public signGiftCard(
-    giftCard: ISidechainApiTypes['GiftCard.create']['args'],
-  ): ISidechainApiTypes['GiftCard.create']['args'] {
-    const address = this.credentials.address;
-    const signatureIndex = giftCard.redeemableWithAddresses.indexOf(address.bech32);
-    if (signatureIndex === -1) {
-      throw new Error(`Address not in allowed recipient list! (${address.bech32})`);
-    }
-
-    const message = sha3(
-      concatAsBuffer(
-        'GiftCard.Create:',
-        giftCard.batchSlug,
-        giftCard.microgons,
-        ...giftCard.redeemableWithAddresses,
-      ),
-    );
-    const identityIndices = Address.getIdentityIndices(address.addressSettings, false);
-    const signature = address.sign(message, identityIndices);
-    giftCard.redeemableAddressSignatures.splice(signatureIndex, 0, signature);
-    return giftCard;
-  }
-
-  public async createGiftCard(
-    microgons: number,
-  ): Promise<ISidechainApiTypes['GiftCard.create']['result'] & { batchSlug: string }> {
-    const giftCardRecord = await this.createUnsavedGiftCard(microgons);
-    return await this.saveGiftCard(giftCardRecord);
-  }
-
-  public async saveGiftCard(
-    giftCard: ISidechainApiTypes['GiftCard.create']['args'],
-  ): Promise<ISidechainApiTypes['GiftCard.create']['result'] & { batchSlug: string }> {
-    const result = await this.runRemote('GiftCard.create', giftCard);
-
-    return {
-      ...result,
-      batchSlug: giftCard.batchSlug,
-    };
-  }
-
-  public async claimGiftCard(giftCardId: string, batchSlug: string): Promise<IMicronoteFund> {
-    const giftCard = await this.runRemote('GiftCard.claim', {
-      batchSlug,
-      address: this.address,
-      giftCardId,
-    });
-    return await this.micronoteBatchFunding.recordGiftCard(batchSlug, giftCard);
   }
 
   /////// WALLET APIS   ///////////////////////////////////////////////////////////////////////////

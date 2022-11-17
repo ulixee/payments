@@ -2,15 +2,14 @@ import { INote, NoteType } from '@ulixee/specification';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
 import {
-  InvalidParameterError,
   ConflictError,
+  InvalidParameterError,
   MicronoteFundsNeededError,
   NotFoundError,
 } from '@ulixee/payment-utils/lib/errors';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
 import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
-import { IGiftCardRecord } from './GiftCard';
 
 export default class MicronoteFunds {
   public id: number;
@@ -181,24 +180,6 @@ export default class MicronoteFunds {
     });
   }
 
-  public static async createFromGiftCard(
-    client: PgClient<DbType.Batch>,
-    giftCard: IGiftCardRecord,
-    guaranteeBlockHeight: number,
-  ): Promise<IMicronoteFundsRecord> {
-    const { microgons, id: giftCardId, redeemableWithAddresses } = giftCard;
-    return await client.insertWithId('micronote_funds', {
-      address: giftCard.claimAddress,
-      giftCardId,
-      microgons,
-      allowedRecipientAddresses: redeemableWithAddresses,
-      microgonsAllocated: 0,
-      createdTime: new Date(),
-      lastUpdatedTime: new Date(),
-      guaranteeBlockHeight,
-    });
-  }
-
   public static async findWithIds(
     client: PgClient<DbType.Batch>,
     ids: number[],
@@ -217,7 +198,10 @@ export default class MicronoteFunds {
       [id],
     );
     for (const address of addresses) {
-      if (!fund.allowedRecipientAddresses.includes(address)) {
+      if (
+        fund.allowedRecipientAddresses?.length &&
+        !fund.allowedRecipientAddresses.includes(address)
+      ) {
         throw new Error(
           `This MicronoteFund can't be redeemed with one of the addresses you requested (${address})`,
         );
@@ -237,7 +221,6 @@ export default class MicronoteFunds {
 export interface IMicronoteFundsRecord {
   id: number;
   address: string;
-  giftCardId?: string;
   noteHash?: Buffer;
   guaranteeBlockHeight: number;
   allowedRecipientAddresses?: string[];

@@ -3,7 +3,6 @@ import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import Micronote from '../models/Micronote';
 import BatchDb from '../db';
 import { ActiveBatches } from '../index';
-import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 import MicronoteFunds from '../models/MicronoteFunds';
 
 /**
@@ -30,13 +29,11 @@ export default new ApiHandler('Micronote.claim', {
       await note.claim(identity);
       await note.recordMicrogonsEarned(tokenAllocation);
 
-      if (batch.type === MicronoteBatchType.GiftCard) {
-        await MicronoteFunds.verifyAllowedPaymentAddresses(
-          client,
-          note.data.fundsId,
-          Object.keys(tokenAllocation),
-        );
-      }
+      await MicronoteFunds.verifyAllowedPaymentAddresses(
+        client,
+        note.data.fundsId,
+        Object.keys(tokenAllocation),
+      );
       const finalCost = await note.returnChange(batch.address);
       return { finalCost };
     }, options);

@@ -1,8 +1,30 @@
 import { Command } from 'commander';
-import Address from '@ulixee/crypto/lib/Address';
+import Identity from '@ulixee/crypto/lib/Identity';
 import SidechainClient from '../lib/SidechainClient';
-import { sidechainHostOption, addressPathOption, requiredOptionWithEnv } from './common';
+import { sidechainHostOption } from './common';
 import ArgonUtils from '../lib/ArgonUtils';
+
+export async function createGiftCard(options: {
+  amount: string;
+  identityPath: string;
+  host?: string;
+}): Promise<{ giftCardId: string; redemptionKey: string }> {
+  const { identityPath, host, amount } = options;
+  const identity = Identity.loadFromFile(identityPath);
+
+  const client = new SidechainClient(host, { identity });
+  const microgons = ArgonUtils.parseUnits(amount, 'microgons');
+
+  const giftCard = await client.giftCards.create(microgons);
+  // eslint-disable-next-line no-console
+  console.log(
+    `A developer can use this gift card by running: 
+        
+"npx @ulixee/sidechain gift-card store ${giftCard.giftCardId}:${giftCard.redemptionKey}"
+`,
+  );
+  return giftCard;
+}
 
 export default function giftCardsCli(): Command {
   const cli = new Command('gift-card');
@@ -12,47 +34,26 @@ export default function giftCardsCli(): Command {
     .requiredOption(
       '-m, --amount <value>',
       'The value of this gift card. Amount can postfix "c" for centagons (eg, 50c) or "m" for microgons (5000000m).',
-      /\d+[mc]/,
+      /\d+[mc]?/,
     )
     .addOption(sidechainHostOption)
-    .addOption(
-      requiredOptionWithEnv(
-        addressPathOption.flags,
-        'A path to a Ulixee Address that you wish to use for this gift card. It must be configured on your Databox as well. (NOTE: create an Address using "npx @ulixee/crypto address").',
-        'ULX_ADDRESS',
-      ),
-    )
-    .description('Create a gift card for a developer to try out your Databox.')
-    .action(async ({ amount, host, addressPath }) => {
-      const address = Address.readFromPath(addressPath);
-      const client = new SidechainClient(host, { address });
-      const microgons = ArgonUtils.parseUnits(amount, 'microgons');
-      const giftCard = await client.createGiftCard(microgons);
-      // eslint-disable-next-line no-console
-      console.log(
-        `A developer can claim this gift card by running: "npx @ulixee/sidechain gift-card claim ${giftCard.batchSlug} ${giftCard.giftCardId}"`,
-      );
+    .description('Create a gift card redeemable for various Ulixee tools.')
+    .action(async opts => {
+      await createGiftCard(opts);
     });
 
   cli
-    .command('claim <batchSlug> <giftCardId>')
-    .description('Claim a gift card created by a Developer to try out their Databox.')
-    .addOption(
-      requiredOptionWithEnv(
-        addressPathOption.flags,
-        `A path to a Ulixee Address you'd like to add this gift card to. (NOTE: create an Address using "npx @ulixee/crypto address")`,
-        'ULX_ADDRESS',
-      ),
-    )
+    .command('store <giftCardIdAndKey>')
+    .description('Store a gift card created to try out Ulixee tooling.')
     .addOption(sidechainHostOption)
-    .action(async (batchSlug, giftCardId, { host, addressPath }) => {
-      const address = Address.readFromPath(addressPath, process.cwd());
-      const client = new SidechainClient(host, { address });
-      const fund = await client.claimGiftCard(giftCardId, batchSlug);
-      const amount = ArgonUtils.format(fund.microgonsRemaining, 'microgons');
+    .action(async (giftCardIdAndKey, { host }) => {
+      const client = new SidechainClient(host, {});
+      const [giftCardId, giftCardRedemptionKey] = giftCardIdAndKey.split(':');
+      const giftCard = await client.giftCards.store(giftCardId, giftCardRedemptionKey);
+      const amount = ArgonUtils.format(giftCard.microgonsRemaining, 'microgons');
       // eslint-disable-next-line no-console
       console.log(
-        `You've claimed a gift card worth ${amount} that can be spent on the following Gift Card Addresses (${fund.allowedRecipientAddresses.join(
+        `You've installed a gift card worth ${amount} that can be spent with the following gift card Issuers: (${giftCard.issuerIdentities.join(
           ', ',
         )}).`,
       );
@@ -60,25 +61,30 @@ export default function giftCardsCli(): Command {
 
   cli
     .command('balances')
-    .description('Check balances of any gift cards you have.')
-    .addOption(
-      requiredOptionWithEnv(
-        addressPathOption.flags,
-        `Your Ulixee Address associated with these gift cards`,
-        'ULX_ADDRESS',
-      ),
-    )
+    .description('Check gift card balance(s).')
+    .option('-g --gift-card-id <id>')
     .addOption(sidechainHostOption)
-    .action(async ({ host, addressPath }) => {
-      const address = Address.readFromPath(addressPath, process.cwd());
-      const client = new SidechainClient(host, { address });
-      const { giftCard } = await client.micronoteBatchFunding.getActiveBatches();
-      const funds = await client.micronoteBatchFunding.getActiveFunds(giftCard);
-      const fundPrintouts = funds.map(fund => {
-        const amount = ArgonUtils.format(fund.microgonsRemaining, 'microgons');
+    .action(async ({ host, giftCardId }) => {
+      const client = new SidechainClient(host, {});
+
+      if (giftCardId) {
+        const card = await client.giftCards.get(giftCardId);
+        // eslint-disable-next-line no-console
+        console.log(
+          `This gift card has ${ArgonUtils.format(
+            card.balance,
+            'microgons',
+          )} redeemable with gift card Issuers: ${card.issuerIdentities.toString()}`,
+        );
+        return;
+      }
+
+      const giftCardBalances = await client.giftCards.getStored();
+      const fundPrintouts = Object.values(giftCardBalances).map(card => {
+        const amount = ArgonUtils.format(card.microgonsRemaining, 'microgons');
         return ` - [#${
-          fund.fundsId
-        }]: ${amount} redeemable with addresses (${fund.allowedRecipientAddresses.toString()})`;
+          card.giftCardId
+        }]: ${amount} redeemable with gift card Issuers: (${card.issuerIdentities.toString()})`;
       });
       // eslint-disable-next-line no-console
       console.log(

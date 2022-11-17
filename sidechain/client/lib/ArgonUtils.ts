@@ -6,6 +6,11 @@ export default class ArgonUtils {
   static parseUnits(units: string, output: 'centagons'): bigint;
   static parseUnits(units: string, output: 'microgons'): number;
   static parseUnits(units: string, output: 'centagons' | 'microgons'): bigint | number {
+    if (!units.endsWith('c') && !units.endsWith('m')) {
+      if (output === 'centagons') units += 'c';
+      else units += 'm';
+    }
+
     let value = Number(units.substring(0, units.length - 1));
     if (output === 'microgons') {
       if (units.endsWith('c')) value = this.centagonsToMicrogons(value);

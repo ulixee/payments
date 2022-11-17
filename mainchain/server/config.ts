@@ -2,6 +2,7 @@ import { loadEnv, parseEnvBigint, parseEnvInt } from '@ulixee/commons/lib/envUti
 import Constants from '@ulixee/block-utils/lib/Constants';
 import moment = require('moment');
 
+loadEnv(process.cwd());
 loadEnv(__dirname);
 const env = process.env;
 

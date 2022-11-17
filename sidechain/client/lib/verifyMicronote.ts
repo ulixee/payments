@@ -5,8 +5,8 @@ import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { InvalidPaymentBlockHeightError, UnapprovedSidechainError } from './errors';
 
-export default function verifyPayment(
-  payment: IPayment,
+export default function verifyMicronote(
+  micronote: IPayment['micronote'],
   approvedSidechainIdentities: Set<string>,
   currentBlockHeight: number,
 ): void {
@@ -18,7 +18,7 @@ export default function verifyPayment(
     micronoteBatchIdentity,
     sidechainIdentity,
     sidechainValidationSignature,
-  } = payment;
+  } = micronote;
 
   if (Math.abs(currentBlockHeight - blockHeight) > 2) {
     throw new InvalidPaymentBlockHeightError(currentBlockHeight, blockHeight);

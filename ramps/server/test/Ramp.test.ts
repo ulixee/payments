@@ -43,7 +43,8 @@ afterAll(async () => {
   await USDCMonitor.stop();
 });
 
-describe('USDC -> Argons', () => {
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip('USDC -> Argons', () => {
   test('should be able to create a USDC address to exchange USDC for Argons', async () => {
     const address = Address.createFromSigningIdentities([Identity.createSync()]);
     const result = await RampCreateTransferInAddress.handler(

@@ -4,7 +4,6 @@ import { ActiveBatches, bridgeToMain } from '..';
 import Micronote from '../models/Micronote';
 import BatchDb from '../db';
 import MicronoteFunds from '../models/MicronoteFunds';
-import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 export default new ApiHandler('Micronote.lock', {
   async handler(payload, options) {
@@ -21,7 +20,7 @@ export default new ApiHandler('Micronote.lock', {
       const micronote = new Micronote(client, null, id);
       await micronote.lockForIdentity(identity);
 
-      if (addresses && batch.type === MicronoteBatchType.GiftCard) {
+      if (addresses) {
         await MicronoteFunds.verifyAllowedPaymentAddresses(
           client,
           micronote.data.fundsId,
