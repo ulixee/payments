@@ -14,7 +14,6 @@ import Address from '@ulixee/crypto/lib/Address';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import SidechainApiSchema, { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
-import { IDataboxApiTypes } from '@ulixee/specification/databox';
 import { bindFunctions } from '@ulixee/commons/lib/utils';
 import IPaymentProvider from '../interfaces/IPaymentProvider';
 import { ClientValidationError } from './errors';
@@ -114,17 +113,17 @@ export default class SidechainClient implements IPaymentProvider {
   }
 
   public async createMicroPayment(
-    options: Pick<
-      IDataboxApiTypes['Databox.meta']['result'],
-      | 'basePricePerQuery'
-      | 'computePricePerKb'
-      | 'averageBytesPerQuery'
-      | 'giftCardIssuerIdentities'
-    >,
+    pricing: {
+      averageBytesPerQuery?: number;
+      computePricePerKb?: number;
+      giftCardIssuerIdentities?: string[];
+      basePricePerQuery?: number;
+    },
   ): Promise<IPayment & { onFinalized(result: { microgons: number; bytes: number }): void }> {
-    options.averageBytesPerQuery ??= 256;
-    options.computePricePerKb ??= 0;
-    const { basePricePerQuery, computePricePerKb, averageBytesPerQuery } = options;
+    pricing.averageBytesPerQuery ??= 256;
+    pricing.computePricePerKb ??= 0;
+    const { computePricePerKb, basePricePerQuery, averageBytesPerQuery, giftCardIssuerIdentities } =
+      pricing;
 
     const settings = await this.getSettings(true);
 
@@ -133,10 +132,7 @@ export default class SidechainClient implements IPaymentProvider {
     let microgons = basePricePerQuery + averageBytesPerQuery * 1.2 * computePricePerKb;
     if (settings.settlementFeeMicrogons) microgons += settings.settlementFeeMicrogons;
 
-    const giftCard = await this.giftCards.find(
-      microgons,
-      options.giftCardIssuerIdentities,
-    );
+    const giftCard = await this.giftCards.find(microgons, giftCardIssuerIdentities);
     if (giftCard) {
       const finalize = this.giftCards.recordSpend.bind(this.giftCards, giftCard.giftCardId);
       return {
