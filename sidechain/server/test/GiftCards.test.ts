@@ -149,16 +149,16 @@ test('should switch to paid batches once depleted', async () => {
   expect(claimed.microgonsRemaining).toBe(500);
 
   const micronote1 = await dev.createMicroPayment({
-    basePricePerQuery: 400,
+    microgons: 400,
     giftCardIssuerIdentities: [dboxAuthor.identity],
-  } as any);
+  });
   expect(micronote1.giftCard?.id).toBe(giftCard.giftCardId);
   await micronote1.onFinalized({ microgons: 495, bytes: 5 });
 
   const micronote2 = await dev.createMicroPayment({
-    basePricePerQuery: 400,
+    microgons: 400,
     giftCardIssuerIdentities: [dboxAuthor.identity],
-  } as any);
+  });
   expect(micronote2.giftCard).toBeUndefined();
   expect(micronote2.micronote).toBeTruthy();
 });

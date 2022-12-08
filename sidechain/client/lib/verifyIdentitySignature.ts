@@ -3,7 +3,7 @@ import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { PermissionsError } from './errors';
 
-export default function verifyAddressSignature(
+export default function verifyIdentitySignature(
   identity: string,
   payload: any,
   command: string,

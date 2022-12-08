@@ -27,7 +27,9 @@ CREATE TABLE micronotes (
       CHECK (microgons_allocated > 0),
   locked_by_identity varchar(64) NULL,
   locked_time timestamp NULL,
-  claimed_time timestamp NULL,
+  hold_authorization_code varchar(16) NOT NULL,
+  has_settlements boolean NOT NULL,
+  finalized_time timestamp NULL,
   canceled_time timestamp NULL,
   is_auditable boolean,
   last_updated_time timestamp NOT NULL DEFAULT NOW(),
@@ -36,11 +38,25 @@ CREATE TABLE micronotes (
 
 CREATE INDEX idx_notes_client_address on micronotes (client_address);
 
+CREATE TABLE micronote_holds (
+  micronote_id varchar(64) NOT NULL REFERENCES micronotes (id),
+  hold_id varchar(16) NOT NULL,
+  hold_time timestamp NULL,
+  identity varchar(64) NULL,
+  microgons_held integer NULL CHECK (microgons_held > 0),
+  microgons_settled integer NULL CHECK (microgons_settled > 0),
+  settled_time timestamp NULL,
+  last_updated_time timestamp NOT NULL DEFAULT NOW(),
+  created_time timestamp NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (micronote_id, hold_id)
+);
+
 CREATE TABLE micronote_recipients (
   micronote_id varchar(64) NOT NULL REFERENCES micronotes (id),
   address varchar(64) NOT NULL,
   microgons_earned integer NULL
       CHECK (microgons_earned > 0),
+  last_updated_time timestamp NOT NULL DEFAULT NOW(),
   created_time timestamp NOT NULL DEFAULT NOW(),
   PRIMARY KEY (micronote_id, address)
 );
@@ -75,7 +91,7 @@ CREATE TABLE gift_card_transactions (
   microgons_debited integer NOT NULL,
   hold_time timestamp NULL,
   canceled_time timestamp NULL,
-  settle_time timestamp NULL,
+  settled_time timestamp NULL,
   created_time timestamp NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_gift_card_transaction_card_id on gift_card_transactions (gift_card_id);

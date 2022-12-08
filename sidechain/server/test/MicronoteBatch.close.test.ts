@@ -19,8 +19,8 @@ import MicronoteBatchSettle from '../batch/models/MicronoteBatch.settle';
 const { log: logger } = Log(module);
 
 let clients: Client[] = [];
-let coordinator = null;
-let miningBits = [];
+let loadWorker = null;
+let workers = [];
 let microNotes: IMicronoteRecord[] = [];
 let batchDb: PgPool<DbType.Batch>;
 let batch: MicronoteBatch;
@@ -50,17 +50,17 @@ beforeAll(async () => {
 
   clients = [new Client(), new Client(), new Client()];
   const [client1, client2, client3] = clients;
-  coordinator = new Client();
-  miningBits = [new Client(), new Client(), new Client()];
-  const [miningBit1, miningBit2, miningBit3] = miningBits;
+  loadWorker = new Client();
+  workers = [new Client(), new Client(), new Client()];
+  const [worker1, worker2, worker3] = workers;
   await client1.register();
   await client2.register();
   await client3.register();
 
-  await coordinator.register();
-  await miningBit1.register();
-  await miningBit2.register();
-  await miningBit3.register();
+  await loadWorker.register();
+  await worker1.register();
+  await worker2.register();
+  await worker3.register();
 
   await client1.grantCentagons(230e4);
   await client1.grantCentagons(210e4);
@@ -94,23 +94,59 @@ beforeAll(async () => {
     createMicronote(client1, 11e4),
   ]);
 
+  let counter = 0;
   for (const note of microNotes) {
-    const parts = {};
-    for (const miningBit of miningBits) {
-      parts[miningBit.address] = note.microgonsAllocated / 5;
-    }
+    counter += 1;
     const client = clients.find(x => x.address === note.clientAddress);
-    await client.runSignedByIdentity('Micronote.lock', {
+    let remaining = note.microgonsAllocated - config.micronoteBatch.settlementFeeMicrogons;
+
+    let firstHold = remaining;
+    let secondHold = 0;
+
+    if (counter === 2) {
+      firstHold = 11e4;
+      secondHold = 10e4;
+      remaining -= secondHold;
+    }
+
+    const hold = await client.runSignedByIdentity('Micronote.hold', {
       id: note.id,
       batchSlug: batch.slug,
       identity: client.identity,
+      microgons: firstHold,
     });
-    const noteClaim = await client.runSignedByIdentity('Micronote.claim', {
+    if (counter === 2) {
+      const hold2 = await client.runSignedByIdentity('Micronote.hold', {
+        id: note.id,
+        batchSlug: batch.slug,
+        identity: client.identity,
+        microgons: secondHold,
+        holdAuthorizationCode: hold.holdAuthorizationCode,
+      });
+      await client.runSignedByIdentity('Micronote.settle', {
+        id: note.id,
+        batchSlug: batch.slug,
+        identity: client.identity,
+        isFinal: false,
+        holdId: hold2.holdId,
+        tokenAllocation: {
+          [loadWorker.address]: secondHold,
+        },
+      });
+    }
+
+    const parts = {};
+    for (const worker of workers) {
+      parts[worker.address] = Math.floor(remaining / 5);
+    }
+    const noteClaim = await client.runSignedByIdentity('Micronote.settle', {
       id: note.id,
+      holdId: hold.holdId,
+      isFinal: counter !== 2,
       batchSlug: batch.slug,
       identity: client.identity,
       tokenAllocation: {
-        [coordinator.address]: note.microgonsAllocated / 8,
+        [loadWorker.address]: Math.floor(remaining / 8),
         ...parts,
       },
     });
@@ -204,18 +240,17 @@ test('should close unfinished notes', async () => {
       );
       logger.info('Finished creating notes');
       // @ts-ignore
-      await batchClose.refundUnclaimedNotes();
+      await batchClose.refundMicronoteChange();
       // @ts-ignore
-      const { unclaimedNotes } = batchClose;
-      expect(unclaimedNotes).toHaveLength(1);
+      const { unfinalizedMicronoteIds } = batchClose;
+      expect(unfinalizedMicronoteIds).toHaveLength(2);
       {
-        const openBatches = await client.list<IMicronoteFundsRecord>(
+        const openFunds = await client.list<IMicronoteFundsRecord>(
           'select * from micronote_funds where address=$1',
           [client1.address],
         );
-        expect(openBatches).toHaveLength(1);
-        const [openBatch] = openBatches;
-        expect(openBatch.microgonsAllocated).toBeLessThanOrEqual(11e4);
+        expect(openFunds).toHaveLength(1);
+        expect(openFunds[0].microgonsAllocated).toBeLessThanOrEqual(11e4);
       }
     },
     { logger },
@@ -280,12 +315,12 @@ test('should properly create payouts', async () => {
         expect(outputs).toHaveLength(8);
         // all took money from client 3
         expect(outputs.filter(x => x.guaranteeBlockHeight === 5)).toHaveLength(
-          miningBits.length + 1 /* coordinator*/ + 1 /* client3*/ + 1 /* burn*/,
+          workers.length + 1 /* leadWorker*/ + 1 /* client3*/ + 1 /* burn*/,
         );
         const change = outputs.filter(x => x.type === NoteType.micronoteBatchRefund);
         expect(change).toHaveLength(3);
         const revenue = outputs.filter(x => x.type === NoteType.revenue);
-        expect(revenue).toHaveLength(miningBits.length + 1);
+        expect(revenue).toHaveLength(workers.length + 1);
 
         const settled = outputs.reduce((total, x) => total + x.centagons, 0n) * BigInt(1e4);
 
@@ -298,7 +333,7 @@ test('should properly create payouts', async () => {
         // payout should all go back out minus fees
         const fundsMinusSettled = Number(batchSettle.batchOutput.fundingMicrogons - settled);
         expect(fundsMinusSettled).toBeLessThan(
-          [coordinator, ...miningBits, ...clients].length * 1e4,
+          [loadWorker, ...workers, ...clients].length * 1e4,
         );
         const burn = outputs.find(x => x.type === NoteType.burn);
         expect(burn.centagons).toEqual(batchSettle.batchOutput.burnedCentagons);

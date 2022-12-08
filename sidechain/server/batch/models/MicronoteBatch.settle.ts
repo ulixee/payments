@@ -87,7 +87,7 @@ export default class MicronoteBatchSettle {
          MAX(block_height) as max_block_height, 
          MIN(block_height) as min_block_height
        FROM micronotes 
-         WHERE claimed_time is not null`);
+         WHERE has_settlements = true`);
 
     return {
       address: this.batchAddress,

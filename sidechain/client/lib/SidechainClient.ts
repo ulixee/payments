@@ -112,24 +112,18 @@ export default class SidechainClient implements IPaymentProvider {
     return this.runRemote('Sidechain.audit', undefined);
   }
 
-  public async createMicroPayment(
-    pricing: {
-      averageBytesPerQuery?: number;
-      computePricePerKb?: number;
-      giftCardIssuerIdentities?: string[];
-      basePricePerQuery?: number;
-    },
-  ): Promise<IPayment & { onFinalized(result: { microgons: number; bytes: number }): void }> {
-    pricing.averageBytesPerQuery ??= 256;
-    pricing.computePricePerKb ??= 0;
-    const { computePricePerKb, basePricePerQuery, averageBytesPerQuery, giftCardIssuerIdentities } =
-      pricing;
+  public async createMicroPayment(pricing: {
+    microgons: number;
+    giftCardIssuerIdentities?: string[];
+  }): Promise<IPayment & { onFinalized(result: { microgons: number; bytes: number }): void }> {
+    pricing.microgons ??= 0;
+    const { giftCardIssuerIdentities } = pricing;
 
     const settings = await this.getSettings(true);
 
-    if (!basePricePerQuery) return { onFinalized() {} };
+    if (!pricing.microgons) return { onFinalized() {} };
 
-    let microgons = basePricePerQuery + averageBytesPerQuery * 1.2 * computePricePerKb;
+    let microgons = pricing.microgons;
     if (settings.settlementFeeMicrogons) microgons += settings.settlementFeeMicrogons;
 
     const giftCard = await this.giftCards.find(microgons, giftCardIssuerIdentities);
@@ -221,29 +215,35 @@ export default class SidechainClient implements IPaymentProvider {
     }
   }
 
-  public async lockMicronote(
+  public async holdMicronoteFunds(
     micronoteId: string,
     batchSlug: string,
-    addresses?: string[],
-  ): Promise<ISidechainApiTypes['Micronote.lock']['result']> {
-    return await this.runSignedByIdentity('Micronote.lock', {
+    microgons: number,
+    holdAuthorizationCode?: string,
+  ): Promise<ISidechainApiTypes['Micronote.hold']['result']> {
+    return await this.runSignedByIdentity('Micronote.hold', {
       batchSlug,
       id: micronoteId,
       identity: this.identity,
-      addresses,
+      microgons,
+      holdAuthorizationCode,
     });
   }
 
-  public async claimMicronote(
+  public async settleMicronote(
     micronoteId: string,
     batchSlug: string,
+    holdId: string,
     tokenAllocation: { [identity: string]: number },
-  ): Promise<ISidechainApiTypes['Micronote.claim']['result']> {
-    return await this.runSignedByIdentity('Micronote.claim', {
+    isFinal = false,
+  ): Promise<ISidechainApiTypes['Micronote.settle']['result']> {
+    return await this.runSignedByIdentity('Micronote.settle', {
       batchSlug,
       id: micronoteId,
+      holdId,
       tokenAllocation,
       identity: this.identity,
+      isFinal,
     });
   }
 

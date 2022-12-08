@@ -35,7 +35,7 @@ export default new ApiHandler('GiftCard.settleHold', {
       return {
         success: didChargeFullBalance,
         microgonsAllowed: microgons,
-        giftCardBalance: balance,
+        remainingBalance: balance,
       };
     }, options);
   },

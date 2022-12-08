@@ -1,6 +1,6 @@
-import MicronoteClaim from './Micronote.claim';
+import MicronoteSettle from './Micronote.settle';
 import MicronoteCreate from './Micronote.create';
-import MicronoteLock from './Micronote.lock';
+import MicronoteHold from './Micronote.hold';
 import MicronoteBatchFund from './MicronoteBatch.fund';
 import MicronoteBatchFindFund from './MicronoteBatch.findFund';
 import MicronoteBatchActiveFunds from './MicronoteBatch.activeFunds';
@@ -11,9 +11,9 @@ import GiftCardSettleHold from './GiftCard.settleHold';
 import GiftCardCreateHold from './GiftCard.createHold';
 
 export default [
-  MicronoteClaim,
+  MicronoteSettle,
   MicronoteCreate,
-  MicronoteLock,
+  MicronoteHold,
   MicronoteBatchFund,
   MicronoteBatchFindFund,
   MicronoteBatchActiveFunds,

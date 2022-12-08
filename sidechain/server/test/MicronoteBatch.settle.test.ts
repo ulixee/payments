@@ -146,13 +146,15 @@ const createLedgerOutput = (wallet: Client, centagons, guaranteeBlockHeight = 0)
     const id = `note${counter++}`;
     await x.insert<IMicronoteRecord>('micronotes', {
       blockHeight: 1,
-      claimedTime: new Date(),
+      lockedTime: new Date(),
       clientAddress: wallet.address,
       fundsId: 1,
       nonce: Buffer.from('nonce'),
       microgonsAllocated: Math.ceil(ArgonUtils.centagonsToMicrogons(centagons) / 0.8),
       isAuditable: true,
+      hasSettlements: true,
       id,
+      holdAuthorizationCode: '1'
     });
     await x.insert<IMicronoteRecipientsRecord>('micronote_recipients', {
       createdTime: new Date(),
