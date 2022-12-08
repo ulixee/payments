@@ -67,6 +67,7 @@ export default class GiftCards {
       this.byId[gift.id] = {
         giftCardId: gift.id,
         microgonsRemaining: gift.balance,
+        sidechainIdentity: batch.sidechainIdentity,
         redemptionKey: this.byId[gift.id]?.redemptionKey,
         issuerIdentities: gift.issuerIdentities,
         identitiesKey: (gift.issuerIdentities ?? []).sort().toString(),
@@ -235,6 +236,7 @@ export default class GiftCards {
 export type IGiftCardBalance = {
   giftCardId: string;
   microgonsRemaining: number;
+  sidechainIdentity: string;
   redemptionKey?: string;
   issuerIdentities?: string[];
   identitiesKey?: string;

@@ -17,7 +17,7 @@ export default new ApiHandler('Micronote.settle', {
     return await batchDb.transaction(async client => {
       const micronote = new Micronote(client, null, id);
 
-      await micronote.load({ includeHolds: true, includeRecipients: true });
+      await micronote.load({ includeDisbursements: true });
       if (micronote.data.finalizedTime)
         throw new Error('This micronote has already been finalized');
       if (isFinal) {

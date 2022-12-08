@@ -1,25 +1,15 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer, encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { nanoid } from 'nanoid';
-import {
-  ConflictError,
-  InsufficientFundsError,
-  InvalidParameterError,
-} from '@ulixee/payment-utils/lib/errors';
+import { ConflictError, InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
 import { DbType } from '@ulixee/payment-utils/pg/PgPool';
-import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
 import config from '../../config';
 import MicronoteFunds from './MicronoteFunds';
 
 export default class Micronote {
   public static encodingPrefix = 'mcr';
-  public recipients: IMicronoteRecipientsRecord[] = [];
-  public holds: IMicronoteHoldsRecord[] = [];
-
-  public get microgonsAllowed(): number {
-    return this.data.microgonsAllocated - config.micronoteBatch.settlementFeeMicrogons;
-  }
+  public disbursements: IMicronoteDisbursementssRecord[] = [];
 
   public data: IMicronoteRecord;
 
@@ -30,9 +20,8 @@ export default class Micronote {
   ) {}
 
   public async load(options?: {
-    includeRecipients: boolean;
-    includeHolds: boolean;
-  }): Promise<IMicronoteRecord & { recipients?: IMicronoteRecipientsRecord[] }> {
+    includeDisbursements: boolean;
+  }): Promise<IMicronoteRecord & { recipients?: IMicronoteDisbursementssRecord[] }> {
     const micronote = await this.client.queryOne<IMicronoteRecord>(
       `SELECT
         id,
@@ -50,20 +39,15 @@ export default class Micronote {
       [this.id],
     );
     const returnValue = { ...micronote } as IMicronoteRecord & {
-      recipients?: IMicronoteRecipientsRecord[];
+      recipients?: IMicronoteDisbursementssRecord[];
     };
-    if (options?.includeRecipients === true) {
-      this.recipients = await this.client.list<IMicronoteRecipientsRecord>(
+    if (options?.includeDisbursements === true) {
+      this.disbursements = await this.client.list<IMicronoteDisbursementssRecord>(
         `SELECT *
-       FROM micronote_recipients WHERE micronote_id=$1`,
+       FROM micronote_disbursements WHERE micronote_id=$1`,
         [this.id],
       );
-      returnValue.recipients = this.recipients;
-    }
-    if (options?.includeHolds === true) {
-      this.holds = await this.client.list(`SELECT * FROM micronote_holds WHERE micronote_id=$1`, [
-        this.id,
-      ]);
+      returnValue.recipients = this.disbursements;
     }
     this.data = micronote;
     return returnValue;
@@ -79,7 +63,7 @@ export default class Micronote {
 
   public async lockForIdentity(identity: string): Promise<boolean> {
     const { lockedByIdentity, fundsId, holdAuthorizationCode, microgonsAllocated, finalizedTime } =
-      await this.client.queryOne(
+      await this.client.queryOne<Partial<IMicronoteRecord>>(
         'SELECT microgons_allocated, locked_by_identity, finalized_time, funds_id, hold_authorization_code FROM micronotes where id=$1 FOR UPDATE LIMIT 1',
         [this.id],
       );
@@ -100,7 +84,7 @@ export default class Micronote {
 
   public async create(
     batchAddress: string,
-    fundsId: number,
+    fundsId: string,
     microgonsAllocated: number,
     blockHeight: number,
     isAuditable?: boolean,
@@ -112,7 +96,7 @@ export default class Micronote {
 
     const id = encodeBuffer(hash, Micronote.encodingPrefix);
 
-    return await this.client.insert<IMicronoteRecord>('micronotes', {
+    const micronote = await this.client.insert<IMicronoteRecord>('micronotes', {
       id,
       clientAddress: this.address,
       blockHeight,
@@ -125,40 +109,67 @@ export default class Micronote {
       createdTime: time,
       lastUpdatedTime: time,
     });
+
+    await this.client.batchInsert<IMicronoteTransactionsRecord>('micronote_transactions', [
+      {
+        id: nanoid(30),
+        micronoteId: id,
+        microgons: microgonsAllocated,
+        identity: this.address,
+        type: 'fund',
+        fundsId,
+        createdTime: new Date(),
+      },
+      {
+        id: nanoid(30),
+        micronoteId: id,
+        microgons: -config.micronoteBatch.settlementFeeMicrogons,
+        identity: batchAddress,
+        type: 'fee',
+        fundsId,
+        createdTime: new Date(),
+      },
+    ]);
+
+    return micronote;
+  }
+
+  public async getBalance(): Promise<number> {
+    const { rows } = await this.client.preparedQuery<{ balance: number }>({
+      text: `SELECT SUM(microgons) as balance FROM micronote_transactions WHERE micronote_id = $1`,
+      name: 'micronote_balance_query',
+      values: [this.id],
+    });
+    if (rows.length) {
+      return Number(rows[0].balance ?? 0);
+    }
+    return 0;
   }
 
   public async holdFunds(
     identity: string,
     microgons: number,
   ): Promise<{ accepted: boolean; remainingBalance: number; holdId?: string }> {
-    const holdId = nanoid(16);
-    const holds = await this.client.list<IMicronoteHoldsRecord>(
-      `select * from micronote_holds where micronote_id=$1`,
-      [this.id],
-    );
-    const balance = holds.reduce(
-      (sum, hold) => sum + (hold.microgonsSettled ?? hold.microgonsHeld),
-      0,
-    );
-
-    if (balance + microgons > this.microgonsAllowed) {
-      return { accepted: false, remainingBalance: this.microgonsAllowed - balance };
+    const id = nanoid(30);
+    const balance = await this.getBalance();
+    if (balance - microgons < 0) {
+      return { accepted: false, remainingBalance: balance };
     }
 
-    await this.client.insert<IMicronoteHoldsRecord>('micronote_holds', {
+    await this.client.insert<IMicronoteTransactionsRecord>('micronote_transactions', {
+      id,
       micronoteId: this.id,
-      holdId,
-      microgonsHeld: microgons,
+      microgons: -microgons,
       identity,
-      holdTime: new Date(),
-      lastUpdatedTime: new Date(),
+      type: 'hold',
+      fundsId: this.data.fundsId,
       createdTime: new Date(),
     });
 
     return {
       accepted: true,
-      remainingBalance: this.microgonsAllowed - balance - microgons,
-      holdId,
+      remainingBalance: balance - microgons,
+      holdId: id,
     };
   }
 
@@ -170,51 +181,82 @@ export default class Micronote {
     },
   ): Promise<void> {
     if (!this.data) {
-      await this.load({ includeHolds: true, includeRecipients: true });
+      await this.load({ includeDisbursements: true });
     }
 
-    const hold = this.holds.find(x => x.holdId === holdId);
+    const {
+      rows: [hold],
+    } = await this.client.query<IMicronoteTransactionsRecord>(
+      'select * from micronote_transactions where micronote_id=$1 and id=$2 FOR UPDATE LIMIT 1',
+      [this.id, holdId],
+    );
     if (!hold || hold.identity !== holderIdentity)
       throw new Error('The micronote hold could not be found.');
     // don't allow another settle
-    if (hold.settledTime) throw new Error('This micronote hold has already been settled.');
+    const {
+      rows: [settle],
+    } = await this.client.query<{ id: string }>(
+      'select id from micronote_transactions where micronote_id=$1 and parent_id=$2 LIMIT 1',
+      [this.id, holdId],
+    );
+    if (settle) throw new Error('This micronote hold has already been settled.');
 
     const microgonsDistributed = Object.values(tokenAllocation).reduce((a, b) => a + b, 0);
 
     // if exceeding hold amount, need to check total funds
-    if (hold.microgonsHeld < microgonsDistributed) {
-      this.validateHoldIsAllowed(hold, microgonsDistributed);
+    if (Math.abs(hold.microgons) < microgonsDistributed) {
+      await this.validateHoldIsAllowed(hold, microgonsDistributed);
     }
 
     if (!this.data.hasSettlements) {
       await this.client.update('update micronotes set has_settlements=true where id=$1', [this.id]);
     }
-    await this.client.update(
-      `update micronote_holds set settled_time=$1, microgons_settled=$2 where micronote_id=$3 and hold_id=$4 and settled_time is null`,
-      [new Date(), microgonsDistributed, this.id, holdId],
-    );
 
-    await this.validateTokenAllocation(tokenAllocation);
-    const tokenAllocationPromises = Object.entries(tokenAllocation)
-      // filter out any entries with invalid microgons
-      .filter(([, microgons]) => microgons && Number.isNaN(Number(microgons)) === false)
-      .map(([address, microgons]): Promise<any> => {
-        if (this.recipients.find(x => x.address === address)) {
-          return this.client.update(
-            `UPDATE micronote_recipients
+    // reverse hold and insert settlement
+    await this.client.batchInsert<IMicronoteTransactionsRecord>('micronote_transactions', [
+      {
+        id: nanoid(30),
+        micronoteId: this.id,
+        fundsId: this.data.fundsId,
+        parentId: holdId,
+        type: 'reversal',
+        microgons: -hold.microgons,
+        identity: holderIdentity,
+        createdTime: new Date(),
+      },
+      {
+        id: nanoid(30),
+        micronoteId: this.id,
+        fundsId: this.data.fundsId,
+        parentId: holdId,
+        type: 'settle',
+        microgons: -microgonsDistributed,
+        identity: holderIdentity,
+        createdTime: new Date(),
+      },
+    ]);
+
+    const tokenAllocationPromises: Promise<any>[] = [];
+    for (const [address, microgons] of Object.entries(tokenAllocation)) {
+      let promise: Promise<any>;
+      if (this.disbursements.find(x => x.address === address)) {
+        promise = this.client.update(
+          `UPDATE micronote_disbursements
             SET microgons_earned = CAST ($1 AS NUMERIC) + microgons_earned,
               last_updated_time = now()
             WHERE micronote_id = $2 and address = $3`,
-            [microgons, this.id, address],
-          );
-        }
-        return this.client.insert<IMicronoteRecipientsRecord>('micronote_recipients', {
+          [microgons, this.id, address],
+        );
+      } else {
+        promise = this.client.insert<IMicronoteDisbursementssRecord>('micronote_disbursements', {
           micronoteId: this.id,
           address,
-          microgonsEarned: Number(microgons),
+          microgonsEarned: microgons,
           createdTime: new Date(),
         });
-      });
+      }
+      tokenAllocationPromises.push(promise);
+    }
     await Promise.all(tokenAllocationPromises);
   }
 
@@ -223,29 +265,70 @@ export default class Micronote {
       await this.load();
     }
     let { earnings } = await this.client.queryOne(
-      `SELECT coalesce(SUM(microgons_earned),0) as earnings
-       FROM micronote_recipients
+      `SELECT SUM(microgons_earned) as earnings
+       FROM micronote_disbursements
        WHERE micronote_id = $1
         AND microgons_earned > 0`,
       [this.id],
     );
     earnings = Number(earnings ?? 0);
 
-    let remaining = this.microgonsAllowed - earnings;
-
-    // if no earnings, can't take fee
-    if (earnings === 0) {
-      remaining = this.data.microgonsAllocated;
+    // reverse pending holds
+    const allTransactions = await this.client.list<IMicronoteTransactionsRecord>(
+      'select * from micronote_transactions where micronote_id=$1',
+      [this.id],
+    );
+    const holds = allTransactions.filter(x => x.type === 'hold');
+    for (const hold of holds) {
+      const reversal = allTransactions.find(
+        x => (x.type === 'reversal' || x.type === 'cancel') && x.parentId === hold.id,
+      );
+      if (!reversal) {
+        await this.client.insert<IMicronoteTransactionsRecord>(`micronote_transactions`, {
+          id: nanoid(30),
+          micronoteId: this.id,
+          fundsId: this.data.fundsId,
+          parentId: hold.id,
+          type: 'cancel',
+          microgons: -hold.microgons,
+          identity: batchAddress,
+          createdTime: new Date(),
+        });
+      }
     }
 
-    if (remaining !== 0) {
+    const remainingBalance = await this.getBalance();
+    const finalCost = this.data.microgonsAllocated - remainingBalance;
+
+    if (
+      remainingBalance !==
+      this.data.microgonsAllocated - earnings - config.micronoteBatch.settlementFeeMicrogons
+    ) {
+      console.warn(`There's an accounting error in this micronote (${this.id})`, {
+        allTransactions,
+        remainingBalance,
+        allocated: this.data.microgonsAllocated,
+        earnings,
+      });
+      throw new Error(
+        `There's an accounting error in this micronote (${this.id}). Remaining balance (${remainingBalance}) !== allocated(${this.data.microgonsAllocated}) - earnings(${earnings}) - fee(${config.micronoteBatch.settlementFeeMicrogons})`,
+      );
+    }
+
+    await this.client.insert<IMicronoteTransactionsRecord>(`micronote_transactions`, {
+      id: nanoid(30),
+      micronoteId: this.id,
+      fundsId: this.data.fundsId,
+      parentId: allTransactions.find(x => x.type === 'fund').id,
+      type: 'change',
+      microgons: -remainingBalance,
+      identity: batchAddress,
+      createdTime: new Date(),
+    });
+
+    if (remainingBalance !== 0) {
       const funding = new MicronoteFunds(this.client, batchAddress, this.data.clientAddress);
-      await funding.returnHoldTokens(this.data.fundsId, remaining || 0);
-    }
-
-    let finalCost = earnings;
-    if (finalCost > 0) {
-      finalCost += config.micronoteBatch.settlementFeeMicrogons;
+      await funding.returnHoldTokens(this.data.fundsId, remainingBalance);
     }
 
     return finalCost;
@@ -264,48 +347,19 @@ export default class Micronote {
     );
   }
 
-  /**
-   * Ensure there are enough microgons to payout the provided token allocation
-   */
-  private validateTokenAllocation(tokenAllocation: { [address: string]: number | string }): void {
-    const existingAllocated = this.recipients.reduce(
-      (total, entry) => total + (entry.microgonsEarned || 0),
-      0,
-    );
-
-    // make sure payouts is less than allocated microgons
-    const allocs = Object.values(tokenAllocation);
-    const totalTokens = allocs.reduce((total: number, val) => total + Number(val), 0) as number;
-
-    if (totalTokens + existingAllocated > this.microgonsAllowed) {
+  private async validateHoldIsAllowed(
+    hold: IMicronoteTransactionsRecord,
+    settledMicrogons: number,
+  ): Promise<void> {
+    const transactionBalance = await this.getBalance();
+    const sum = transactionBalance + Math.abs(hold.microgons) - settledMicrogons;
+    if (sum < 0) {
       throw new InvalidParameterError(
         'Proposed payout of microgons exceeds micronote allocation',
         'tokenAllocation',
         {
-          existingAllocated,
-          microgonsAllocated: this.microgonsAllowed,
-          proposedTokenPayout: totalTokens,
-        },
-      );
-    }
-  }
-
-  private validateHoldIsAllowed(hold: IMicronoteHoldsRecord, settledMicrogons: number): void {
-    let sum = 0;
-    for (const holdRecord of this.holds) {
-      if (holdRecord.holdId === hold.holdId) {
-        sum += settledMicrogons;
-      } else {
-        sum += holdRecord.microgonsSettled ?? holdRecord.microgonsHeld;
-      }
-    }
-    if (sum > this.microgonsAllowed) {
-      throw new InvalidParameterError(
-        'Proposed payout of microgons exceeds micronote allocation',
-        'tokenAllocation',
-        {
-          existingAllocated: sum,
-          microgonsAllocated: this.microgonsAllowed,
+          heldMicrogons: Math.abs(hold.microgons),
+          balance: transactionBalance,
           proposedTokenPayout: settledMicrogons,
         },
       );
@@ -315,7 +369,7 @@ export default class Micronote {
 
 export interface IMicronoteRecord {
   id: string;
-  fundsId: number;
+  fundsId: string;
   blockHeight: number;
   nonce?: string;
   clientAddress: string;
@@ -332,19 +386,18 @@ export interface IMicronoteRecord {
   lastUpdatedTime?: Date;
 }
 
-export interface IMicronoteHoldsRecord {
+export interface IMicronoteTransactionsRecord {
+  id: string;
+  fundsId: string;
   micronoteId: string;
-  holdId: string;
-  holdTime?: Date;
+  parentId?: string;
+  type: 'hold' | 'reversal' | 'settle' | 'fund' | 'fee' | 'cancel' | 'change';
   identity: string;
-  settledTime?: Date;
-  microgonsHeld: number;
-  microgonsSettled: number;
-  createdTime?: Date;
-  lastUpdatedTime?: Date;
+  microgons: number;
+  createdTime: Date;
 }
 
-export interface IMicronoteRecipientsRecord {
+export interface IMicronoteDisbursementssRecord {
   micronoteId: string;
   address: string;
   microgonsEarned: number;

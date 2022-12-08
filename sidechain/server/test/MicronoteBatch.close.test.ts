@@ -223,12 +223,13 @@ test('should make sure balances match the ledger', async () => {
 test('should close unfinished notes', async () => {
   const [client1] = clients;
   const { fund } = await client1.micronoteBatchFunding.reserveFunds(11e4);
-  await client1.runSignedByAddress(`Micronote.create`, {
+  const mn = await client1.runSignedByAddress(`Micronote.create`, {
     batchSlug: batch.slug,
     address: client1.address,
-    microgons: 11e4,
+    microgons: 9e4,
     fundsId: fund.fundsId,
   });
+  microNotes.push(mn as any)
 
   await batchDb.transaction(
     async client => {
@@ -250,7 +251,7 @@ test('should close unfinished notes', async () => {
           [client1.address],
         );
         expect(openFunds).toHaveLength(1);
-        expect(openFunds[0].microgonsAllocated).toBeLessThanOrEqual(11e4);
+        expect(openFunds[0].microgonsAllocated).toBeLessThanOrEqual(9e4);
       }
     },
     { logger },

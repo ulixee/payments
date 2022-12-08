@@ -55,10 +55,11 @@ test('should require a valid address for a request', async () => {
           settingsMerkleProofs: [],
         },
       },
-      fundsId: 1,
+      fundsId: '111111111111111111111111111111',
     });
     expect(res).not.toBeTruthy();
   } catch (err) {
+    console.log(err)
     expect(err.code).toBe('ERR_PERMISSIONS');
   }
 });

@@ -31,7 +31,7 @@ beforeAll(() => {
   mock.Identity.verify.mockImplementation(() => true);
 
   mock.MicronoteBatchFunding.fundBatch.mockImplementation(async function (batch, centagons) {
-    return this.recordBatchFund(1, ArgonUtils.centagonsToMicrogons(centagons), batch);
+    return this.recordBatchFund('0'.padEnd(30, '0'), ArgonUtils.centagonsToMicrogons(centagons), batch);
   });
 
   mock.connectionToCore.sendRequest.mockImplementation(async ({ command }) => {
@@ -191,9 +191,9 @@ test('should only create a new micronote fund if funds are exhausted', async () 
   } as IMicronoteBatch;
   mock.MicronoteBatchFunding.fundBatch.mockImplementation(async function (_, centagons) {
     microgonsRemaining = ArgonUtils.centagonsToMicrogons(centagons);
-    await this.recordBatchFund(counter, ArgonUtils.centagonsToMicrogons(centagons), batch);
+    await this.recordBatchFund(`${counter}`.padEnd(30, '0'), ArgonUtils.centagonsToMicrogons(centagons), batch);
     await new Promise(resolve => setTimeout(resolve, 200));
-    return { fundsId: counter, batchSlug, microgonsRemaining };
+    return { fundsId: `${counter}`.padEnd(30, '0'), batchSlug, microgonsRemaining };
   });
 
   mock.connectionToCore.sendRequest.mockImplementation(async ({ command, args }) => {
@@ -202,7 +202,7 @@ test('should only create a new micronote fund if funds are exhausted', async () 
       if (microgonsRemaining < params.microgons) {
         return {};
       }
-      return { fundsId: counter, microgonsRemaining };
+      return { fundsId: `${counter}`.padEnd(30, '0'), microgonsRemaining };
     }
     await new Promise(resolve => setTimeout(resolve, 50));
     if (command === 'Micronote.create') {
@@ -273,7 +273,7 @@ test('should only get funds one at a time', async () => {
   mock.MicronoteBatchFunding.fundBatch.mockRestore();
 
   let firstBatch = {
-    fundsId: 5222,
+    fundsId: '522200000000000000000000000000',
     microgonsRemaining: 11000,
   };
 
@@ -288,7 +288,7 @@ test('should only get funds one at a time', async () => {
     }
     if (command === 'MicronoteBatch.fund') {
       fundCounter += 1;
-      return { fundsId: fundCounter };
+      return { fundsId: `${fundCounter}`.padEnd(30, '0') };
     }
     if (command === 'Sidechain.openBatches') {
       return {

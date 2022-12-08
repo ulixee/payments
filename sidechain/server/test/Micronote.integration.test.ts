@@ -49,8 +49,8 @@ test('should handle an end to end micronote', async () => {
   expect(fundsId).toBeTruthy();
   expect(id).toBeTruthy();
   {
-    const subMicronoteBatchDb = await MicronoteBatchDb.get(micronoteBatch.slug);
-    await subMicronoteBatchDb.transaction(async dbclient => {
+    const db = await MicronoteBatchDb.get(micronoteBatch.slug);
+    await db.transaction(async dbclient => {
       const funding = await dbclient.queryOne<IMicronoteFundsRecord>(
         'select * from micronote_funds where id=$1',
         [fundsId],
@@ -67,6 +67,10 @@ test('should handle an end to end micronote', async () => {
       identity: leadWorker.identity,
       microgons: 10000 + 20000 + 30000,
     });
+    expect(hold.accepted).toBe(true);
+    expect(hold.remainingBalance).toBe(
+      200e3 - (10000 + 20000 + 30000) - config.micronoteBatch.settlementFeeMicrogons,
+    );
     // should not allow a settlement to exceed the available microgons allocated for the note during
     // completion
     try {
@@ -114,7 +118,7 @@ test('should handle an end to end micronote', async () => {
       );
 
       const note = new Micronote(dbclient, leadWorker.address, id);
-      const noteDetails = await note.load({ includeRecipients: true, includeHolds: true });
+      const noteDetails = await note.load({ includeDisbursements: true });
 
       expect(noteDetails.lockedTime).toBeTruthy();
       expect(noteDetails.lockedTime).toBeInstanceOf(Date);
@@ -273,7 +277,9 @@ test('can create multiple holds on a micronote', async () => {
       [lead.address]: 5001,
     },
   });
-  expect(final.finalCost).toBe(5001 + settleHold2.finalCost + config.micronoteBatch.settlementFeeMicrogons);
+  expect(final.finalCost).toBe(
+    5001 + settleHold2.finalCost + config.micronoteBatch.settlementFeeMicrogons,
+  );
 
   await expect(
     worker1.runSignedByIdentity('Micronote.settle', {

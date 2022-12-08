@@ -132,6 +132,7 @@ export default class SidechainClient implements IPaymentProvider {
       return {
         giftCard: {
           id: giftCard.giftCardId,
+          sidechainIdentity: giftCard.sidechainIdentity,
           redemptionKey: giftCard.redemptionKey,
         },
         onFinalized: finalize,

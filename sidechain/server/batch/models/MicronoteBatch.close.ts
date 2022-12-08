@@ -77,12 +77,11 @@ export default class MicronoteBatchClose {
 
     const { revenue } = await this.client.queryOne<{ revenue: bigint }>(`
     SELECT SUM(microgons_earned) as revenue
-       FROM micronote_recipients 
+       FROM micronote_disbursements 
        WHERE microgons_earned > 0`);
 
     const { claims } = await this.client.queryOne<{ claims: bigint }>(`
-    SELECT count(1) as claims FROM micronotes 
-       WHERE has_settlements = true`);
+    SELECT count(1) as claims FROM micronotes`);
 
     const settlementFees = config.micronoteBatch.settlementFeeMicrogons * Number(claims ?? 0);
 
@@ -107,9 +106,9 @@ export default class MicronoteBatchClose {
   }
 
   private async createSettlementFeeNote(): Promise<INote> {
-    const { claims } = await this.client.queryOne<{ claims: bigint }>(`
-    SELECT count(1) as claims FROM micronotes 
-       WHERE has_settlements = true`);
+    const { claims } = await this.client.queryOne<{ claims: bigint }>(
+      `SELECT count(1) as claims FROM micronotes`,
+    );
 
     this.settlementFeeMicrogons =
       config.micronoteBatch.settlementFeeMicrogons * Number(claims || 0);
@@ -139,7 +138,7 @@ export default class MicronoteBatchClose {
         coalesce(sum(np.microgons_earned), 0) as microgons, 
         np.address as to_address, 
         max(e.guarantee_block_height) as guarantee_block_height
-      FROM micronote_recipients np
+      FROM micronote_disbursements np
         JOIN micronotes n on n.id = np.micronote_id
         JOIN micronote_funds e on e.id = n.funds_id
       GROUP BY np.address`);
