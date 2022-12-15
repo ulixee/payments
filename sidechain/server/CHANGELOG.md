@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.0.0-alpha.17](https://github.com/ulixee/payments/compare/v2.0.0-alpha.16...v2.0.0-alpha.17) (2022-12-15)
+
+
+### Features
+
+* allow holding funds in a micronote ([d63c45d](https://github.com/ulixee/payments/commit/d63c45df0f3c79bfad1ffd339cfa546844ddf98d))
+* use a double entry ledger for micronote txs ([a9aa1a4](https://github.com/ulixee/payments/commit/a9aa1a4151dab848f61e340f5195b8680b2af2f4))
+
+
+
+
+
 # [2.0.0-alpha.16](https://github.com/ulixee/payments/compare/v2.0.0-alpha.15...v2.0.0-alpha.16) (2022-12-05)
 
 **Note:** Version bump only for package @ulixee/sidechain-server
