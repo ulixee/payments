@@ -18,9 +18,9 @@ export default class MicronoteBatchFunding {
 
   private fundsByBatchSlug: {
     [batchSlug: string]: {
-      activeFundsId?: number;
+      activeFundsId?: string;
       fundsById: {
-        [fundsId: number]: IMicronoteFund;
+        [fundsId: string]: IMicronoteFund;
       };
     };
   } = {};
@@ -176,7 +176,7 @@ export default class MicronoteBatchFunding {
   }
 
   public recordBatchFund(
-    fundsId: number,
+    fundsId: string,
     microgons: number,
     batch: IMicronoteBatch,
     allowedRecipientAddresses?: string[],
@@ -197,7 +197,7 @@ export default class MicronoteBatchFunding {
 
   public finalizePayment(
     batchSlug: string,
-    fundsId: number,
+    fundsId: string,
     originalMicrogons: number,
     result: { microgons: number; bytes: number },
   ): void {
@@ -210,7 +210,7 @@ export default class MicronoteBatchFunding {
 
   public updateBatchFundsRemaining(
     batchSlug: string,
-    fundsId: number,
+    fundsId: string,
     microgons: number,
   ): IMicronoteFund {
     if (!fundsId) return null;
@@ -228,7 +228,7 @@ export default class MicronoteBatchFunding {
 
   public async getFundSettlements(
     batchSlug: string,
-    fundIds: number[],
+    fundIds: string[],
   ): Promise<ISidechainApiTypes['MicronoteBatch.getFundSettlement']['result']> {
     return await this.client.runRemote('MicronoteBatch.getFundSettlement', {
       fundIds,
@@ -279,7 +279,7 @@ export default class MicronoteBatchFunding {
     return promise.promise;
   }
 
-  public clearActiveFundsId(batchSlug: string, fundsId: number): void {
+  public clearActiveFundsId(batchSlug: string, fundsId: string): void {
     if (this.fundsByBatchSlug[batchSlug]?.activeFundsId === fundsId) {
       delete this.fundsByBatchSlug[batchSlug].activeFundsId;
     }
@@ -329,7 +329,7 @@ export default class MicronoteBatchFunding {
 }
 
 export type IMicronoteFund = {
-  fundsId: number;
+  fundsId: string;
   microgonsRemaining: number;
   allowedRecipientAddresses?: string[];
   recipientsKey?: string;

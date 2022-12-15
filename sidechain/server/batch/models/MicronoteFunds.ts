@@ -9,10 +9,11 @@ import {
 } from '@ulixee/payment-utils/lib/errors';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
 import { DbType } from '@ulixee/payment-utils/pg/PgPool';
+import { nanoid } from 'nanoid';
 import config from '../../config';
 
 export default class MicronoteFunds {
-  public id: number;
+  public id: string;
   private logger: IBoundLog;
   constructor(
     readonly client: PgClient<DbType.Batch>,
@@ -44,7 +45,7 @@ export default class MicronoteFunds {
   }
 
   public async holdTokens(
-    fundsId: number,
+    fundsId: string,
     microgons: number,
   ): Promise<{ guaranteeBlockHeight: number; microgonsRemaining: number }> {
     // NOTE: double check public key just for extra sanity
@@ -75,7 +76,7 @@ export default class MicronoteFunds {
     );
   }
 
-  public async returnHoldTokens(fundsId: number, microgons: number): Promise<boolean> {
+  public async returnHoldTokens(fundsId: string, microgons: number): Promise<boolean> {
     const { rowCount } = await this.client.query(
       `UPDATE micronote_funds SET 
       microgons_allocated = microgons_allocated - $2
@@ -90,12 +91,12 @@ export default class MicronoteFunds {
 
   public async find(microgons: number): Promise<{
     microgonsRemaining: number;
-    fundsId: number;
+    fundsId: string;
     redeemableWithAddresses?: string[];
   }> {
     const params = [this.clientAddress, microgons];
     const { rows: funds } = await this.client.query<{
-      fundsId: number;
+      fundsId: string;
       microgonsRemaining: number;
       redeemableWithAddresses?: string[];
     }>(
@@ -169,7 +170,9 @@ export default class MicronoteFunds {
     note: INote,
   ): Promise<IMicronoteFundsRecord> {
     const { fromAddress, centagons, noteHash, timestamp, guaranteeBlockHeight } = note;
-    return await client.insertWithId('micronote_funds', {
+    const id = nanoid(30);
+    return await client.insert<IMicronoteFundsRecord>('micronote_funds', {
+      id,
       address: fromAddress,
       noteHash,
       microgons: ArgonUtils.centagonsToMicrogons(centagons),
@@ -182,7 +185,7 @@ export default class MicronoteFunds {
 
   public static async findWithIds(
     client: PgClient<DbType.Batch>,
-    ids: number[],
+    ids: string[],
   ): Promise<IMicronoteFundsRecord[]> {
     if (!ids.length) return [];
     return await client.list(`select * from micronote_funds where id = ANY ($1)`, [ids]);
@@ -190,7 +193,7 @@ export default class MicronoteFunds {
 
   public static async verifyAllowedPaymentAddresses(
     client: PgClient<DbType.Batch>,
-    id: number,
+    id: string,
     addresses: string[],
   ): Promise<boolean> {
     const fund = await client.queryOne<Pick<IMicronoteFundsRecord, 'allowedRecipientAddresses'>>(
@@ -219,7 +222,7 @@ export default class MicronoteFunds {
 }
 
 export interface IMicronoteFundsRecord {
-  id: number;
+  id: string;
   address: string;
   noteHash?: Buffer;
   guaranteeBlockHeight: number;

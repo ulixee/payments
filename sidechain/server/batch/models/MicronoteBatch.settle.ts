@@ -75,7 +75,7 @@ export default class MicronoteBatchSettle {
 
     const { revenue } = await this.client.queryOne<{ revenue: bigint }>(`
        SELECT SUM(microgons_earned) as revenue
-       FROM micronote_recipients 
+       FROM micronote_disbursements 
        WHERE microgons_earned > 0`);
 
     const { micronotes, maxBlockHeight, minBlockHeight } = await this.client.queryOne<{
@@ -87,7 +87,7 @@ export default class MicronoteBatchSettle {
          MAX(block_height) as max_block_height, 
          MIN(block_height) as min_block_height
        FROM micronotes 
-         WHERE claimed_time is not null`);
+         WHERE has_settlements = true`);
 
     return {
       address: this.batchAddress,

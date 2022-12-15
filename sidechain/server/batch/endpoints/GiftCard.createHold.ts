@@ -46,7 +46,7 @@ export default new ApiHandler('GiftCard.createHold', {
       const hold = await giftCard.hold(microgons);
       return {
         holdId: hold.id,
-        giftCardBalance: balance,
+        remainingBalance: balance,
       };
     }, options);
   },

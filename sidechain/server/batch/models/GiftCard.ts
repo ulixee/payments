@@ -75,7 +75,7 @@ export default class GiftCard {
       microgonsDebited: -microgons,
       giftCardId: this.id,
       createdTime: new Date(),
-      settleTime: new Date(),
+      settledTime: new Date(),
     });
   }
 
@@ -103,10 +103,10 @@ export default class GiftCard {
       `select * from gift_card_transactions where id=$1 LIMIT 1 FOR UPDATE`,
       [holdId],
     );
-    if (transaction.settleTime) throw new ConflictError('This transaction was already settled');
+    if (transaction.settledTime) throw new ConflictError('This transaction was already settled');
 
     await this.client.update(
-      `update gift_card_transactions set microgons_debited=$2, settle_time=$3 where id=$1 and settle_time is null`,
+      `update gift_card_transactions set microgons_debited=$2, settled_time=$3 where id=$1 and settled_time is null`,
       [holdId, microgons, new Date()],
     );
   }
@@ -128,6 +128,6 @@ export interface IGiftCardTransactionRecord {
   microgonsDebited: number;
   holdTime?: Date;
   canceledTime?: Date;
-  settleTime?: Date;
+  settledTime?: Date;
   createdTime: Date;
 }

@@ -8,20 +8,15 @@ import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import { ConflictError } from '@ulixee/payment-utils/lib/errors';
 import MicronoteFunds from './MicronoteFunds';
 import config from '../../config';
-import { IMicronoteRecord } from './Micronote';
+import Micronote from './Micronote';
 import { bridgeToMain } from '../index';
 import { BridgeToMain } from '../../bridges';
-
-type IPartialMicronote = Pick<
-  IMicronoteRecord,
-  'id' | 'fundsId' | 'clientAddress' | 'microgonsAllocated' | 'createdTime'
->;
 
 export default class MicronoteBatchClose {
   private settlementFeeMicrogons = 0;
   private guaranteeBlockHeight = 0;
   private noteOutputs: INote[] = [];
-  private unclaimedNotes: IPartialMicronote[] = [];
+  private unfinalizedMicronoteIds: string[] = [];
   private missingHashes: Buffer[];
   private readonly closeTimestamp: Date;
   private readonly logger: IBoundLog;
@@ -44,7 +39,7 @@ export default class MicronoteBatchClose {
     }
 
     await this.findOrphanedFunding();
-    await this.refundUnclaimedNotes();
+    await this.refundMicronoteChange();
     await this.verifyMicronoteFundAllocation();
     await this.loadMicronotePayments();
     await this.loadFundingRefunds();
@@ -73,44 +68,47 @@ export default class MicronoteBatchClose {
     settlementFees: number;
     totalRevenue: bigint;
   }> {
-    const { funds, allocated } = await this.client.queryOne<{ funds: bigint; allocated: bigint }>(`
+    const { funds, allocated: allocatedFunds } = await this.client.queryOne<{
+      funds: bigint;
+      allocated: bigint;
+    }>(`
     SELECT SUM(microgons) as funds, SUM(microgons_allocated) as allocated 
        FROM micronote_funds`);
 
     const { revenue } = await this.client.queryOne<{ revenue: bigint }>(`
     SELECT SUM(microgons_earned) as revenue
-       FROM micronote_recipients 
+       FROM micronote_disbursements 
        WHERE microgons_earned > 0`);
 
     const { claims } = await this.client.queryOne<{ claims: bigint }>(`
-    SELECT count(1) as claims FROM micronotes 
-       WHERE claimed_time is not null`);
+    SELECT count(1) as claims FROM micronotes`);
 
     const settlementFees = config.micronoteBatch.settlementFeeMicrogons * Number(claims ?? 0);
 
-    const totalRevenue = BigInt(settlementFees) + BigInt(revenue ?? 0);
+    const distributionsAndFees = BigInt(settlementFees) + BigInt(revenue ?? 0);
 
     // double check that notes sum to allocated amounts
-    if (totalRevenue !== BigInt(allocated ?? 0)) {
+    if (distributionsAndFees !== BigInt(allocatedFunds ?? 0)) {
       this.logger.error('Total allocated microgons do not match the payouts', {
         funds,
-        totalFees: totalRevenue,
+        allocatedFunds,
+        distributionsAndFees,
       });
       throw new ConflictError('Total batch amounts allocated do NOT match note microgons paid out');
     }
     return {
       funds,
-      allocated,
+      allocated: allocatedFunds,
       revenue,
       settlementFees,
-      totalRevenue,
+      totalRevenue: distributionsAndFees,
     };
   }
 
   private async createSettlementFeeNote(): Promise<INote> {
-    const { claims } = await this.client.queryOne<{ claims: bigint }>(`
-    SELECT count(1) as claims FROM micronotes 
-       WHERE claimed_time is not null`);
+    const { claims } = await this.client.queryOne<{ claims: bigint }>(
+      `SELECT count(1) as claims FROM micronotes`,
+    );
 
     this.settlementFeeMicrogons =
       config.micronoteBatch.settlementFeeMicrogons * Number(claims || 0);
@@ -140,7 +138,7 @@ export default class MicronoteBatchClose {
         coalesce(sum(np.microgons_earned), 0) as microgons, 
         np.address as to_address, 
         max(e.guarantee_block_height) as guarantee_block_height
-      FROM micronote_recipients np
+      FROM micronote_disbursements np
         JOIN micronotes n on n.id = np.micronote_id
         JOIN micronote_funds e on e.id = n.funds_id
       GROUP BY np.address`);
@@ -289,23 +287,23 @@ export default class MicronoteBatchClose {
     await Promise.all(promises);
   }
 
-  private async refundUnclaimedNotes(): Promise<void> {
-    this.unclaimedNotes = await this.client.list(`
-      SELECT id, funds_id, client_address, 
-        microgons_allocated, created_time
+  private async refundMicronoteChange(): Promise<void> {
+    this.unfinalizedMicronoteIds = (
+      await this.client.list<{ id: string }>(`
+      SELECT id
       FROM micronotes 
-      WHERE claimed_time is null 
-       AND canceled_time is null`);
+      WHERE finalized_time is null 
+       AND canceled_time is null`)
+    ).map(x => x.id);
 
     // might not have any rows to update, so run a regular query
-    await this.client.query(`UPDATE micronotes set canceled_time = now() 
-       WHERE claimed_time is null 
+    await this.client.query(`UPDATE micronotes set finalized_time = now() 
+       WHERE finalized_time is null 
         AND canceled_time is null`);
 
-    const promises = this.unclaimedNotes.map(async note => {
-      const funding = new MicronoteFunds(this.client, this.batchAddress.bech32, note.clientAddress);
-      return await funding.returnHoldTokens(note.fundsId, note.microgonsAllocated);
-    });
+    const promises = this.unfinalizedMicronoteIds.map(id =>
+      new Micronote(this.client, null, id).returnChange(this.batchAddress.bech32),
+    );
     await Promise.all(promises);
   }
 

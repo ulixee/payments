@@ -1,5 +1,6 @@
 import { IBlockSettings } from '@ulixee/specification';
 import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
+import { nanoid } from 'nanoid';
 import BlockManager from '../main/lib/BlockManager';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
 import { mockGenesisTransfer, start, stop } from './_setup';
@@ -53,7 +54,7 @@ test('should be able to fund a micronote batch', async () => {
   const batches = await client.micronoteBatchFunding.getActiveBatches();
 
   const { fundsId } = await client.micronoteBatchFunding.fundBatch(batches.micronote[0], 100);
-  expect(fundsId).toBeGreaterThan(0);
+  expect(fundsId).toBeTruthy();
 
   const micronoteBatchDb = await MicronoteBatchDb.get(batches.micronote[0].batchSlug);
   await mainDb.transaction(async dbClient => {
@@ -83,13 +84,13 @@ test('should not allow a consumer to initiate a note if they do not have enough 
   const batch = await MicronoteBatchManager.get();
   const micronoteBatchDb = await MicronoteBatchDb.get(batch.slug);
   await micronoteBatchDb.query(
-    'insert into micronote_funds (address, note_hash,' +
-      ' microgons, microgons_allocated, guarantee_block_height) values ($1,$2,$3,$4,0)',
-    [client.address, Buffer.from('hash'), 80, 70],
+    'insert into micronote_funds (id, address, note_hash,' +
+      ' microgons, microgons_allocated, guarantee_block_height) values ($1,$2,$3,$4,$5,0)',
+    [nanoid(30), client.address, Buffer.from('hash'), 80, 70],
   );
 
   try {
-    const funds = await client.micronoteBatchFunding.fundBatch(batches.micronote[0], 50);
+    await client.micronoteBatchFunding.fundBatch(batches.micronote[0], 50);
   } catch (err) {
     expect(err.code).toBe('ERR_NEEDS_BATCH_FUNDING');
   }

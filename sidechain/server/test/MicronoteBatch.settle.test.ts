@@ -1,5 +1,5 @@
 import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
-import { IBlockSettings , NoteType } from '@ulixee/specification';
+import { IBlockSettings, NoteType } from '@ulixee/specification';
 import { nanoid } from 'nanoid';
 import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
 import PgPool, { DbType } from '@ulixee/payment-utils/pg/PgPool';
@@ -13,7 +13,7 @@ import MainDb from '../main/db';
 import { cleanDb, mockGenesisTransfer, start, stop } from './_setup';
 import Client from './_TestClient';
 import { IMicronoteFundsRecord } from '../batch/models/MicronoteFunds';
-import { IMicronoteRecipientsRecord, IMicronoteRecord } from '../batch/models/Micronote';
+import { IMicronoteDisbursementssRecord, IMicronoteRecord } from '../batch/models/Micronote';
 import BatchDb from '../batch/db';
 
 let batchDb: PgPool<DbType.Batch>;
@@ -79,10 +79,11 @@ test('should not allow a micronote batch to submit a close request that would re
   await MainDb.query(`DROP DATABASE ${BatchDb.getName(batch.slug)}`);
 }, 10000);
 
-test('should allow a micronote batch to close', async () => {
+test('should allow a micronote batch to settle', async () => {
   const startBalance = await MainDb.transaction(c =>
     RegisteredAddress.getBalance(c, batch.data.address),
   );
+  fundCounter = 0;
   expect(startBalance.toString()).toBe('0');
 
   const batchClient = new Client(batch.credentials.identity);
@@ -146,15 +147,17 @@ const createLedgerOutput = (wallet: Client, centagons, guaranteeBlockHeight = 0)
     const id = `note${counter++}`;
     await x.insert<IMicronoteRecord>('micronotes', {
       blockHeight: 1,
-      claimedTime: new Date(),
+      lockedTime: new Date(),
       clientAddress: wallet.address,
-      fundsId: 1,
+      fundsId: '1'.padEnd(30, '0'),
       nonce: Buffer.from('nonce'),
       microgonsAllocated: Math.ceil(ArgonUtils.centagonsToMicrogons(centagons) / 0.8),
       isAuditable: true,
+      hasSettlements: true,
       id,
+      holdAuthorizationCode: '1',
     });
-    await x.insert<IMicronoteRecipientsRecord>('micronote_recipients', {
+    await x.insert<IMicronoteDisbursementssRecord>('micronote_disbursements', {
       createdTime: new Date(),
       microgonsEarned: Math.ceil(ArgonUtils.centagonsToMicrogons(centagons) / 0.8) - 10,
       micronoteId: id,
@@ -164,14 +167,16 @@ const createLedgerOutput = (wallet: Client, centagons, guaranteeBlockHeight = 0)
   });
 };
 
+let fundCounter = 0;
 const createWalletMicronoteFunds = (wallet, microgons, allocated) => {
-  const record: Partial<IMicronoteFundsRecord> = {
-    address: wallet.address,
-    noteHash: sha3(nanoid()),
-    microgons,
-    microgonsAllocated: allocated,
-    guaranteeBlockHeight: 0,
-  };
-
-  return batchDb.transaction(x => x.insert('micronote_funds', record));
+  return batchDb.transaction(x =>
+    x.insert<IMicronoteFundsRecord>('micronote_funds', {
+      id: `${(fundCounter += 1)}`.padEnd(30, '0'),
+      address: wallet.address,
+      noteHash: sha3(nanoid()),
+      microgons,
+      microgonsAllocated: allocated,
+      guaranteeBlockHeight: 0,
+    }),
+  );
 };
