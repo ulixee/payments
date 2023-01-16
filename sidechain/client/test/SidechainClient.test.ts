@@ -24,14 +24,18 @@ const mock = {
   },
 };
 
-let batchSlug = 'micro_12345123';
+let batchSlug = 'ABCDEF12345123';
 let batchOverrides: ISidechainInfoApis['Sidechain.openBatches']['result']['micronote'];
 let counter = 0;
 beforeAll(() => {
   mock.Identity.verify.mockImplementation(() => true);
 
   mock.MicronoteBatchFunding.fundBatch.mockImplementation(async function (batch, centagons) {
-    return this.recordBatchFund('0'.padEnd(30, '0'), ArgonUtils.centagonsToMicrogons(centagons), batch);
+    return this.recordBatchFund(
+      '0'.padEnd(30, '0'),
+      ArgonUtils.centagonsToMicrogons(centagons),
+      batch,
+    );
   });
 
   mock.connectionToCore.sendRequest.mockImplementation(async ({ command }) => {
@@ -56,7 +60,7 @@ beforeAll(() => {
     if (command === 'Micronote.create') {
       counter += 1;
       if (counter === 404) {
-        batchSlug = 'micro_12345126';
+        batchSlug = 'ABCDEF12345126';
         throw new RemoteError({
           code: 'ERR_NOT_FOUND',
         });
@@ -91,7 +95,7 @@ test('should fund a micronote batch if needed', async () => {
   expect(mock.connectionToCore.sendRequest).toHaveBeenCalledTimes(3);
   expect(mock.MicronoteBatchFunding.fundBatch).toHaveBeenCalledTimes(1);
   expect(note.id).toEqual(Buffer.from('micronoteId'));
-  expect(note.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345123');
+  expect(note.micronoteBatchUrl).toBe('https://nobody.nil/ABCDEF12345123');
   expect(note.sidechainIdentity).toEqual(sha3('ledgerIdentity'));
 });
 
@@ -102,14 +106,14 @@ test('should reuse a current micronote batch fund if one is set', async () => {
   const sidechain = new SidechainClient('https://nobody.nil/', { address });
   counter = 0;
   const note = await sidechain.createMicronote(10);
-  expect(note.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345123');
+  expect(note.micronoteBatchUrl).toBe('https://nobody.nil/ABCDEF12345123');
   expect(mock.MicronoteBatchFunding.fundBatch).toHaveBeenCalledTimes(1);
 
   // should re-use the current micronoteBatch if one is set
   const note2 = await sidechain.createMicronote(20);
   // should have only created one micronoteBatch
   expect(mock.MicronoteBatchFunding.fundBatch).toHaveBeenCalledTimes(1);
-  expect(note2.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345123');
+  expect(note2.micronoteBatchUrl).toBe('https://nobody.nil/ABCDEF12345123');
 });
 
 test('should rotate batches when one is stopping accepting notes', async () => {
@@ -118,9 +122,8 @@ test('should rotate batches when one is stopping accepting notes', async () => {
   batchOverrides = [
     {
       batchHost: 'http://123.com',
-      isGiftCardBatch: false,
       micronoteBatchAddress: 'ar1',
-      batchSlug: 'micro_12345125',
+      batchSlug: 'ABCDEF12345125',
       minimumFundingCentagons: 100n,
       micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
       sidechainIdentity: encodeBuffer(sha3('ledgerIdentity'), 'id'),
@@ -130,9 +133,8 @@ test('should rotate batches when one is stopping accepting notes', async () => {
     },
     {
       batchHost: 'http://123.com',
-      isGiftCardBatch: false,
       micronoteBatchAddress: 'ar1',
-      batchSlug: 'micro_12345126',
+      batchSlug: 'ABCDEF12345126',
       minimumFundingCentagons: 100n,
       micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f9',
       sidechainIdentity: encodeBuffer(sha3('ledgerIdentity2'), 'id'),
@@ -145,7 +147,7 @@ test('should rotate batches when one is stopping accepting notes', async () => {
   const sidechain = new SidechainClient('https://nobody.nil/', { address });
   counter = 0;
   const note = await sidechain.createMicronote(10);
-  expect(note.micronoteBatchUrl).toBe('http://123.com/micro_12345125');
+  expect(note.micronoteBatchUrl).toBe('http://123.com/ABCDEF12345125');
 
   // @ts-expect-error
   sidechain.micronoteBatchFunding.activeBatchesPromise.value.resolved.micronote[0].stopNewNotesTime =
@@ -153,7 +155,7 @@ test('should rotate batches when one is stopping accepting notes', async () => {
 
   const note2 = await sidechain.createMicronote(11);
   // new host path
-  expect(note2.micronoteBatchUrl).toBe('http://123.com/micro_12345126');
+  expect(note2.micronoteBatchUrl).toBe('http://123.com/ABCDEF12345126');
 });
 
 test('should handle a failing/shutting down micronoteBatch', async () => {
@@ -163,12 +165,12 @@ test('should handle a failing/shutting down micronoteBatch', async () => {
   const sidechain = new SidechainClient('https://nobody.nil/', { address });
   counter = 0;
   const note = await sidechain.createMicronote(10);
-  expect(note.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345123');
+  expect(note.micronoteBatchUrl).toBe('https://nobody.nil/ABCDEF12345123');
 
   counter = 403;
   const note2 = await sidechain.createMicronote(11);
   // new host path
-  expect(note2.micronoteBatchUrl).toBe('https://nobody.nil/micro_12345126');
+  expect(note2.micronoteBatchUrl).toBe('https://nobody.nil/ABCDEF12345126');
 });
 
 test('should only create a new micronote fund if funds are exhausted', async () => {
@@ -187,11 +189,14 @@ test('should only create a new micronote fund if funds are exhausted', async () 
   let microgonsRemaining = 80;
   const batch = {
     batchSlug,
-    isGiftCardBatch: false,
   } as IMicronoteBatch;
   mock.MicronoteBatchFunding.fundBatch.mockImplementation(async function (_, centagons) {
     microgonsRemaining = ArgonUtils.centagonsToMicrogons(centagons);
-    await this.recordBatchFund(`${counter}`.padEnd(30, '0'), ArgonUtils.centagonsToMicrogons(centagons), batch);
+    await this.recordBatchFund(
+      `${counter}`.padEnd(30, '0'),
+      ArgonUtils.centagonsToMicrogons(centagons),
+      batch,
+    );
     await new Promise(resolve => setTimeout(resolve, 200));
     return { fundsId: `${counter}`.padEnd(30, '0'), batchSlug, microgonsRemaining };
   });

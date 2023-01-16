@@ -40,15 +40,13 @@ Sidechains have the following attributes:
 - *Deflationary*: sidechains are required to burn a percent of micro transactions to reduce the supply of currency.
 - *USDC-backed*: sidechains are (at least in phase 1) completely backed by USDC holdings.
 - *Multisig support*: supporting the same multisig properties as the Mainchain.
-- *Gift card support*: sidechains support a version of a "testnet" used by Ulixee Databoxes that allow an Address holder to create "payments" that will not settle back to real currency. A Databox and/or Ulixee miner must opt into allowing gift cards.
-
+-
 ### Sidechain Concepts
 - *Address*: a holding location for currency
 - *Note*: like a bank note, Notes are transfers of currency between Addresses. Denomination: Centagons.
 - *MicronoteBatch*: batches are short duration servers that allow for a high volume of micro transactions that are bundled together for settlement. This mechanism allows for a horizontally scalable system, as many batches can exist concurrently. Batches allow funds to be transferred in using signed Notes, and Micronote transacions are created in a batch to allow for tiny transfers of value.
 - *Micronote*: a reserved amount for a variable price data query. The resulting "Payment" is a signed packet containing verification of funds, verification of Sidechain authority, and verification of MicronoteBatch validity.
 - *MicronoteBatchFund*: funding transferred into a MicronoteBatch from the Note ledger. Unused funds will be transferred back to source Addresses when a batch is settled.
-- *GiftCards*: gift cards operate in a specialized MicronoteBatch that never settles back to the Notes ledger. They allow a Developer to issue gift cards to "try" out their Databoxes in a trustless manner.
 
 _For Future Use_
 - *Stake*: put up money to claim authoriation to be an node the decentralized network. This is a security deposit that can be taken if a node fails to follow network rules.
@@ -64,5 +62,5 @@ Below are brief overviews of the current structure:
   - *client*: an api client for accessing Mainchain data elements, creating transactions, etc.
   - *block-utils*: features for calculating block closing, determing block nonce difficulty, etc.
 * *sidechain*: 
-  - *server*: a Postres based Sidechain server capable of generating the full lifecycle of Micronote Batches. The code is structured so that Gift Cards, MicronoteBatches and the Notes ledger can eventually be run on separate servers.
+  - *server*: a Postresql based Sidechain server capable of generating the full lifecycle of Micronote Batches. The code is structured so that MicronoteBatches and the Notes ledger can eventually be run on separate servers.
   - *client*: a client usable by CLI and Data queriers to use the various Sidechain features.

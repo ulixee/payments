@@ -96,7 +96,6 @@ CREATE INDEX idx_unsettled_funding_transfers_out on funding_transfers_out (trans
 CREATE TABLE micronote_batches (
   address varchar(64) PRIMARY KEY,
   slug varchar(14) NOT NULL,
-  type varchar(10) NOT NULL,
   private_key bytea NOT NULL, -- TODO: move to a vault at some point
   open_time timestamp NOT NULL DEFAULT NOW(),
   stop_new_notes_time timestamp NULL,

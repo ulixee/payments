@@ -1,6 +1,6 @@
 import Log from '@ulixee/commons/lib/Logger';
 import * as moment from 'moment';
-import { NotFoundError , InsufficientFundsError } from '@ulixee/payment-utils/lib/errors';
+import { InsufficientFundsError, NotFoundError } from '@ulixee/payment-utils/lib/errors';
 import { ITransactionOptions } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
 import RegisteredAddress from '../models/RegisteredAddress';
@@ -10,13 +10,10 @@ import MainDb from '../db';
 import Note from '../models/Note';
 import MicronoteBatchOutput from '../models/MicronoteBatchOutput';
 import { BridgeToBatch } from '../../bridges';
-import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 const { log } = Log(module);
 
 export default class MicronoteBatchManager {
-  public static giftCardBatch: MicronoteBatch;
-
   private static logger = log.createChild(module, { action: 'MicronoteBatchManager' });
   private static batchesBySlug = new Map<string, MicronoteBatch>();
   private static refreshInterval: NodeJS.Timeout;
@@ -56,7 +53,7 @@ export default class MicronoteBatchManager {
     while (counterNeeded > 0) {
       await MainDb.transaction(
         async client => {
-          const batch = await MicronoteBatch.create(client, MicronoteBatchType.Micronote);
+          const batch = await MicronoteBatch.create(client);
 
           const dbName = BatchDb.getName(batch.slug);
           await MainDb.query(`CREATE DATABASE ${dbName}`);
@@ -72,30 +69,9 @@ export default class MicronoteBatchManager {
       );
       counterNeeded -= 1;
     }
-
-    if (!this.giftCardBatch) {
-      await MainDb.transaction(
-        async client => {
-          const batch = await MicronoteBatch.create(client, MicronoteBatchType.GiftCard);
-
-          const dbName = BatchDb.getName(batch.slug);
-          await MainDb.query(`CREATE DATABASE ${dbName}`);
-
-          await BatchDb.createDb(batch.slug, this.logger);
-          this.updateCached(batch);
-          this.logger.info('MicronoteGiftCards.open', {
-            openTime: batch.data.openTime,
-            slug: batch.slug,
-          });
-        },
-        { logger: this.logger },
-      );
-    }
   }
 
   public static get(slug?: string): MicronoteBatch {
-    if (slug === this.giftCardBatch?.slug) return this.giftCardBatch;
-
     let batchSlug = slug;
 
     // if no slug provided, find newest one
@@ -131,9 +107,6 @@ export default class MicronoteBatchManager {
     }, txOptions);
 
     for (const pendingBatch of this.batchesBySlug.values()) {
-      // do not settle or close giftCard batches
-      if (pendingBatch.data.type === MicronoteBatchType.GiftCard) continue;
-
       if (pendingBatch.shouldClose) {
         await this.closeBatch(pendingBatch.address, txOptions);
       }
@@ -154,10 +127,6 @@ export default class MicronoteBatchManager {
   }
 
   private static updateCached(batch: MicronoteBatch): void {
-    if (batch.data.type === MicronoteBatchType.GiftCard) {
-      this.giftCardBatch = batch;
-      return;
-    }
     // record cache
     if (batch.isSettled) {
       this.batchesBySlug.delete(batch.slug);
@@ -196,11 +165,6 @@ export default class MicronoteBatchManager {
       if (batch.isSettled) {
         client.logger.warn('Not settling micronoteBatch. Already settled.');
         return batch.data;
-      }
-      if (batch.data.type === MicronoteBatchType.GiftCard) {
-        throw new Error(
-          'Attempted to settle a gift card batch!! Gift card batches cannot write to the ledger.',
-        );
       }
 
       // lock wallet on ledger

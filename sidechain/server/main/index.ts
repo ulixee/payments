@@ -16,7 +16,6 @@ export default class SidechainMain {
   static async info(): Promise<any> {
     return {
       micronoteBatches: MicronoteBatchManager.getOpenBatches().map(batch => batch.getNoteParams()),
-      giftCardBatch: MicronoteBatchManager.giftCardBatch?.getNoteParams(),
       blockSettings: await BlockManager.settings,
     };
   }

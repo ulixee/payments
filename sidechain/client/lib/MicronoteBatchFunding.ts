@@ -264,7 +264,7 @@ export default class MicronoteBatchFunding {
 
     try {
       const batches = await this.client.runRemote('Sidechain.openBatches', undefined);
-      for (const batch of batches.micronote.concat([batches.giftCard])) {
+      for (const batch of batches.micronote) {
         if (!batch) continue;
         this.fundsByBatchSlug[batch.batchSlug] ??= { fundsById: {} };
         this.verifyBatch(batch);

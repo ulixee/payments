@@ -97,12 +97,6 @@ export async function stop() {
     for (const batch of MicronoteBatchManager.batchesBySlug.values()) {
       await queryWithRootDb(`DROP DATABASE ${MicronoteBatchDb.getName(batch.slug)} WITH (FORCE);`);
     }
-    const giftCardSlug = MicronoteBatchManager.giftCardBatch?.slug;
-    if (giftCardSlug) {
-      await queryWithRootDb(
-        `DROP DATABASE ${MicronoteBatchDb.getName(giftCardSlug)} WITH (FORCE);`,
-      );
-    }
   } catch (err) {
     if (!(err instanceof NotFoundError)) {
       logger.info('ERROR stopping service', err);

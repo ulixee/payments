@@ -3,7 +3,6 @@ import Address from '@ulixee/crypto/lib/Address';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { mockGenesisTransfer, start, stop } from './_setup';
 import MicronoteBatchManager from '../main/lib/MicronoteBatchManager';
-import MicronoteBatchType from '../interfaces/MicronoteBatchType';
 import MicronoteBatch from '../main/models/MicronoteBatch';
 import MicronoteBatchDb from '../batch/db';
 import mainDb from '../main/db';
@@ -40,7 +39,6 @@ test('should get batches back in order of closing time', async () => {
           address: 'arg1010',
           slug: '1010',
           privateKey: 'private key',
-          type: MicronoteBatchType.Micronote,
           openTime: moment().add(-5, 'hours').toDate(),
           plannedClosingTime: moment().add(1, 'hours').toDate(),
           stopNewNotesTime: moment().add(30, 'minutes').toDate(),
@@ -56,7 +54,6 @@ test('should get batches back in order of closing time', async () => {
           address: 'arg1011',
           slug: '1011',
           privateKey: 'private key',
-          type: MicronoteBatchType.Micronote,
           openTime: moment().add(-5, 'hours').toDate(),
           plannedClosingTime: moment().add(4, 'hours').toDate(),
           stopNewNotesTime: moment().add(3, 'hours').toDate(),
@@ -66,7 +63,7 @@ test('should get batches back in order of closing time', async () => {
     );
   });
 
-  expect(MicronoteBatchManager.getOpenBatches().map(x=>x.slug)).toEqual(['1011', '1010'])
+  expect(MicronoteBatchManager.getOpenBatches().map(x => x.slug)).toEqual(['1011', '1010']);
 });
 
 test('should return the micronoteBatch with the most time left', async () => {
@@ -82,7 +79,6 @@ test('should return the micronoteBatch with the most time left', async () => {
           address: 'arg1010',
           slug: '1010',
           privateKey: 'private key',
-          type: MicronoteBatchType.Micronote,
           openTime: moment().add(-5, 'hours').toDate(),
           plannedClosingTime: moment().add(4, 'hours').toDate(),
           stopNewNotesTime: moment().add(3, 'hours').toDate(),
@@ -121,7 +117,6 @@ test('should return the micronoteBatch with the most time left', async () => {
           address: 'arg1011',
           slug: '1011',
           privateKey: 'private key',
-          type: MicronoteBatchType.Micronote,
           openTime: moment().add(-5, 'hours').toDate(),
           plannedClosingTime: moment().add(4, 'hours').toDate(),
           stopNewNotesTime: moment().add(1, 'hours').toDate(),
@@ -142,7 +137,6 @@ test('should return the micronoteBatch with the most time left', async () => {
           address: 'arg2020',
           slug: '1011',
           privateKey: 'private key',
-          type: MicronoteBatchType.Micronote,
           openTime: moment().add(-6, 'hours').toDate(),
           plannedClosingTime: moment().add(4, 'hours').toDate(),
           stopNewNotesTime: moment().add(2, 'hours').toDate(),

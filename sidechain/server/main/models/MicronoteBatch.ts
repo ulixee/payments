@@ -9,7 +9,6 @@ import PgClient from '@ulixee/payment-utils/pg/PgClient';
 import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
 import IBatchState from '../../interfaces/IBatchState';
-import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
 
 const batchOpenMinutes = config.micronoteBatch.openMinutes;
 const stopNotesMinsBeforeClose = config.micronoteBatch.stopNewNotesMinsBeforeClose;
@@ -63,10 +62,6 @@ export default class MicronoteBatch implements IBatchState {
     return this.isClosed === false && this.data.stopNewNotesTime > new Date();
   }
 
-  public get type(): MicronoteBatchType {
-    return this.data?.type;
-  }
-
   public data?: IMicronoteBatchRecord;
   public credentials: {
     address: Address;
@@ -97,7 +92,6 @@ export default class MicronoteBatch implements IBatchState {
     return {
       batchHost: config.baseUrl,
       batchSlug: this.slug,
-      isGiftCardBatch: this.data.type === MicronoteBatchType.GiftCard,
       plannedClosingTime: this.plannedClosingTime,
       stopNewNotesTime: this.data.stopNewNotesTime,
       minimumFundingCentagons: config.micronoteBatch.minimumFundingCentagons,
@@ -151,14 +145,9 @@ export default class MicronoteBatch implements IBatchState {
 
   public static async create(
     client: PgClient<DbType.Main>,
-    type: MicronoteBatchType,
   ): Promise<MicronoteBatch> {
-    let plannedClose = moment().add(batchOpenMinutes, 'minutes');
-    let stopNotes = moment(plannedClose).subtract(stopNotesMinsBeforeClose, 'minutes');
-    if (type === MicronoteBatchType.GiftCard) {
-      plannedClose = null;
-      stopNotes = null;
-    }
+    const plannedClose = moment().add(batchOpenMinutes, 'minutes');
+    const stopNotes = moment(plannedClose).subtract(stopNotesMinsBeforeClose, 'minutes');
     const identity = await Identity.create();
     const address = Address.createFromSigningIdentities([identity], {
       signerTypes: [UniversalSigner],
@@ -166,8 +155,7 @@ export default class MicronoteBatch implements IBatchState {
       claimSignatureSettings: 1,
     });
 
-    const prefix = type === MicronoteBatchType.GiftCard ? 'gifts' : 'micro';
-    const slug = `${prefix}_${identity.publicKey.toString('hex').substring(0, 8)}`;
+    const slug = `${identity.publicKey.toString('hex').substring(0, 14)}`;
 
     const batch = new MicronoteBatch(
       client,
@@ -176,7 +164,6 @@ export default class MicronoteBatch implements IBatchState {
         address: address.bech32,
         privateKey: identity.export(),
         openTime: new Date(),
-        type,
         plannedClosingTime: plannedClose?.toDate(),
         stopNewNotesTime: stopNotes?.toDate(),
       },
@@ -217,7 +204,6 @@ export default class MicronoteBatch implements IBatchState {
 export interface IMicronoteBatchRecord {
   address: string;
   slug: string;
-  type: MicronoteBatchType;
   privateKey: string;
   openTime: Date;
   plannedClosingTime: Date;

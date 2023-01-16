@@ -73,24 +73,3 @@ CREATE TABLE note_outputs (
   signature json NOT NULL,
   guarantee_block_height integer NOT NULL
 );
-
-CREATE TABLE gift_cards (
-  id varchar(12) PRIMARY KEY,
-  issued_microgons integer NOT NULL CHECK (issued_microgons > 0),
-  redemption_key varchar(64) NOT NULL,
-  issuer_identities varchar(64) ARRAY NOT NULL,
-  issuer_signatures BYTEA ARRAY NOT NULL,
-  last_updated_time timestamp NOT NULL DEFAULT NOW(),
-  created_time timestamp NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE gift_card_transactions (
-  id varchar(32) PRIMARY KEY,
-  gift_card_id varchar(12) REFERENCES gift_cards(id),
-  microgons_debited integer NOT NULL,
-  hold_time timestamp NULL,
-  canceled_time timestamp NULL,
-  settled_time timestamp NULL,
-  created_time timestamp NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_gift_card_transaction_card_id on gift_card_transactions (gift_card_id);
