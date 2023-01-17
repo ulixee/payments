@@ -1,5 +1,5 @@
 import { sha3 } from '@ulixee/commons/lib/hashUtils';
-import { IBlockSettings , NoteType } from '@ulixee/specification';
+import { IBlockSettings, NoteType } from '@ulixee/specification';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
 import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../config';
@@ -9,7 +9,6 @@ import SidechainSecurities from '../main/lib/SidechainSecurities';
 import RegisteredAddress from '../main/models/RegisteredAddress';
 import FundingTransferOut from '../main/models/FundingTransferOut';
 import MainchainBlock, { IMainchainBlockRecord } from '../main/models/MainchainBlock';
-import MicronoteBatchType from '../interfaces/MicronoteBatchType';
 import MicronoteBatch from '../main/models/MicronoteBatch';
 import MicronoteBatchOutput from '../main/models/MicronoteBatchOutput';
 import Note from '../main/models/Note';
@@ -222,7 +221,7 @@ test('should handle burn transactions across forks', async () => {
 
     const block4 = await createBlock(client, '4', 4, false, '3');
 
-    const batch = await MicronoteBatch.create(client, MicronoteBatchType.Micronote);
+    const batch = await MicronoteBatch.create(client);
     const noteData = await Note.addSignature(
       {
         centagons: 250n,

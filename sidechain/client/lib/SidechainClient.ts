@@ -20,7 +20,6 @@ import { ClientValidationError } from './errors';
 import ConnectionToSidechainCore from './ConnectionToSidechainCore';
 import MicronoteBatchFunding from './MicronoteBatchFunding';
 import IMicronote from '../interfaces/IMicronote';
-import GiftCards from './GiftCards';
 import env from '../env';
 
 const isDebug = process.env.ULX_DEBUG ?? false;
@@ -48,7 +47,6 @@ export default class SidechainClient implements IPaymentProvider {
   public readonly host: string;
 
   public readonly micronoteBatchFunding: MicronoteBatchFunding;
-  public readonly giftCards: GiftCards;
 
   protected readonly connectionToCore: ConnectionToSidechainCore;
   private settingsPromise: Promise<ISidechainApiTypes['Sidechain.settings']['result']>;
@@ -71,7 +69,6 @@ export default class SidechainClient implements IPaymentProvider {
     } else {
       this.connectionToCore = ConnectionToSidechainCore.remote(host);
     }
-    this.giftCards = new GiftCards(this);
     this.micronoteBatchFunding = new MicronoteBatchFunding({
       address: this.address,
       buildNote: this.buildNote.bind(this),
@@ -114,10 +111,8 @@ export default class SidechainClient implements IPaymentProvider {
 
   public async createMicroPayment(pricing: {
     microgons: number;
-    giftCardIssuerIdentities?: string[];
   }): Promise<IPayment & { onFinalized(result: { microgons: number; bytes: number }): void }> {
     pricing.microgons ??= 0;
-    const { giftCardIssuerIdentities } = pricing;
 
     const settings = await this.getSettings(true);
 
@@ -125,19 +120,6 @@ export default class SidechainClient implements IPaymentProvider {
 
     let microgons = pricing.microgons;
     if (settings.settlementFeeMicrogons) microgons += settings.settlementFeeMicrogons;
-
-    const giftCard = await this.giftCards.find(microgons, giftCardIssuerIdentities);
-    if (giftCard) {
-      const finalize = this.giftCards.recordSpend.bind(this.giftCards, giftCard.giftCardId);
-      return {
-        giftCard: {
-          id: giftCard.giftCardId,
-          sidechainIdentity: giftCard.sidechainIdentity,
-          redemptionKey: giftCard.redemptionKey,
-        },
-        onFinalized: finalize,
-      };
-    }
 
     const { id: micronoteId, ...micronote } = await this.createMicronote(microgons);
 
@@ -354,6 +336,7 @@ export default class SidechainClient implements IPaymentProvider {
         args = await SidechainApiSchema[command].args.parseAsync(args);
       }
     } catch (error) {
+      console.error(args, error);
       const errors = error.issues.map(x => `"${x.path.join('.')}": ${x.message}`);
       throw new ClientValidationError(command, errors);
     }

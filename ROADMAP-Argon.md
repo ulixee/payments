@@ -27,7 +27,7 @@ Most of these features will be pulled from Ulixee 1.0, but they will require som
 
 - The Purple Book (Summary of Commentary on Current Economic Conditions)
   This is an iterative idea based on the U.S. Federal Reserve’s Beige Book, but instead of being published eight times a year, the Argon Book will be published nightly. It will start as a one-page dashboard showing:
-[x] Current CPI value being used by Argon (will use a Databox we deploy to AWS)
+[x] Current CPI value being used by Argon (will use a Datastore we deploy to AWS)
 [x] Total Argons in circulation
 [x] Total assets backing the Argon (along with on-chain proof).
 [x] Yesterday’s Daily Burn

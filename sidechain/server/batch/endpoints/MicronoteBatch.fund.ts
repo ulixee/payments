@@ -1,9 +1,9 @@
-import { MicronoteBatchClosedError, NewNotesNotBeingAcceptedError , InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
+import { MicronoteBatchClosedError, NewNotesNotBeingAcceptedError } from '@ulixee/payment-utils/lib/errors';
 import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import { ActiveBatches, bridgeToMain } from '..';
 import MicronoteFunds from '../models/MicronoteFunds';
 import BatchDb from '../db';
-import MicronoteBatchType from '../../interfaces/MicronoteBatchType';
+
 
 /**
  * An micronote batch service will register with the central ledger on boot.
@@ -19,13 +19,6 @@ export default new ApiHandler('MicronoteBatch.fund', {
     }
     if (batch.isAllowingNewNotes === false) {
       throw new NewNotesNotBeingAcceptedError();
-    }
-
-    if (batch.type === MicronoteBatchType.GiftCard) {
-      throw new InvalidParameterError(
-        "You're trying to fund a gift card batch with a Note. You need to use a Micronote batch.",
-        'batchSlug',
-      );
     }
 
     const batchDb = BatchDb.get(batchSlug);
