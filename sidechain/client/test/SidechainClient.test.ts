@@ -300,6 +300,7 @@ test('should only get funds one at a time', async () => {
         micronote: [
           {
             batchSlug,
+            minimumFundingCentagons: 1n,
             micronoteBatchIdentity:
               '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
             micronoteBatchAddress: encodeBuffer(Buffer.from(sha3('12234')), 'ar'),

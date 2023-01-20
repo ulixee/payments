@@ -142,13 +142,16 @@ export default class SidechainClient implements IPaymentProvider {
    * To allocate tokens to a note, you must create an micronoteBatch on a Ulixee fast token micronoteBatch service.
    */
   public async createMicronote(
-    microgons: number,
+    microgons: number | bigint,
     recipientAddresses?: string[],
     isAuditable = true,
     tries = 0,
   ): Promise<IMicronote> {
     if (tries >= 5) {
       throw new Error('Could not create new Micronote after 5 retries');
+    }
+    if (typeof microgons === 'bigint') {
+      microgons = Number(microgons);
     }
 
     const funds = await this.micronoteBatchFunding.reserveFunds(microgons, recipientAddresses);
@@ -336,7 +339,11 @@ export default class SidechainClient implements IPaymentProvider {
         args = await SidechainApiSchema[command].args.parseAsync(args);
       }
     } catch (error) {
-      console.error(args, error);
+      log.error('Validation error running remote API', {
+        error,
+        args,
+        sessionId: null,
+      });
       const errors = error.issues.map(x => `"${x.path.join('.')}": ${x.message}`);
       throw new ClientValidationError(command, errors);
     }
