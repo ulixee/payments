@@ -31,7 +31,7 @@ test('should inform the user if the minimum micronoteBatch cannot be created', a
   await client.runSignedByAddress('Micronote.create', {
     batchSlug: batches.micronote[0].batchSlug,
     address: client.address,
-    microgons: ArgonUtils.parseUnits('99c', 'microgons'),
+    microgons: Number(ArgonUtils.parseUnits('99c', 'microgons')),
     fundsId: funds.fundsId,
   });
   try {
