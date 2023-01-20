@@ -15,9 +15,8 @@ export default class ArgonUtils {
     let value = BigInt(units.substring(0, units.length - 1));
     if (output === 'microgons') {
       if (units.endsWith('c')) value = BigInt(this.centagonsToMicrogons(value));
-      if (units.endsWith('a')) {
-        value = this.centagonsToArgons(value) * this.CentagonsPerArgon;
-      }
+      if (units.endsWith('a')) value = this.microgonsToArgons(value);
+
       return value;
     }
 
@@ -34,23 +33,45 @@ export default class ArgonUtils {
     return value;
   }
 
-  static format(value: number, units: 'centagons' | 'microgons' | 'argons'): string {
-    if (units === 'microgons') {
-      let amount = `${value}m`;
-      if (value % Number(this.MicrogonsPerCentagon) === 0) {
-        amount = `${this.microgonsToCentagons(value).toString()}c`;
-      }
-      if (value % Number(this.MicrogonsPerCentagon * this.CentagonsPerArgon) === 0) {
-        amount = `${this.microgonsToRoundedArgons(value)}₳`;
-      }
-      return amount;
+  static format(
+    value: number | bigint,
+    fromUnits: 'centagons' | 'microgons' | 'argons',
+    toUnits?: 'centagons' | 'microgons' | 'argons',
+  ): string {
+    if (typeof value === 'number') {
+      value = BigInt(value);
     }
-    if (units === 'centagons') {
-      let amount = `${value}c`;
-      if (value % Number(this.CentagonsPerArgon) === 0) {
-        amount = `${this.centagonsToRoundedArgons(value)}₳`;
+
+    if (fromUnits === 'microgons') {
+      if (
+        toUnits === 'argons' ||
+        value % (this.MicrogonsPerCentagon * this.CentagonsPerArgon) === 0n
+      ) {
+        return `${this.microgonsToRoundedArgons(value)}₳`;
       }
-      return amount;
+      if (toUnits === 'centagons' || value % this.MicrogonsPerCentagon === 0n) {
+        return `${this.microgonsToCentagons(value).toString()}c`;
+      }
+      return `${value}m`;
+    }
+
+    if (fromUnits === 'centagons') {
+      if (toUnits === 'argons' || value % this.CentagonsPerArgon === 0n) {
+        return `${this.centagonsToRoundedArgons(value)}₳`;
+      }
+      if (toUnits === 'microgons') {
+        return `${this.centagonsToMicrogons(value)}c`;
+      }
+      return `${value}c`;
+    }
+
+    // from argons
+
+    if (toUnits === 'centagons') {
+      return `${value * this.CentagonsPerArgon}₳`;
+    }
+    if (toUnits === 'microgons') {
+      return `${value * this.CentagonsPerArgon * this.MicrogonsPerCentagon}c`;
     }
     return `${value}₳`;
   }
@@ -83,7 +104,7 @@ export default class ArgonUtils {
   }
 
   private static microgonsToRoundedArgons(microgons: number | bigint): number {
-    return Math.round(100 * Number(this.microgonsToArgons(microgons))) / 100;
+    return Math.round(Number(this.microgonsToArgons(BigInt(microgons) * 100n))) / 100;
   }
 
   private static centagonsToArgons(centagons: bigint): bigint {
