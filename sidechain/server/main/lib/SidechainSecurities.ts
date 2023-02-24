@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import Log from '@ulixee/commons/lib/Logger';
 import { IAddressSignature, ITransaction } from '@ulixee/specification';
 import AddressSignature from '@ulixee/crypto/lib/AddressSignature';
@@ -64,7 +64,7 @@ export default class SidechainSecurities {
 
   private async getSecuritiesProof(prevBlockHash: Buffer): Promise<ISecuritiesProof> {
     const unspentFunds = await Security.allUnspentFunds(this.client);
-    const hashable = sha3(prevBlockHash);
+    const hashable = sha256(prevBlockHash);
     const addresses = new Set<string>();
     const sidechainFunds: ISidechainOwnedSecurity[] = unspentFunds.map(security => {
       addresses.add(security.transactionOutputAddress);

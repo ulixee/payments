@@ -1,5 +1,5 @@
 import Identity from '@ulixee/crypto/lib/Identity';
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 
 const micronoteBatchIdentity = Identity.createSync();
@@ -17,6 +17,6 @@ export function getStakeSignature(
   return {
     rootPublicKey: sideIdentity.publicKey,
     blockHeight: height,
-    signature: sideIdentity.sign(sha3(concatAsBuffer(publicKey, blockHeight))),
+    signature: sideIdentity.sign(sha256(concatAsBuffer(publicKey, blockHeight))),
   };
 }

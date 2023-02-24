@@ -1,4 +1,4 @@
-import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
+import { hashObject, sha256 } from '@ulixee/commons/lib/hashUtils';
 import { IBlockSettings, NoteType } from '@ulixee/specification';
 import { nanoid } from 'nanoid';
 import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
@@ -173,7 +173,7 @@ const createWalletMicronoteFunds = (wallet, microgons, allocated) => {
     x.insert<IMicronoteFundsRecord>('micronote_funds', {
       id: `${(fundCounter += 1)}`.padEnd(30, '0'),
       address: wallet.address,
-      noteHash: sha3(nanoid()),
+      noteHash: sha256(nanoid()),
       microgons,
       microgonsAllocated: allocated,
       guaranteeBlockHeight: 0,

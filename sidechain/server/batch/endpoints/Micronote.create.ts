@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { NewNotesNotBeingAcceptedError } from '@ulixee/payment-utils/lib/errors';
 import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
@@ -57,7 +57,7 @@ export default new ApiHandler('Micronote.create', {
     }, options);
 
     const micronoteSignature = batch.credentials.identity.sign(
-      sha3(concatAsBuffer(micronote.id, microgons)),
+      sha256(concatAsBuffer(micronote.id, microgons)),
     );
 
     return {

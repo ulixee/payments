@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { IBlockSettings } from '@ulixee/specification';
 import MainchainClient from '@ulixee/mainchain';
 import BlockManager from '../main/lib/BlockManager';
@@ -77,7 +77,7 @@ test('should be able to get the status of a transfer', async () => {
     const [transaction] = transfersOut;
     // and simulate the block picking up the transaction
     await new MainchainBlock(dbclient, {
-      blockHash: sha3('solved'),
+      blockHash: sha256('solved'),
       height: 23,
       isLongestChain: true,
       nextLinkTarget: {
@@ -87,14 +87,14 @@ test('should be able to get the status of a transfer', async () => {
 
     await SecurityMainchainBlock.record(dbclient, {
       transactionHash: transaction.transactionHash,
-      blockHash: sha3('solved'),
+      blockHash: sha256('solved'),
       blockHeight: 23,
       blockStableLedgerIndex: 0,
     });
   });
 
   const status2 = await client.getMainchainTransferStatus(res.noteHash);
-  expect(status2.blocks[0].blockHash).toEqual(sha3('solved'));
+  expect(status2.blocks[0].blockHash).toEqual(sha256('solved'));
   expect(status2.blocks[0].blockHeight).toBe(23);
   expect(status2.transactionHash).toBeTruthy();
 

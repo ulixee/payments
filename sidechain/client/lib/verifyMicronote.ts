@@ -1,12 +1,12 @@
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
-import { IPayment } from '@ulixee/specification';
+import { IMicronote } from '@ulixee/specification';
 import Identity from '@ulixee/crypto/lib/Identity';
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { InvalidPaymentBlockHeightError, UnapprovedSidechainError } from './errors';
 
 export default function verifyMicronote(
-  micronote: IPayment['micronote'],
+  micronote: IMicronote,
   approvedSidechainIdentities: Set<string>,
   currentBlockHeight: number,
 ): void {
@@ -30,7 +30,7 @@ export default function verifyMicronote(
 
   const isBatchValid = Identity.verify(
     sidechainIdentity,
-    sha3(micronoteBatchIdentity),
+    sha256(micronoteBatchIdentity),
     sidechainValidationSignature,
   );
   if (isBatchValid === false) {
@@ -39,7 +39,7 @@ export default function verifyMicronote(
     );
   }
 
-  const signatureMessage = sha3(concatAsBuffer(micronoteId, microgons));
+  const signatureMessage = sha256(concatAsBuffer(micronoteId, microgons));
   const isMicronoteValid = Identity.verify(
     micronoteBatchIdentity,
     signatureMessage,

@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import MainchainClient from '@ulixee/mainchain';
 import { IBlock, TransactionType } from '@ulixee/specification';
 import { createServer } from '@ulixee/mainchain-server/endpoints';
@@ -273,8 +273,8 @@ describe('block sync', () => {
       } as any;
     });
 
-    const existingTxHash = sha3('should store an outbound hash');
-    const transferHash = sha3('should store a transfer hash');
+    const existingTxHash = sha256('should store an outbound hash');
+    const transferHash = sha256('should store a transfer hash');
 
     // 1. establish securities
     await MainDb.transaction(async client => {

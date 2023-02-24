@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer, encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { nanoid } from 'nanoid';
 import { ConflictError, InvalidParameterError } from '@ulixee/payment-utils/lib/errors';
@@ -92,7 +92,7 @@ export default class Micronote {
     const nonce = nanoid(16);
     const holdAuthorizationCode = nanoid(16);
     const time = new Date();
-    const hash = sha3(concatAsBuffer(blockHeight, nonce, batchAddress, time.toISOString()));
+    const hash = sha256(concatAsBuffer(blockHeight, nonce, batchAddress, time.toISOString()));
 
     const id = encodeBuffer(hash, Micronote.encodingPrefix);
 

@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { IBlockSettings } from '@ulixee/specification';
 import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
 import ArgonUtils from '@ulixee/sidechain/lib/ArgonUtils';
@@ -42,7 +42,7 @@ test('should require a valid address for a request', async () => {
       signature: {
         signers: [
           {
-            identity: encodeBuffer(sha3('1234'), 'id'),
+            identity: encodeBuffer(sha256('1234'), 'id'),
             ownershipMerkleProofs: [],
             signature: Buffer.from(
               '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',

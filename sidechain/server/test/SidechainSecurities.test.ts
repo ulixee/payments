@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { IBlockSettings, NoteType } from '@ulixee/specification';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
 import { DbType } from '@ulixee/payment-utils/pg/PgPool';
@@ -33,8 +33,8 @@ async function createBlock(
 ) {
   return await new MainchainBlock(client, {
     height,
-    prevBlockHash: prevBlockHash ? sha3(prevBlockHash) : null,
-    blockHash: sha3(hash),
+    prevBlockHash: prevBlockHash ? sha256(prevBlockHash) : null,
+    blockHash: sha256(hash),
     isLongestChain,
     nextLinkTarget: { powerOf2: 256 },
   }).save();
@@ -43,7 +43,7 @@ async function createBlock(
 async function getBlock(client: PgClient<DbType.Main>, hash: string) {
   return await client.queryOne<IMainchainBlockRecord>(
     'select * from mainchain_blocks where block_hash=$1',
-    [sha3(hash)],
+    [sha256(hash)],
   );
 }
 
@@ -66,7 +66,7 @@ beforeAll(async () => {
     await createBlock(client, '3b', 3, false, '2a');
 
     await new Security(client, {
-      transactionHash: sha3('gentx'),
+      transactionHash: sha256('gentx'),
       transactionOutputIndex: 0,
       transactionOutputAddress: config.mainchain.addresses[0].bech32,
       transactionTime: new Date(),
@@ -76,7 +76,7 @@ beforeAll(async () => {
       isToSidechain: true,
       isTransferIn: true,
     }).save({
-      blockHash: sha3('gen'),
+      blockHash: sha256('gen'),
       blockHeight: 0,
       blockStableLedgerIndex: 0,
     });
@@ -91,7 +91,7 @@ test('should create balanced funds for each chain', async () => {
   // create funds
   await MainDb.transaction(async client => {
     await new Security(client, {
-      transactionHash: sha3('tx1'),
+      transactionHash: sha256('tx1'),
       transactionOutputIndex: 0,
       transactionOutputAddress: config.mainchain.addresses[0].bech32,
       transactionTime: new Date(),
@@ -101,13 +101,13 @@ test('should create balanced funds for each chain', async () => {
       isToSidechain: true,
       isTransferIn: true,
     }).save({
-      blockHash: sha3('1'),
+      blockHash: sha256('1'),
       blockHeight: 1,
       blockStableLedgerIndex: 0,
     });
 
     await new Security(client, {
-      transactionHash: sha3('tx2'),
+      transactionHash: sha256('tx2'),
       transactionOutputIndex: 0,
       transactionOutputAddress: config.mainchain.addresses[0].bech32,
       transactionTime: new Date(),
@@ -117,7 +117,7 @@ test('should create balanced funds for each chain', async () => {
       isToSidechain: true,
       isTransferIn: true,
     }).save({
-      blockHash: sha3('1a'),
+      blockHash: sha256('1a'),
       blockHeight: 1,
       blockStableLedgerIndex: 0,
     });
@@ -343,7 +343,7 @@ test('should handle transfers "out" across forks', async () => {
     isResolved: true,
     promise: Promise.resolve({
       height: 5,
-      hash: sha3('5'),
+      hash: sha256('5'),
     } as unknown as IBlockSettings),
   };
 
@@ -360,7 +360,7 @@ test('should handle transfers "out" across forks', async () => {
 
     await SecurityMainchainBlock.record(client, {
       transactionHash: client2Security.transactionHash,
-      blockHash: sha3('1'),
+      blockHash: sha256('1'),
       blockHeight: 1,
       blockStableLedgerIndex: 0,
     });

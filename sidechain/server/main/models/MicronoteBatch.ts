@@ -2,7 +2,7 @@ import * as moment from 'moment';
 import Address from '@ulixee/crypto/lib/Address';
 import { UniversalSigner } from '@ulixee/crypto/interfaces/IAddressSettings';
 import Identity from '@ulixee/crypto/lib/Identity';
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import IMicronoteBatch from '@ulixee/specification/types/IMicronoteBatch';
 import * as decamelize from 'decamelize';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
@@ -86,7 +86,7 @@ export default class MicronoteBatch implements IBatchState {
   public getNoteParams(): IMicronoteBatch {
     if (!this.sidechainValidationSignature) {
       this.sidechainIdentity = config.rootIdentity.bech32;
-      const identityHash = sha3(this.identity);
+      const identityHash = sha256(this.identity);
       this.sidechainValidationSignature = config.rootIdentity.sign(identityHash);
     }
     return {

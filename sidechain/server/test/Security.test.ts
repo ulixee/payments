@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { IBlockSettings , LedgerType, NoteType, TransactionType } from '@ulixee/specification';
 import TransactionBuilder from '@ulixee/wallet/lib/TransactionBuilder';
 import config from '../config';
@@ -31,7 +31,7 @@ beforeAll(async () => {
 
   const address = client1.address;
   await MainDb.transaction(async client => {
-    const blockHash = sha3('block1');
+    const blockHash = sha256('block1');
     await new MainchainBlock(client, {
       height: 0,
       blockHash,
@@ -43,7 +43,7 @@ beforeAll(async () => {
 
     // create funds
     await new Security(client, {
-      transactionHash: sha3('1'),
+      transactionHash: sha256('1'),
       transactionOutputIndex: 0,
       transactionOutputAddress: address,
       transactionTime: new Date(),
@@ -56,7 +56,7 @@ beforeAll(async () => {
     }).save();
 
     await new Security(client, {
-      transactionHash: sha3('2'),
+      transactionHash: sha256('2'),
       transactionOutputIndex: 0,
       transactionOutputAddress: address,
       transactionTime: new Date(),
@@ -73,7 +73,7 @@ beforeAll(async () => {
     });
 
     await new Security(client, {
-      transactionHash: sha3('3'),
+      transactionHash: sha256('3'),
       transactionOutputIndex: 0,
       transactionOutputAddress: address,
       transactionTime: new Date(),
@@ -86,7 +86,7 @@ beforeAll(async () => {
     }).save();
 
     await new Security(client, {
-      transactionHash: sha3('3'),
+      transactionHash: sha256('3'),
       transactionOutputIndex: 1,
       transactionOutputAddress: address,
       transactionTime: new Date(),
@@ -98,7 +98,7 @@ beforeAll(async () => {
     }).save();
 
     await new Security(client, {
-      transactionHash: sha3('4'),
+      transactionHash: sha256('4'),
       transactionOutputIndex: 0,
       transactionOutputAddress: address,
       transactionTime: new Date(),
@@ -111,7 +111,7 @@ beforeAll(async () => {
     }).save();
 
     await new Security(client, {
-      transactionHash: sha3('6'),
+      transactionHash: sha256('6'),
       transactionOutputIndex: 0,
       transactionOutputAddress: address,
       transactionTime: new Date(),
@@ -124,7 +124,7 @@ beforeAll(async () => {
 
     // unspendable
     await new Security(client, {
-      transactionHash: sha3('5'),
+      transactionHash: sha256('5'),
       transactionOutputIndex: 0,
       transactionOutputAddress: address,
       transactionTime: new Date(),
@@ -248,7 +248,7 @@ test('should record blocks where securities are found', async () => {
   await cleanDb();
   await mockGenesisTransfer();
 
-  const transactionHash = sha3('tx1');
+  const transactionHash = sha256('tx1');
   await MainDb.transaction(async client => {
     function createBlock(
       hash: string,
@@ -258,8 +258,8 @@ test('should record blocks where securities are found', async () => {
     ) {
       return new MainchainBlock(client, {
         height,
-        prevBlockHash: prevBlockHash ? sha3(prevBlockHash) : null,
-        blockHash: sha3(hash),
+        prevBlockHash: prevBlockHash ? sha256(prevBlockHash) : null,
+        blockHash: sha256(hash),
         isLongestChain,
         nextLinkTarget: { powerOf2: 256 },
       }).save();
@@ -320,7 +320,7 @@ test('should record blocks where securities are found', async () => {
     await SecurityMainchainBlock.record(client, {
       blockStableLedgerIndex: 0,
       blockHeight: 5,
-      blockHash: sha3('5a'),
+      blockHash: sha256('5a'),
       transactionHash,
     });
 
@@ -328,7 +328,7 @@ test('should record blocks where securities are found', async () => {
     await SecurityMainchainBlock.record(client, {
       blockStableLedgerIndex: 0,
       blockHeight: 5,
-      blockHash: sha3('5a'),
+      blockHash: sha256('5a'),
       transactionHash,
     });
 
@@ -344,7 +344,7 @@ test('should record blocks where securities are found', async () => {
     await SecurityMainchainBlock.record(client, {
       blockStableLedgerIndex: 0,
       blockHeight: 6,
-      blockHash: sha3('6'),
+      blockHash: sha256('6'),
       transactionHash,
     });
 

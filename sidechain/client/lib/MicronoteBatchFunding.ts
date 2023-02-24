@@ -4,7 +4,7 @@ import { ISidechainApiTypes } from '@ulixee/specification/sidechain';
 import Resolvable from '@ulixee/commons/lib/Resolvable';
 import Queue from '@ulixee/commons/lib/Queue';
 import Identity from '@ulixee/crypto/lib/Identity';
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import TimedCache from '@ulixee/commons/lib/TimedCache';
 import SidechainClient from './SidechainClient';
@@ -308,7 +308,7 @@ export default class MicronoteBatchFunding {
     const { sidechainIdentity, sidechainValidationSignature, micronoteBatchIdentity } = batch;
     const isValid = Identity.verify(
       sidechainIdentity,
-      sha3(micronoteBatchIdentity),
+      sha256(micronoteBatchIdentity),
       sidechainValidationSignature,
     );
     if (isValid === false) {

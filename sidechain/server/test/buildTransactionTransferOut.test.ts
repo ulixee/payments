@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { ITransaction, NoteType } from '@ulixee/specification';
 import config from '../config';
 import buildTransactionTransferOut from '../main/lib/buildTransactionTransferOut';
@@ -27,10 +27,10 @@ afterAll(async () => {
 
 
 test('should spend outputs on "transfer out"', async () => {
-  const existingTxHash = sha3('should store an outbound hash');
+  const existingTxHash = sha256('should store an outbound hash');
   await MainDb.transaction(async client => {
     await new MainchainBlock(client, {
-      blockHash: sha3('6'),
+      blockHash: sha256('6'),
       isLongestChain: true,
       height: 5,
       nextLinkTarget: {

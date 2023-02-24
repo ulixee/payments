@@ -1,4 +1,4 @@
-import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
+import { hashObject, sha256 } from '@ulixee/commons/lib/hashUtils';
 import Identity from '@ulixee/crypto/lib/Identity';
 import SidechainClient from '@ulixee/sidechain/lib/SidechainClient';
 import { IAddressSignature, INote, NoteType } from '@ulixee/specification';
@@ -84,10 +84,10 @@ export default class TestClient extends SidechainClient {
         } as IAddressSignature,
         timestamp: transactionParams.timestamp,
       });
-      if ((await MainchainBlock.getBlockHeight(sha3('block1'))) === null) {
+      if ((await MainchainBlock.getBlockHeight(sha256('block1'))) === null) {
         await new MainchainBlock(client, {
           height: 0,
-          blockHash: sha3('block1'),
+          blockHash: sha256('block1'),
           nextLinkTarget: {
             powerOf2: 256,
           },

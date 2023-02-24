@@ -1,6 +1,6 @@
 import Identity from '@ulixee/crypto/lib/Identity';
 import Address from '@ulixee/crypto/lib/Address';
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import RemoteError from '@ulixee/net/errors/RemoteError';
 import { ConnectionToCore } from '@ulixee/net';
 import { encodeBuffer } from '@ulixee/commons/lib/bufferUtils';
@@ -49,7 +49,7 @@ beforeAll(() => {
             batchSlug,
             micronoteBatchIdentity:
               '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-            sidechainIdentity: sha3('ledgerIdentity'),
+            sidechainIdentity: sha256('ledgerIdentity'),
             minimumFundingCentagons: 100n,
             sidechainValidationSignature: 'batchPubKeySig',
             stopNewNotesTime: moment().add(1, 'hours').toDate(),
@@ -96,7 +96,7 @@ test('should fund a micronote batch if needed', async () => {
   expect(mock.MicronoteBatchFunding.fundBatch).toHaveBeenCalledTimes(1);
   expect(note.id).toEqual(Buffer.from('micronoteId'));
   expect(note.micronoteBatchUrl).toBe('https://nobody.nil/ABCDEF12345123');
-  expect(note.sidechainIdentity).toEqual(sha3('ledgerIdentity'));
+  expect(note.sidechainIdentity).toEqual(sha256('ledgerIdentity'));
 });
 
 test('should reuse a current micronote batch fund if one is set', async () => {
@@ -126,7 +126,7 @@ test('should rotate batches when one is stopping accepting notes', async () => {
       batchSlug: 'ABCDEF12345125',
       minimumFundingCentagons: 100n,
       micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-      sidechainIdentity: encodeBuffer(sha3('ledgerIdentity'), 'id'),
+      sidechainIdentity: encodeBuffer(sha256('ledgerIdentity'), 'id'),
       sidechainValidationSignature: Buffer.from('batchPubKeySig'),
       stopNewNotesTime: moment().add(31, 'minutes').toDate(),
       plannedClosingTime: moment().add(45, 'minutes').toDate(),
@@ -137,7 +137,7 @@ test('should rotate batches when one is stopping accepting notes', async () => {
       batchSlug: 'ABCDEF12345126',
       minimumFundingCentagons: 100n,
       micronoteBatchIdentity: '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f9',
-      sidechainIdentity: encodeBuffer(sha3('ledgerIdentity2'), 'id'),
+      sidechainIdentity: encodeBuffer(sha256('ledgerIdentity2'), 'id'),
       sidechainValidationSignature: Buffer.from('batchPubKeySig2'),
       stopNewNotesTime: moment().add(180, 'minutes').toDate(),
       plannedClosingTime: moment().add(200, 'minutes').toDate(),
@@ -240,8 +240,8 @@ test('should only create a new micronote fund if funds are exhausted', async () 
             batchSlug,
             micronoteBatchIdentity:
               '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-            micronoteBatchAddress: encodeBuffer(Buffer.from(sha3('12234')), 'ar'),
-            sidechainIdentity: sha3('ledgerIdentity'),
+            micronoteBatchAddress: encodeBuffer(Buffer.from(sha256('12234')), 'ar'),
+            sidechainIdentity: sha256('ledgerIdentity'),
             sidechainValidationSignature: 'batchPubKeySig',
             stopNewNotesTime: moment().add(2, 'hours').toDate(),
           },
@@ -303,8 +303,8 @@ test('should only get funds one at a time', async () => {
             minimumFundingCentagons: 1n,
             micronoteBatchIdentity:
               '0241919c713a7fc1121988e4e2a244f1dfa7bfaa731ec23909a798b6d1001a73f8',
-            micronoteBatchAddress: encodeBuffer(Buffer.from(sha3('12234')), 'ar'),
-            sidechainIdentity: sha3('ledgerIdentity'),
+            micronoteBatchAddress: encodeBuffer(Buffer.from(sha256('12234')), 'ar'),
+            sidechainIdentity: sha256('ledgerIdentity'),
             sidechainValidationSignature: 'batchPubKeySig',
             stopNewNotesTime: moment().add(2, 'hours').toDate(),
           },

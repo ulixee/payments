@@ -1,0 +1,38 @@
+{
+  "settings": {
+    "signerTypes": ["T", "C"],
+    "transferSignatureSettings": 1,
+    "transferSignatureSalt": {
+      "__type": "Buffer64",
+      "value": "NGVnWEFhMFRQRkVBWEhLN2ZpSS8wL1BXTm9KMWdha0xCd1QzeEh2Y25wRT0="
+    },
+    "claimSignatureSettings": 1,
+    "claimSignatureSalt": {
+      "__type": "Buffer64",
+      "value": "Zzd4SklLR012YVM5TFBNSS8zTVMzZmt1WWljaGVDN3BIR0x0cHdSd29yTT0="
+    }
+  },
+  "bech32": "ar1rtlw5y30fa2y4vc6wr4jdj3pje9dxass7m72xum7aqunmdglghdsqwsrjl",
+  "merkleLeaves": [
+    {
+      "__type": "Buffer64",
+      "value": "WVCy4ARWvgrrPca/rv7nZRmrLhRDuQKaw1LJzLKFHE4="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "gl9GP+/BITSZ5nuMvj4IyvZo+O8zaUmJ7codULcOOgM="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "j0hu1yINZ/VH0IznyHpxHVfHQMIvIcujr+jla3qYWj4="
+    },
+    {
+      "__type": "Buffer64",
+      "value": "xIrjOgn30r0NNjxzMa3P8FQvgNvLZJX0a9buGEhZc4E="
+    }
+  ],
+  "loadedKeysAtIndexes": [
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIAJQhrgxj1GdpKbFYLzFaPiJ/WwwJYjB9q/yd0C6B7ho\n-----END PRIVATE KEY-----\n",
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEICn0eALDhEQ66rqvl/bsQWYJIH8waxLs7NrWlyHsY0vS\n-----END PRIVATE KEY-----\n"
+  ]
+}

@@ -1,7 +1,7 @@
 import { CopyToStreamQuery, to } from 'pg-copy-streams';
 import { IBoundLog } from '@ulixee/commons/interfaces/ILog';
 import { INote, NoteType } from '@ulixee/specification';
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
 import { DbType } from '@ulixee/payment-utils/pg/PgPool';
 import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
@@ -61,7 +61,7 @@ export default class MicronoteBatchSettle {
     );
     const burnNote = burnRows?.length ? burnRows[0] : null;
 
-    const notesHash = sha3(Buffer.concat(noteHashes.map(x => x.noteHash)));
+    const notesHash = sha256(Buffer.concat(noteHashes.map(x => x.noteHash)));
 
     const { funds, allocated, maxGuaranteeBlockHeight } = await this.client.queryOne<{
       funds: bigint;

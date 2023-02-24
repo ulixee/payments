@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { NotFoundError } from '@ulixee/payment-utils/lib/errors';
 import PgClient from '@ulixee/payment-utils/pg/PgClient';
@@ -22,7 +22,7 @@ export default class Stake {
   }
 
   public createHash(blockHeight: number): Buffer {
-    return sha3(concatAsBuffer(this.identity, blockHeight));
+    return sha256(concatAsBuffer(this.identity, blockHeight));
   }
 
   public async refund(refundNoteHash: Buffer): Promise<{ blockEndHeight: number }> {

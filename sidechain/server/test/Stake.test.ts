@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { IBlockSettings } from '@ulixee/specification';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
@@ -20,7 +20,7 @@ beforeAll(async () => {
     isResolved: true,
     promise: Promise.resolve({
       height: 15,
-      hash: sha3('15'),
+      hash: sha256('15'),
       nextLinkTarget: {
         powerOf2: 256,
       },
@@ -33,7 +33,7 @@ beforeAll(async () => {
       height: i,
       isLongestChain: true,
       prevBlockHash: blocks.length > 0 ? blocks[i - 1].blockHash : null,
-      blockHash: sha3(`${i}`),
+      blockHash: sha256(`${i}`),
       nextLinkTarget: {
         powerOf2: 256,
       },
@@ -68,7 +68,7 @@ test('should be able to create a stake', async () => {
   expect(
     Identity.verify(
       stake.rootIdentity,
-      sha3(concatAsBuffer(client.identity, stake.blockHeight)),
+      sha256(concatAsBuffer(client.identity, stake.blockHeight)),
       stake.signature,
     ),
   ).toBeTruthy();
@@ -85,7 +85,7 @@ test('should be able to get stake signatures', async () => {
   expect(
     Identity.verify(
       signature.rootIdentity,
-      sha3(concatAsBuffer(client.identity, signature.blockHeight)),
+      sha256(concatAsBuffer(client.identity, signature.blockHeight)),
       signature.signature,
     ),
   ).toBe(true);

@@ -1,4 +1,4 @@
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import config from '../../config';
@@ -12,7 +12,7 @@ export default new ApiHandler('Sidechain.settings', {
     let identityProofSignature: Buffer;
     if (identity) {
       identityProofSignature = config.rootIdentity.sign(
-        sha3(concatAsBuffer(this.command, identity)),
+        sha256(concatAsBuffer(this.command, identity)),
       );
     }
 

@@ -1,10 +1,10 @@
-import { hashObject, sha3 } from '@ulixee/commons/lib/hashUtils';
+import { hashObject, sha256 } from '@ulixee/commons/lib/hashUtils';
 import { APIError } from '@ulixee/commons/lib/errors';
 import Logger from '@ulixee/commons/lib/Logger';
 import {
   IAddressSignature,
+  IMicronote,
   INote,
-  IPayment,
   IStakeSignature,
   NoteType,
 } from '@ulixee/specification';
@@ -19,7 +19,7 @@ import IPaymentProvider from '../interfaces/IPaymentProvider';
 import { ClientValidationError } from './errors';
 import ConnectionToSidechainCore from './ConnectionToSidechainCore';
 import MicronoteBatchFunding from './MicronoteBatchFunding';
-import IMicronote from '../interfaces/IMicronote';
+import IMicronoteDetails from '../interfaces/IMicronoteDetails'
 import env from '../env';
 
 const isDebug = process.env.ULX_DEBUG ?? false;
@@ -91,7 +91,7 @@ export default class SidechainClient implements IPaymentProvider {
           const signature = settings.identityProofSignatures[i];
           const isValid = Identity.verify(
             sidechainIdentity,
-            sha3(concatAsBuffer('Sidechain.settings', this.identity)),
+            sha256(concatAsBuffer('Sidechain.settings', this.identity)),
             signature,
           );
 
@@ -109,9 +109,10 @@ export default class SidechainClient implements IPaymentProvider {
     return this.runRemote('Sidechain.audit', undefined);
   }
 
-  public async createMicroPayment(pricing: {
-    microgons: number;
-  }): Promise<IPayment & { onFinalized(result: { microgons: number; bytes: number }): void }> {
+  public async createMicroPayment(pricing: { microgons: number }): Promise<{
+    micronote?: IMicronote;
+    onFinalized(result: { microgons: number; bytes: number }): void;
+  }> {
     pricing.microgons ??= 0;
 
     const settings = await this.getSettings(true);
@@ -146,7 +147,7 @@ export default class SidechainClient implements IPaymentProvider {
     recipientAddresses?: string[],
     isAuditable = true,
     tries = 0,
-  ): Promise<IMicronote> {
+  ): Promise<IMicronoteDetails> {
     if (tries >= 5) {
       throw new Error('Could not create new Micronote after 5 retries');
     }
@@ -445,7 +446,7 @@ export default class SidechainClient implements IPaymentProvider {
     try {
       const isValid = Identity.verify(
         batchIdentity,
-        sha3(concatAsBuffer(micronoteResponse.id, microgons)),
+        sha256(concatAsBuffer(micronoteResponse.id, microgons)),
         micronoteResponse.micronoteSignature,
       );
       if (isValid === false) {

@@ -10,7 +10,7 @@ import LedgerType from '@ulixee/specification/types/LedgerType';
 import { TransactionSourceSignatureDataSchema } from '@ulixee/specification/types/ITransactionSourceSignatureData';
 
 /**
- *  Sha3 256 of TransactionSourceSignatureData json encoding
+ *  sha256 256 of TransactionSourceSignatureData json encoding
  */
 export default function buildTransactionSourceHash(
   transaction: Pick<ITransaction, 'type' | 'version' | 'outputs'>,

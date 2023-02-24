@@ -1,7 +1,7 @@
 import Log from '@ulixee/commons/lib/Logger';
 import { IStakeSignature } from '@ulixee/specification';
 import Identity from '@ulixee/crypto/lib/Identity';
-import { sha3 } from '@ulixee/commons/lib/hashUtils';
+import { sha256 } from '@ulixee/commons/lib/hashUtils';
 import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 
 const { log } = Log(module);
@@ -36,7 +36,7 @@ export default async function verifyStakeSignature(
 
   const isValidSignature = Identity.verify(
     signature.rootIdentity,
-    sha3(concatAsBuffer(identity, signature.blockHeight)),
+    sha256(concatAsBuffer(identity, signature.blockHeight)),
     signature.signature,
   );
   if (isValidSignature === false) {

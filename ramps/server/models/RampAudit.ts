@@ -72,7 +72,7 @@ export default class RampAudit {
     usdcReservesE6: bigint;
     usdcToArgonConversionRate: number;
   }): Buffer {
-    // NOTE: Ethereum will use keccak to hash the signature message, not sha3-256
+    // NOTE: Ethereum will use keccak to hash the signature message, not sha256
     return Buffer.from(
       `Ulixee/Ramp.audit::${[
         audit.auditDate.toISOString(),
@@ -89,7 +89,7 @@ export default class RampAudit {
         `select * from ${this.table} where signatures_complete_date is null`,
       );
       for (const audit of needingSignatures) {
-        // NOTE: Ethereum will use keccak to hash the signature message, not sha3-256
+        // NOTE: Ethereum will use keccak to hash the signature message, not sha256
         const signatureMessage = this.signatureMessage(audit);
 
         const indexSignatures: [index: number, signature: string][] = [];
