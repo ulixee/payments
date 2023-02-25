@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.0.0-alpha.19](https://github.com/ulixee/payments/compare/v2.0.0-alpha.18...v2.0.0-alpha.19) (2023-02-25)
+
+
+### Bug Fixes
+
+* **sidechain:** allow dest argonutils conversion ([924f7a7](https://github.com/ulixee/payments/commit/924f7a787e983e5576c8dd0b52fde9923f9009ea))
+
+
+### Features
+
+* **sidechain:** add argon conversions ([645faa2](https://github.com/ulixee/payments/commit/645faa2a60267d1eb8744bc152b159a6276f3010))
+
+
+
+
+
 # [2.0.0-alpha.18](https://github.com/ulixee/payments/compare/v2.0.0-alpha.17...v2.0.0-alpha.18) (2023-01-17)
 
 **Note:** Version bump only for package @ulixee/sidechain

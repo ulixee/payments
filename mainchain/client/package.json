@@ -1,6 +1,6 @@
 {
   "name": "@ulixee/mainchain",
-  "version": "2.0.0-alpha.18",
+  "version": "2.0.0-alpha.19",
   "description": "Client for the Ulixee Mainchain APIs",
   "exports": {
     ".": {
@@ -10,10 +10,10 @@
     "./lib/*": "./lib/*.js"
   },
   "dependencies": {
-    "@ulixee/commons": "2.0.0-alpha.18",
-    "@ulixee/crypto": "2.0.0-alpha.18",
-    "@ulixee/net": "2.0.0-alpha.18",
-    "@ulixee/specification": "2.0.0-alpha.18",
-    "@ulixee/wallet": "2.0.0-alpha.18"
+    "@ulixee/commons": "2.0.0-alpha.19",
+    "@ulixee/crypto": "2.0.0-alpha.19",
+    "@ulixee/net": "2.0.0-alpha.19",
+    "@ulixee/specification": "2.0.0-alpha.19",
+    "@ulixee/wallet": "2.0.0-alpha.19"
   }
 }
