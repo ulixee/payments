@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.0.0-alpha.20](https://github.com/ulixee/payments/compare/v2.0.0-alpha.19...v2.0.0-alpha.20) (2023-04-19)
+
+
+### Bug Fixes
+
+* add special characters for argon formatting ([e49fc8c](https://github.com/ulixee/payments/commit/e49fc8cc3db6e53d320538d9f7f257090cb99139))
+
+
+
+
+
 # [2.0.0-alpha.19](https://github.com/ulixee/payments/compare/v2.0.0-alpha.18...v2.0.0-alpha.19) (2023-02-25)
 
 
