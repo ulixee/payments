@@ -52,7 +52,7 @@ export default class ArgonUtils {
       if (toUnits === 'centagons' || value % this.MicrogonsPerCentagon === 0n) {
         return `${this.microgonsToCentagons(value).toString()}c`;
       }
-      return `${value}m`;
+      return `${value}₥`;
     }
 
     if (fromUnits === 'centagons') {
@@ -73,7 +73,7 @@ export default class ArgonUtils {
     if (toUnits === 'microgons') {
       return `${value * this.CentagonsPerArgon * this.MicrogonsPerCentagon}c`;
     }
-    return `${value}₳`;
+    return `₳${value}`;
   }
 
   public static microgonsToCentagons(microgons: number | bigint, floor = true): bigint {
