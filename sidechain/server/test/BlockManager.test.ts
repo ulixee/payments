@@ -524,7 +524,7 @@ describe('block sync', () => {
 
     await MainDb.transaction(async client => {
       await BlockManager.start();
-      expect(settingsSpy).toBeCalled();
+      expect(settingsSpy).toHaveBeenCalled();
       const blocks = await client.list(
         'select * from mainchain_blocks where height in (6,7,8,9) and is_longest_chain=true',
       );

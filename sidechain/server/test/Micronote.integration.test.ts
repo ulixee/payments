@@ -223,7 +223,7 @@ test('can create multiple holds on a micronote', async () => {
         [worker2.address]: 2000,
       },
     }),
-  ).rejects.toThrowError('only be finalized by the initial');
+  ).rejects.toThrow('only be finalized by the initial');
 
   // can't exceed balance
   await expect(
@@ -237,7 +237,7 @@ test('can create multiple holds on a micronote', async () => {
         [worker2.address]: 8000,
       },
     }),
-  ).rejects.toThrowError('exceeds micronote allocation');
+  ).rejects.toThrow('exceeds micronote allocation');
 
   // can claim more than hold
   const settleHold2 = await worker2.runSignedByIdentity('Micronote.settle', {
@@ -264,7 +264,7 @@ test('can create multiple holds on a micronote', async () => {
         [worker2.address]: 2600,
       },
     }),
-  ).rejects.toThrowError();
+  ).rejects.toThrow();
 
   // finalize note
   const final = await lead.runSignedByIdentity('Micronote.settle', {
@@ -292,7 +292,7 @@ test('can create multiple holds on a micronote', async () => {
         [worker1.address]: 2600,
       },
     }),
-  ).rejects.toThrowError('already been finalized');
+  ).rejects.toThrow('already been finalized');
 
   await expect(
     worker1.runSignedByIdentity('Micronote.hold', {
@@ -302,7 +302,7 @@ test('can create multiple holds on a micronote', async () => {
       identity: worker1.identity,
       microgons: 2000,
     }),
-  ).rejects.toThrowError('already been finalized');
+  ).rejects.toThrow('already been finalized');
 });
 
 afterAll(async () => {

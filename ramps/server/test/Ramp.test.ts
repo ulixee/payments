@@ -104,7 +104,7 @@ describe.skip('USDC -> Argons', () => {
       return { blockNumber: blockNumber + 11, confirmations: 11, blockHash: '0x1' };
     });
     // @ts-expect-error
-    await expect(USDCMonitor.checkConfirmations()).rejects.toThrowError(
+    await expect(USDCMonitor.checkConfirmations()).rejects.toThrow(
       'Sidechain does not have any loaded Reserves accounts that can afford to sell to a USDC buyer',
     );
 
