@@ -112,7 +112,7 @@ export default class MicronoteBatch implements IBatchState {
   }
 
   public toJSON(): Omit<IMicronoteBatchRecord, 'privateKey'> {
-    const { privateKey, ...data } = this.data;
+    const { privateKey: _p, ...data } = this.data;
     return data;
   }
 
@@ -143,9 +143,7 @@ export default class MicronoteBatch implements IBatchState {
     return records.map(x => MicronoteBatch.fromData(client, x));
   }
 
-  public static async create(
-    client: PgClient<DbType.Main>,
-  ): Promise<MicronoteBatch> {
+  public static async create(client: PgClient<DbType.Main>): Promise<MicronoteBatch> {
     const plannedClose = moment().add(batchOpenMinutes, 'minutes');
     const stopNotes = moment(plannedClose).subtract(stopNotesMinsBeforeClose, 'minutes');
     const identity = await Identity.create();

@@ -1,4 +1,4 @@
-import { DuplicateError } from '@ulixee/payment-utils/lib/errors'
+import { DuplicateError } from '@ulixee/payment-utils/lib/errors';
 import ApiHandler from '@ulixee/payment-utils/api/SidechainApiHandler';
 import RegisteredAddress from '../models/RegisteredAddress';
 

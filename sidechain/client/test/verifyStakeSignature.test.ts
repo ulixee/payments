@@ -1,5 +1,5 @@
 import Identity from '@ulixee/crypto/lib/Identity';
-import * as Helpers from './_helpers'
+import * as Helpers from './_helpers';
 import verifyStakeSignature from '../lib/verifyStakeSignature';
 
 test('should verify a stake signature', async () => {

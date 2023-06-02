@@ -229,7 +229,7 @@ test('should close unfinished notes', async () => {
     microgons: 9e4,
     fundsId: fund.fundsId,
   });
-  microNotes.push(mn as any)
+  microNotes.push(mn as any);
 
   await batchDb.transaction(
     async client => {

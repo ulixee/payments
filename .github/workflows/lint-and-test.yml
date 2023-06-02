@@ -40,11 +40,11 @@ jobs:
         run: yarn && yarn build
         working-directory: ../shared
 
-      - name: Run Lint
-        run: NODE_OPTIONS=--max-old-space-size=4096 yarn lint
-
       - name: Build
         run: yarn && yarn build
+
+      - name: Run Lint
+        run: NODE_OPTIONS=--max-old-space-size=4096 yarn lint
 
       - name: Run tests
         run: yarn test --testTimeout=60000 --maxWorkers=2 --verbose

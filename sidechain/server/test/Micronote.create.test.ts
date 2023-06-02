@@ -59,7 +59,7 @@ test('should require a valid address for a request', async () => {
     });
     expect(res).not.toBeTruthy();
   } catch (err) {
-    console.log(err)
+    console.log(err);
     expect(err.code).toBe('ERR_PERMISSIONS');
   }
 });

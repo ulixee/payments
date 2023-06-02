@@ -7,7 +7,7 @@ const { version } = require('../package.json');
 export default function sidechainCommands(): Command {
   const program = new Command().version(version);
   program.addCommand(addressCli());
-  program.addCommand(noteCli())
+  program.addCommand(noteCli());
 
   return program;
 }

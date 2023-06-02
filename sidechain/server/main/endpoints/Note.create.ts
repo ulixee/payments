@@ -20,7 +20,7 @@ export default new ApiHandler('Note.create', {
     }
 
     if (note.guaranteeBlockHeight) {
-      throw new InvalidParameterError('Cannot specify the guaranteeBlockHeight', 'guaranteeBlockHeight')
+      throw new InvalidParameterError('Cannot specify the guaranteeBlockHeight', 'guaranteeBlockHeight');
     }
 
     if (
