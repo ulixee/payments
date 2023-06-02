@@ -1,6 +1,10 @@
+import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
 import { hashObject, sha256 } from '@ulixee/commons/lib/hashUtils';
-import { APIError } from '@ulixee/commons/lib/errors';
 import Logger from '@ulixee/commons/lib/Logger';
+import { bindFunctions } from '@ulixee/commons/lib/utils';
+import Address from '@ulixee/crypto/lib/Address';
+import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
+import Identity from '@ulixee/crypto/lib/Identity';
 import {
   IAddressSignature,
   IMicronote,
@@ -8,19 +12,14 @@ import {
   IStakeSignature,
   NoteType,
 } from '@ulixee/specification';
-import * as assert from 'assert';
-import Identity from '@ulixee/crypto/lib/Identity';
-import Address from '@ulixee/crypto/lib/Address';
-import { InvalidSignatureError } from '@ulixee/crypto/lib/errors';
 import SidechainApiSchema, { ISidechainApiTypes } from '@ulixee/specification/sidechain';
-import { concatAsBuffer } from '@ulixee/commons/lib/bufferUtils';
-import { bindFunctions } from '@ulixee/commons/lib/utils';
-import IPaymentProvider from '../interfaces/IPaymentProvider';
-import { ClientValidationError } from './errors';
-import ConnectionToSidechainCore from './ConnectionToSidechainCore';
-import MicronoteBatchFunding from './MicronoteBatchFunding';
-import IMicronoteDetails from '../interfaces/IMicronoteDetails'
+import assert = require('assert');
 import env from '../env';
+import IMicronoteDetails from '../interfaces/IMicronoteDetails';
+import IPaymentProvider from '../interfaces/IPaymentProvider';
+import ConnectionToSidechainCore from './ConnectionToSidechainCore';
+import { ClientValidationError } from './errors';
+import MicronoteBatchFunding from './MicronoteBatchFunding';
 
 const isDebug = process.env.ULX_DEBUG ?? false;
 
@@ -432,9 +431,6 @@ export default class SidechainClient implements IPaymentProvider {
   private shouldRetryError(error: Error & { code?: string }): boolean {
     if (error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED') return true;
 
-    if (error instanceof APIError) {
-      return error.status === 502 || error.status === 503;
-    }
     return false;
   }
 

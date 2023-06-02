@@ -1,4 +1,4 @@
-import * as moment from 'moment';
+import moment = require('moment');
 import Address from '@ulixee/crypto/lib/Address';
 import Identity from '@ulixee/crypto/lib/Identity';
 import { mockGenesisTransfer, start, stop } from './_setup';

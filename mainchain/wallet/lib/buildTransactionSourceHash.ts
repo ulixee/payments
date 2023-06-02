@@ -5,7 +5,7 @@ import {
   ITransactionSource,
   ITransactionSourceSignatureData,
 } from '@ulixee/specification';
-import * as assert from 'assert';
+import assert = require('assert');
 import LedgerType from '@ulixee/specification/types/LedgerType';
 import { TransactionSourceSignatureDataSchema } from '@ulixee/specification/types/ITransactionSourceSignatureData';
 

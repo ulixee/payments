@@ -1,5 +1,5 @@
 import Log from '@ulixee/commons/lib/Logger';
-import * as moment from 'moment';
+import moment = require('moment');
 import { InsufficientFundsError, NotFoundError } from '@ulixee/payment-utils/lib/errors';
 import { ITransactionOptions } from '@ulixee/payment-utils/pg/PgPool';
 import config from '../../config';
