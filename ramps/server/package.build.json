@@ -9,17 +9,17 @@
   },
   "devDependencies": {
     "@ethersproject/abi": "^5.7.0",
-    "@ethersproject/providers": "^5.7.0",
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
-    "@nomicfoundation/hardhat-toolbox": "^1.0.2",
-    "@nomiclabs/hardhat-ethers": "^2.1.1",
-    "@nomiclabs/hardhat-etherscan": "^3.1.0",
+    "@ethersproject/providers": "^5.7.2",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@openzeppelin/contracts": "^4.7.3",
+    "@ulixee/sidechain-server": "2.0.0-alpha.21",
     "commander": "^9.4.0",
-    "ethers": "^5.7.0",
-    "hardhat": "^2.10.2",
-    "hardhat-gas-reporter": "^1.0.8",
-    "nodemon": "^1.18.9",
-    "postgrator": "^5.0.1"
+    "ethers": "^5.7.2",
+    "hardhat": "^2.14.1",
+    "hardhat-gas-reporter": "^1.0.9",
+    "nodemon": "^1.18.9"
   }
 }
