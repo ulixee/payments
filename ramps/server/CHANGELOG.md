@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.0.0-alpha.22](https://github.com/ulixee/payments/compare/v2.0.0-alpha.21...v2.0.0-alpha.22) (2023-06-12)
+
+
+### Bug Fixes
+
+* lint ([f843e84](https://github.com/ulixee/payments/commit/f843e8460ba92bfefa8e9c54befc5e028e49b0ac))
+
+
+
+
+
 # [2.0.0-alpha.21](https://github.com/ulixee/payments/compare/v2.0.0-alpha.20...v2.0.0-alpha.21) (2023-04-24)
 
 **Note:** Version bump only for package @ulixee/ramps-server
