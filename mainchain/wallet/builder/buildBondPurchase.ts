@@ -5,14 +5,14 @@ import UnspentOutputStore from '../store/UnspentOutputStore';
 import UnspentOutput from '../lib/UnspentOutput';
 
 export default function buildBondPurchase(
-  uxtoStore: UnspentOutputStore,
+  utxoStore: UnspentOutputStore,
   addressStore: AddressStore,
   currentBlockHeight: number,
   stableCentagonsToConvert: number | bigint,
   feeCentagons = 0n,
   expireAfterXBlocks?: number,
 ): { transaction: ITransaction; fromUnspentOutputs: UnspentOutput[]; changeNeeded: bigint } {
-  const { fromUnspentOutputs, changeNeeded } = uxtoStore.getUnspentOutputsCoveringBalance(
+  const { fromUnspentOutputs, changeNeeded } = utxoStore.getUnspentOutputsCoveringBalance(
     LedgerType.STABLE,
     BigInt(stableCentagonsToConvert) + feeCentagons,
   );

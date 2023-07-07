@@ -17,11 +17,11 @@ import UnspentOutputStore from '../store/UnspentOutputStore';
 const miniumCoinageClaimCentagons = 100n;
 
 export default function buildSharesCoinageClaim(
-  uxtoStore: UnspentOutputStore,
+  utxoStore: UnspentOutputStore,
   addressStore: AddressStore,
   coinages: ICoinage[],
 ): { transaction: ITransaction; claims: { share: UnspentOutput; coinage: ICoinage }[] } {
-  const shares = uxtoStore.shares;
+  const shares = utxoStore.shares;
   const builder = new TransactionBuilder(TransactionType.COINAGE_CLAIM, LedgerType.STABLE);
 
   const claims: { share: UnspentOutput; coinage: ICoinage }[] = [];
@@ -35,7 +35,7 @@ export default function buildSharesCoinageClaim(
     }
     const sharesAtHeight = SharesCalculator.getTotalSharesAtHeight(coinage.blockHeight);
     for (const share of shares) {
-      if (uxtoStore.hasClaimedCoinage(share, coinage)) continue;
+      if (utxoStore.hasClaimedCoinage(share, coinage)) continue;
       // sum total claimable based on portion of owned coinage tokens
       if (coinage.centagons) {
         // sum portion based on these output centagons divided by total allocated

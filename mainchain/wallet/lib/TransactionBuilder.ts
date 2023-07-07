@@ -58,8 +58,8 @@ export default class TransactionBuilder {
   public finalize(): ITransaction {
     const isClaim = this.type === TransactionType.COINAGE_CLAIM;
 
-    for (const uxto of this.sources) {
-      const { source, address, centagons } = uxto;
+    for (const utxo of this.sources) {
+      const { source, address, centagons } = utxo;
       const settings = address.addressSettings;
       const merkle = address.ownersMerkleTree;
       const signers = isClaim ? address.claimSigners : address.transferSigners;
@@ -69,7 +69,7 @@ export default class TransactionBuilder {
         isClaim,
       );
 
-      const uxtoSourceHash = buildTransactionSourceHash(
+      const utxoSourceHash = buildTransactionSourceHash(
         this.transaction,
         source as any,
         this.ledger,
@@ -80,7 +80,7 @@ export default class TransactionBuilder {
       );
 
       const addressSignature = AddressSignature.create(
-        uxtoSourceHash,
+        utxoSourceHash,
         signers,
         merkle,
         settings,

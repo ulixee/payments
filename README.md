@@ -7,7 +7,7 @@ documentation for doing so, and we're not ready to actively support running side
 ```
 
 ## High Level
-Ulixee Payments are based on the Bitcoin protocol - it's a proof of work blockchain that uses data queries instead of energy to provide chain security. It also inherits the UXTO model. Ulixee Payments diverge from Bitcoin in the following ways:
+Ulixee Payments are based on the Bitcoin protocol - it's a proof of work blockchain that uses data queries instead of energy to provide chain security. It also inherits the UTXO model. Ulixee Payments diverge from Bitcoin in the following ways:
 1. It integrates an algorithmic stable coin protocol: selling discounted bonds to bring the price back towards baseline, and minting more currency when prices rise above baseline (eg, floating more currency supply to reduce prices).
 2. It has no scripting. Multisig is built-in, which was our primary use case for scripting.
 3. The blockchain provides evidence of Data work to close blocks.

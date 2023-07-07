@@ -31,8 +31,8 @@ export default function buildTransfer(
   }
 
   // now add all signed sources
-  for (const uxto of fromUnspentOutputs) {
-    transfer.addSource(uxto, uxto.centagons, addressStore.getAddress(uxto.address));
+  for (const utxo of fromUnspentOutputs) {
+    transfer.addSource(utxo, utxo.centagons, addressStore.getAddress(utxo.address));
   }
 
   return transfer.finalize();
