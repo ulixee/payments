@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.0.0-alpha.24](https://github.com/ulixee/payments/compare/v2.0.0-alpha.23...v2.0.0-alpha.24) (2023-08-09)
+
+
+### Bug Fixes
+
+* **ramps:** outdated dependency ([edbcc0a](https://github.com/ulixee/payments/commit/edbcc0ae8deec79c09575335d94e9d82583fa6e5))
+
+
+
+
+
 # [2.0.0-alpha.23](https://github.com/ulixee/payments/compare/v2.0.0-alpha.22...v2.0.0-alpha.23) (2023-07-07)
 
 **Note:** Version bump only for package @ulixee/ramps-server

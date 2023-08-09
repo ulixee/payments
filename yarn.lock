@@ -2863,6 +2863,36 @@
     "@typescript-eslint/types" "5.59.8"
     eslint-visitor-keys "^3.3.0"
 
+"@ulixee/commons@2.0.0-alpha.23":
+  version "2.0.0-alpha.23"
+  resolved "https://registry.yarnpkg.com/@ulixee/commons/-/commons-2.0.0-alpha.23.tgz#27c77e940c0cb19968abde01d43e0a4cf49f8010"
+  integrity sha512-R+xxyCeqLGD8IbgGyGaUsPV9bp8Qmw26+ZEp8VE/az6Vx85pPG0UzXPM1pTIifSea+6rOHlFrw/ylaRtZA/iFA==
+  dependencies:
+    "@jridgewell/trace-mapping" "^0.3.18"
+    bech32 "^2.0.0"
+    devtools-protocol "^0.0.1137505"
+    https-proxy-agent "^5.0.0"
+    semver "^7.3.7"
+
+"@ulixee/crypto@2.0.0-alpha.23":
+  version "2.0.0-alpha.23"
+  resolved "https://registry.yarnpkg.com/@ulixee/crypto/-/crypto-2.0.0-alpha.23.tgz#5a978f6e3d1829ab8002cc8f2f48af1d0070e317"
+  integrity sha512-O9s1crnLkYphRnpzkEe7Uk9vHmeazD3ez4D+0fwJdj4qY/Ag10pbZfxXEuT/EIT05TJlKJSq/odjp8DCzC057A==
+  dependencies:
+    "@ulixee/commons" "2.0.0-alpha.23"
+    "@ulixee/crypto" "2.0.0-alpha.23"
+    "@ulixee/specification" "2.0.0-alpha.23"
+    bignumber.js "^9.0.2"
+    commander "^9.3.0"
+
+"@ulixee/net@2.0.0-alpha.23":
+  version "2.0.0-alpha.23"
+  resolved "https://registry.yarnpkg.com/@ulixee/net/-/net-2.0.0-alpha.23.tgz#7ffae9ebaa9aad59cff5982d11d690d94ae24969"
+  integrity sha512-Eyr+klqsCf6RA49ruxoCVSHRNzzI4+AXyCJWCfiCdwvTfcczKY8QP/UHWefSGZiiMePgH8EPC8aqHZx/A/QYjQ==
+  dependencies:
+    "@ulixee/commons" "2.0.0-alpha.23"
+    ws "^7.4.6"
+
 "@ulixee/repo-tools@^1.0.26":
   version "1.0.26"
   resolved "https://registry.yarnpkg.com/@ulixee/repo-tools/-/repo-tools-1.0.26.tgz#c664401802fadb795ca759330e73a601332d51c6"
@@ -2886,6 +2916,13 @@
     prettier "^2.6.2"
     pretty-quick "^3.1.0"
     typescript "^5.0.4"
+
+"@ulixee/specification@2.0.0-alpha.23":
+  version "2.0.0-alpha.23"
+  resolved "https://registry.yarnpkg.com/@ulixee/specification/-/specification-2.0.0-alpha.23.tgz#407cf1e24a098b21dd22b5f9491bf316c18b2629"
+  integrity sha512-vHAPca/fut9kQqfl1HLodSZAAbjLvd4pG1z7Ib+hDj0RsYgPCgFXuj8leYMClY5Nn30qfPrjKwhGVjQyj39JGg==
+  dependencies:
+    zod "^3.20.2"
 
 "@ungap/promise-all-settled@1.1.2":
   version "1.1.2"
