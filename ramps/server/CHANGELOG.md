@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.0.0-alpha.25](https://github.com/ulixee/payments/compare/v2.0.0-alpha.24...v2.0.0-alpha.25) (2023-09-28)
+
+
+### Bug Fixes
+
+* deps ([1ccdc83](https://github.com/ulixee/payments/commit/1ccdc83e9392c0f959e6492f02268e2133960d2a))
+
+
+
+
+
 # [2.0.0-alpha.24](https://github.com/ulixee/payments/compare/v2.0.0-alpha.23...v2.0.0-alpha.24) (2023-08-09)
 
 
