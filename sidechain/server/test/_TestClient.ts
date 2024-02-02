@@ -63,7 +63,7 @@ export default class TestClient extends SidechainClient {
     return super.runSignedByIdentity(command, args);
   }
 
-  public async grantCentagons(centagons: bigint | number, guaranteeBlockHeight = 0) {
+  public async grantCentagons(centagons: bigint | number, guaranteeBlockHeight = 0): Promise<INote> {
     centagons = BigInt(centagons);
     return await MainDb.transaction(async client => {
       const transactionParams: Partial<INoteRecord> = {

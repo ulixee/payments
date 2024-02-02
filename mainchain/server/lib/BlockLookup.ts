@@ -3,8 +3,8 @@ import IAuthorizedSidechain from '@ulixee/specification/types/IAuthorizedSidecha
 import buildGenesisBlock from './buildGenesisBlock';
 
 export default class BlockLookup {
-  public genesisBlock = buildGenesisBlock();
-  public blockchain = [this.genesisBlock];
+  public genesisBlock:IBlock = buildGenesisBlock();
+  public blockchain:IBlock[] = [this.genesisBlock];
 
   public close(): Promise<void> {
     return Promise.resolve();
