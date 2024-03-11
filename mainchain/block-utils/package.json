@@ -1,10 +1,10 @@
 {
   "name": "@ulixee/block-utils",
-  "version": "2.0.0-alpha.27",
+  "version": "2.0.0-alpha.28",
   "description": "Ulixee block closing utilities",
   "dependencies": {
-    "@ulixee/commons": "2.0.0-alpha.27",
-    "@ulixee/specification": "2.0.0-alpha.27",
+    "@ulixee/commons": "2.0.0-alpha.28",
+    "@ulixee/specification": "2.0.0-alpha.28",
     "bignumber.js": "^9.0.2"
   },
   "keywords": []
